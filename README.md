@@ -1,73 +1,65 @@
-# React + TypeScript + Vite
+# uTerms
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+uTerms is a comprehensive, enterprise-grade consent management and compliance platform. Built with React and TypeScript, it provides robust features for cookie consent management, policy generation, and compliance monitoring.
 
-Currently, two official plugins are available:
+## 🚀 Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Cookie Consent Management**: Generate, configure, and preview customizable cookie banners tailored to your website's scan results.
+- **Cookie Logging & Monitoring**: Comprehensive cookie logging system (`visitor_consent_logs`) to store and monitor user consent data, complete with filtering and CSV export capabilities.
+- **Compliance Checklist**: A dynamic dashboard to track the status of website scanning and cookie banner configurations, guiding users through the setup process.
+- **Authentication**: Secure user sign-up and login powered by Supabase, including seamless Google Sign-Up integration.
+- **Embeddable Script**: Provides a `uterms-embed.js` script to easily integrate the consent banner and consent logging onto any target website.
+- **Enterprise Design**: A modern, feature-rich, and scalable interface.
 
-## React Compiler
+## 🛠 Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: React, TypeScript, Vite
+- **Backend / Database**: Supabase (PostgreSQL)
+- **Authentication**: Supabase Auth, Google Identity Services (GIS)
 
-## Expanding the ESLint configuration
+## 📦 Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Prerequisites
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- [Node.js](https://nodejs.org/) installed
+- A [Supabase](https://supabase.com/) project set up
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Installation
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+1. Clone the repository:
+   ```sh
+   git clone https://github.com/eddielok/uterms.git
+   cd uterms
+   ```
+
+2. Install dependencies:
+   ```sh
+   npm install
+   ```
+
+3. Configure Environment Variables:
+   Create a `.env` file in the root directory and add your Supabase credentials:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+
+4. Start the frontend development server:
+   ```sh
+   npm run dev
+   ```
+
+5. Start the backend scan service (in a separate terminal):
+   ```sh
+   node server/index.js
+   ```
+
+## 🧩 Embedding the Cookie Banner
+
+To embed the uTerms cookie banner on your website, include the provided script in the `<head>` of your HTML document:
+
+```html
+<script src="https://your-domain.com/uterms-embed.js"></script>
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+This script will automatically inject the configured cookie banner and handle user consent logging via the `/api/consent` endpoint.

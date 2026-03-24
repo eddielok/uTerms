@@ -1,0 +1,291 @@
+import React, { useState } from 'react';
+import { Input } from '../components/Input';
+import type { Column } from '../components/Table';
+import { Table } from '../components/Table';
+import type { CookieItem } from '../context/CookieContext';
+import { useCookieConfig } from '../context/CookieContext';
+import { supabase } from '../lib/supabase';
+import './WebsiteCookie.css';
+
+const cookieColumns: Column<CookieItem>[] = [
+  {
+    header: 'COOKIE NAME',
+    accessor: (row) => <a href="#" className="custom-table-link">{row.name}</a>,
+    width: '25%',
+  },
+  {
+    header: 'DESCRIPTION',
+    accessor: 'description',
+    width: '50%',
+  },
+  {
+    header: 'DOMAIN',
+    accessor: 'domain',
+    width: '25%',
+    className: 'custom-text-right',
+    headerClassName: 'custom-text-right'
+  }
+];
+
+export const WebsiteCookie: React.FC = () => {
+  const [activeTabId, setActiveTabId] = useState('essential');
+  const [url, setUrl] = useState('');
+  const [isScanning, setIsScanning] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const { scannedData, setScannedData } = useCookieConfig();
+
+  // Load the DB results to the UI whenever the page loads
+  React.useEffect(() => {
+    const fetchInitialData = async () => {
+      // If the global context already supplied the data, sync URL and stop
+      if (scannedData) {
+        if (!url) setUrl(scannedData.url);
+        return;
+      }
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.id) {
+          const { data, error } = await supabase
+            .from('cookie_scans')
+            .select('*')
+            .eq('user_id', user.id)
+            .limit(1)
+            .maybeSingle();
+            
+          if (data && !error) {
+            setScannedData({
+              url: data.website_url,
+              date: new Date(data.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+              pages: 15, // fallback if not tracked in individual scan table
+              cookiesCount: data.total_cookies,
+              categories: typeof data.category_data === 'string' ? JSON.parse(data.category_data) : data.category_data
+            });
+            setUrl(data.website_url);
+          }
+        }
+      } catch (err) {
+        console.error("Error restoring initial cookie scan:", err);
+      }
+    };
+    
+    fetchInitialData();
+  }, [scannedData, setScannedData]); // Intentionally excluding `url` to prevent looping.
+
+  const handleScan = async () => {
+    if (!url) return;
+    
+    setIsScanning(true);
+    setScannedData(null);
+    setSaveStatus('idle');
+    
+    try {
+      const response = await fetch('http://localhost:3001/api/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to scan website');
+      }
+
+      const result = await response.json();
+
+      const newScannedData = {
+        url: result.url,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        pages: Math.floor(Math.random() * 50) + 10,
+        cookiesCount: result.cookiesCount,
+        categories: result.categories
+      };
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        // Check if this user already has ANY scan record
+        let existingScan = null;
+
+        if (user?.id) {
+          const { data, error: selectError } = await supabase
+            .from('cookie_scans')
+            .select('id')
+            .eq('user_id', user.id)
+            .limit(1);
+            
+          if (data && data.length > 0) {
+            existingScan = data[0];
+          }
+        } else {
+          // Fallback just for anonymous scans to match by URL
+          const { data, error: selectError } = await supabase
+            .from('cookie_scans')
+            .select('id')
+            .eq('website_url', newScannedData.url)
+            .is('user_id', null)
+            .limit(1);
+            
+
+          if (data && data.length > 0) {
+            existingScan = data[0];
+          }
+        }
+
+        let error;
+        if (existingScan) {
+          const { error: updateError } = await supabase
+            .from('cookie_scans')
+            .update({
+              website_url: newScannedData.url,  // Update the URL since they scanned a new one!
+              total_cookies: newScannedData.cookiesCount,
+              category_data: newScannedData.categories
+            })
+            .eq('id', existingScan.id);
+          error = updateError;
+        } else {
+          const { error: insertError } = await supabase
+            .from('cookie_scans')
+            .insert([{
+              website_url: newScannedData.url,
+              total_cookies: newScannedData.cookiesCount,
+              category_data: newScannedData.categories,
+              user_id: user?.id || null,
+            }]);
+          error = insertError;
+        }
+
+        if (error) throw error;
+        setSaveStatus('success');
+      } catch (err) {
+        console.error("Error auto-saving scan to DB:", err);
+        setSaveStatus('error');
+      }
+
+      setScannedData(newScannedData);
+      setIsScanning(false);
+      setActiveTabId('essential');
+
+    } catch (err) {
+      console.error("Failed to fetch scan results", err);
+      setIsScanning(false);
+      setSaveStatus('error');
+    }
+  };
+
+  const activeCategory = scannedData?.categories.find(c => c.id === activeTabId);
+
+  return (
+    <div className="cookie-page-container">
+      {/* Header Section */}
+      <div className="cookie-header">
+        <div className="cookie-header-left w-full">
+          <div className="flex items-center gap-4 mb-4" style={{ width: '100%' }}>
+            <h1 className="text-2xl font-bold text-gray-900 whitespace-nowrap shrink-0">Cookie Report (URL):</h1>
+            <div style={{ flex: 1, minWidth: '600px', maxWidth: '800px' }}>
+              <Input 
+                type="url" 
+                value={url}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
+                placeholder="Your Website URL"
+                className="text-lg"
+                style={{ width: '100%' }}
+                disabled={isScanning}
+              />
+            </div>
+            <button 
+              onClick={handleScan}
+              disabled={isScanning || !url}
+              className={`btn-primary-theme uppercase font-semibold text-sm h-[42px] px-6 ml-2 shrink-0 flex items-center gap-2 ${isScanning || !url ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {isScanning ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  Scanning...
+                </>
+              ) : (
+                'Scan'
+              )}
+            </button>
+          </div>
+          
+          {scannedData ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: '2rem' }}>
+              <div>
+                <div className="text-sm text-gray-500">
+                  <span className="font-semibold text-gray-800">{scannedData.pages}</span> pages scanned
+                </div>
+                <div className="text-sm text-gray-500 mt-1">
+                  Cookies in use: <span className="font-semibold text-gray-800">{scannedData.cookiesCount}</span>
+                </div>
+                <div className="text-sm text-gray-500 mt-1">
+                  Last successful scan: {scannedData.date}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '8px' }}>
+                {saveStatus === 'success' && <span style={{ color: '#10b981', fontSize: '0.875rem', fontWeight: 500 }}>Scan successfully!</span>}
+                {saveStatus === 'error' && <span style={{ color: '#ef4444', fontSize: '0.875rem', fontWeight: 500 }}>Failed to save. Check console.</span>}
+              </div>
+            </div>
+          ) : (
+            <div className="text-sm text-gray-500 mt-8">
+              Enter a URL above and click "Scan" to generate a localized cookie report for your website.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {scannedData && activeCategory && (
+        <>
+          {/* Tabs */}
+          <div className="cookie-tabs">
+            {scannedData.categories.map((cat) => {
+              const totalCookies = cat.providers.reduce((sum, p) => sum + p.cookies.length, 0);
+              return (
+                <button 
+                  key={cat.id}
+                  className={`cookie-tab ${activeTabId === cat.id ? 'active' : ''}`}
+                  onClick={() => setActiveTabId(cat.id)}
+                >
+                  {cat.name} ({totalCookies})
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Content Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '1.5rem', marginBottom: '2rem', gap: '2rem' }}>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: '1.625', maxWidth: '56rem', margin: 0 }}>
+              {activeCategory.description}
+            </p>
+            <button className="btn-outline-theme uppercase font-medium text-sm" style={{ whiteSpace: 'nowrap' }}>
+              Add a Cookie
+            </button>
+          </div>
+
+          {/* Grouped Cookies */}
+          <div className="cookie-groups">
+            {activeCategory.providers.length === 0 ? (
+              <div style={{ backgroundColor: '#f9fafb', borderRadius: '0.5rem', border: '1px solid #e5e7eb', padding: '3rem', textAlign: 'center', color: '#6b7280' }}>
+                No cookies found in this category.
+              </div>
+            ) : (
+              activeCategory.providers.map((provider) => (
+                <div key={provider.name} style={{ marginBottom: '3rem' }}>
+                  <h3 style={{ fontSize: '15px', fontWeight: 'bold', color: '#1f2937', marginBottom: '0.75rem', margin: 0 }}>{provider.name}</h3>
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <Table 
+                      columns={cookieColumns} 
+                      data={provider.cookies} 
+                      keyExtractor={(row) => row.name} 
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};

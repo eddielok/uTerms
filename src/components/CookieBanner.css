@@ -1,15 +1,32 @@
 .cookie-banner-wrapper {
   position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 1rem;
-  z-index: 100;
+  z-index: 9999;
   display: flex;
-  justify-content: center;
   pointer-events: none;
   animation: slideUp 0.5s ease-out forwards;
 }
+
+.cookie-banner-wrapper.stretch { left: 0; right: 0; padding: 0; }
+.cookie-banner-wrapper.stretch.bottom { bottom: 0; }
+.cookie-banner-wrapper.stretch.top { top: 0; }
+.cookie-banner-wrapper.stretch .cookie-banner { max-width: 100%; border-radius: 0; border-left: none; border-right: none; }
+.cookie-banner-wrapper.stretch.bottom .cookie-banner { border-bottom: none; }
+.cookie-banner-wrapper.stretch.top .cookie-banner { border-top: none; }
+
+.cookie-banner-wrapper.banner { left: 0; right: 0; padding: 1rem; justify-content: center; }
+.cookie-banner-wrapper.banner.bottom { bottom: 0; }
+.cookie-banner-wrapper.banner.top { top: 0; }
+.cookie-banner-wrapper.banner .cookie-banner { max-width: 800px; }
+
+.cookie-banner-wrapper.modal { inset: 0; padding: 1rem; justify-content: center; align-items: center; background: rgba(0,0,0,0.5); pointer-events: auto; }
+.cookie-banner-wrapper.modal .cookie-banner { max-width: 600px; }
+
+.cookie-banner-wrapper.tooltip { padding: 1rem; }
+.cookie-banner-wrapper.tooltip.bottom { bottom: 0; left: 0; }
+.cookie-banner-wrapper.tooltip.top { top: 0; left: 0; }
+.cookie-banner-wrapper.tooltip .cookie-banner { max-width: 400px; }
+
+.cookie-banner-wrapper.compact .cookie-banner { padding: 1rem; gap: 1rem; }
 
 @keyframes slideUp {
   from { transform: translateY(100%); opacity: 0; }

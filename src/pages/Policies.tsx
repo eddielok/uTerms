@@ -54,7 +54,7 @@ export const Policies: React.FC = () => {
           <div className="policies-meta mt-8 p-4 bg-primary-light rounded-lg">
             <h4 className="font-semibold text-sm mb-2 text-primary">Need Help?</h4>
             <p className="text-xs text-muted mb-3">If you have questions about our policies, please contact our Data Protection Officer.</p>
-            <a href="mailto:privacy@uterm.com" className="text-sm font-medium text-primary hover:underline">privacy@uterm.com</a>
+            <a href="mailto:privacy@uterms.com" className="text-sm font-medium text-primary hover:underline">privacy@uterms.com</a>
           </div>
         </aside>
 
@@ -68,7 +68,7 @@ export const Policies: React.FC = () => {
               </div>
               <div className="doc-body prose">
                 <h3>1. Introduction</h3>
-                <p>Welcome to Uterm. We respect your privacy and are committed to protecting your personal data. This privacy notice will inform you as to how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.</p>
+                <p>Welcome to uTerms. We respect your privacy and are committed to protecting your personal data. This privacy notice will inform you as to how we look after your personal data when you visit our website and tell you about your privacy rights and how the law protects you.</p>
                 
                 <h3>2. The data we collect about you</h3>
                 <p>Personal data, or personal information, means any information about an individual from which that person can be identified. We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows:</p>
@@ -107,7 +107,7 @@ export const Policies: React.FC = () => {
                 <p>If you are using the Services on behalf of a company, organization, or other entity, then "you" includes you and that entity; and you represent and warrant that you are authorized to grant all permissions and licenses provided in these Terms.</p>
                 
                 <h3>3. Service Level Agreement Setup</h3>
-                <p>For Enterprise customers, SLA commitments are governed by the specific Enterprise Agreement executed between Uterm and the customer. In the event of a conflict between these Terms and the Enterprise Agreement, the Enterprise Agreement will control.</p>
+                <p>For Enterprise customers, SLA commitments are governed by the specific Enterprise Agreement executed between uTerms and the customer. In the event of a conflict between these Terms and the Enterprise Agreement, the Enterprise Agreement will control.</p>
               </div>
             </div>
           )}

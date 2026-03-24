@@ -135,7 +135,7 @@ export const Home: React.FC = () => {
           <div className="cta-box glass-panel">
             <div className="cta-content">
               <h2>Ready to simplify your privacy operations?</h2>
-              <p>Join thousands of companies that trust Uterm to protect their business and their users.</p>
+              <p>Join thousands of companies that trust uTerms to protect their business and their users.</p>
               <ul className="cta-benefits">
                 <li><CheckCircle2 size={20} className="text-success" /> Setup in minutes, not months</li>
                 <li><CheckCircle2 size={20} className="text-success" /> Guaranteed SLA uptime</li>

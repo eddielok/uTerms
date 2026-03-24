@@ -37,7 +37,7 @@ export const Layout: React.FC = () => {
         <div className="container navbar-inner">
           <Link to="/" className="brand flex items-center gap-2">
             <ShieldUIcon className="text-primary" size={28} />
-            <span className="brand-name font-bold text-xl">Uterm</span>
+            <span className="brand-name font-bold text-xl">uTerms</span>
           </Link>
           
           <nav className={`nav-links ${isMenuOpen ? 'open' : ''}`}>
@@ -81,7 +81,7 @@ export const Layout: React.FC = () => {
           <div className="footer-brand">
             <Link to="/" className="brand flex items-center gap-2">
               <ShieldUIcon size={24} />
-              <span className="font-bold text-lg">Uterm</span>
+              <span className="font-bold text-lg">uTerms</span>
             </Link>
             <p className="text-muted mt-4 text-sm">
               A privacy management and compliance AI automation platform. built for modern data teams.
@@ -94,7 +94,7 @@ export const Layout: React.FC = () => {
           <div className="footer-links">
             <h4 className="font-semibold mb-4">Company</h4>
             <Link to="/about">About Us</Link>
-            <a href="mailto:privacy@uterm.com">Contact</a>
+            <a href="mailto:privacy@uterms.com">Contact</a>
           </div>
           <div className="footer-links">
             <h4 className="font-semibold mb-4">Legal</h4>
@@ -104,7 +104,7 @@ export const Layout: React.FC = () => {
           </div>
         </div>
         <div className="container footer-bottom">
-          <p className="text-muted text-sm">© 2026 Uterm Inc. All rights reserved.</p>
+          <p className="text-muted text-sm">© 2026 uTerms Inc. All rights reserved.</p>
         </div>
       </footer>
     </div>

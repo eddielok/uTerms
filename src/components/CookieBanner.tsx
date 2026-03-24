@@ -1,63 +1,74 @@
-import { Check, ChevronDown, ChevronUp, Cookie } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Cookie, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Button } from './Button';
+import { useCookieConfig } from '../context/CookieContext';
 import './CookieBanner.css';
 
-interface CookiePreferences {
-  essential: boolean;
-  analytics: boolean;
-  marketing: boolean;
-  preferences: boolean;
-}
-
 export const CookieBanner: React.FC = () => {
+  const { isPreviewVisible, setIsPreviewVisible, bannerConfig, scannedData } = useCookieConfig();
   const [isVisible, setIsVisible] = useState(false);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
-  const [prefs, setPrefs] = useState<CookiePreferences>({
-    essential: true, // Always true
-    analytics: false,
-    marketing: false,
-    preferences: false,
-  });
+  const [prefs, setPrefs] = useState<Record<string, boolean>>({ essential: true });
+
+  const showBanner = isVisible || isPreviewVisible;
 
   useEffect(() => {
-    // Check if user already consented
-    const consent = localStorage.getItem('uterm_consent');
+    // If we have scanned data, initialize preferences
+    if (scannedData) {
+      const initialPrefs: Record<string, boolean> = {};
+      scannedData.categories.forEach(c => initialPrefs[c.id] = c.id === 'essential');
+      setPrefs(initialPrefs);
+    }
+  }, [scannedData]);
+
+  useEffect(() => {
+    if (isPreviewVisible) return;
+    const consent = localStorage.getItem('uterms_consent');
     if (!consent) {
-      // Small delay for smooth animation
       const timer = setTimeout(() => setIsVisible(true), 1000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [isPreviewVisible]);
 
-  const handleAcceptAll = () => {
-    localStorage.setItem('uterm_consent', 'all');
-    setIsVisible(false);
+  const closeBanner = (consentValue: string) => {
+    if (isPreviewVisible) {
+      setIsPreviewVisible(false);
+    } else {
+      localStorage.setItem('uterms_consent', consentValue);
+      setIsVisible(false);
+    }
   };
 
-  const handleRejectAll = () => {
-    localStorage.setItem('uterm_consent', 'essential');
-    setIsVisible(false);
-  };
+  const handleAcceptAll = () => closeBanner('all');
+  const handleRejectAll = () => closeBanner('essential');
+  const handleSavePreferences = () => closeBanner(JSON.stringify(prefs));
 
-  const handleSavePreferences = () => {
-    localStorage.setItem('uterm_consent', JSON.stringify(prefs));
-    setIsVisible(false);
-  };
-
-  const togglePref = (key: keyof CookiePreferences) => {
-    if (key === 'essential') return; // Cannot toggle essential
+  const togglePref = (key: string) => {
+    if (key === 'essential') return;
     setPrefs(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  if (!isVisible) return null;
+  if (!showBanner) return null;
 
   return (
-    <div className="cookie-banner-wrapper">
-      <div className="cookie-banner glass-panel">
+    <div 
+      className={`cookie-banner-wrapper ${bannerConfig.styleMode} ${bannerConfig.position} ${bannerConfig.size}`}
+      style={{
+        '--color-primary': bannerConfig.theme,
+        '--color-primary-hover': bannerConfig.theme,
+        '--color-primary-light': `${bannerConfig.theme}20`,
+      } as React.CSSProperties}
+    >
+      <div className="cookie-banner glass-panel" style={{ backgroundColor: 'white' }}>
+        {isPreviewVisible && (
+          <div style={{ position: 'absolute', top: '12px', right: '12px', cursor: 'pointer', color: '#6b7280' }} onClick={() => setIsPreviewVisible(false)}>
+            <X size={20} />
+          </div>
+        )}
+        
         <div className="cookie-banner-header">
           <div className="cookie-icon-bg">
-            <Cookie size={24} className="text-primary" />
+            <Cookie size={24} style={{ color: 'var(--color-primary)' }} />
           </div>
           <div className="cookie-banner-title">
             <h3>We value your privacy</h3>
@@ -69,52 +80,26 @@ export const CookieBanner: React.FC = () => {
 
         {isDetailsOpen && (
           <div className="cookie-preferences">
-            <div className="pref-item">
-              <div className="pref-info">
-                <span className="pref-name font-medium">Essential Cookies</span>
-                <span className="text-xs text-primary font-medium ml-2 bg-primary-light px-2 py-0.5 rounded-full">Always Active</span>
-                <p className="text-xs text-muted mt-1">Necessary for the website to function properly.</p>
+            {scannedData ? scannedData.categories.map(cat => (
+              <div key={cat.id} className={`pref-item ${cat.id === 'essential' ? '' : 'cursor-pointer'}`} onClick={() => togglePref(cat.id)}>
+                <div className="pref-info">
+                  <span className="pref-name font-medium">{cat.name}</span>
+                  {cat.id === 'essential' && <span className="text-xs font-medium ml-2 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)' }}>Always Active</span>}
+                  <p className="text-xs text-muted mt-1">{cat.description}</p>
+                </div>
+                <div className={`pref-switch ${cat.id === 'essential' || prefs[cat.id] ? 'checked' : ''} ${cat.id === 'essential' ? 'disabled' : ''}`}>
+                  <div className="switch-thumb">{(cat.id === 'essential' || prefs[cat.id]) && <Check size={12} style={{ color: 'var(--color-primary)' }} />}</div>
+                </div>
               </div>
-              <div className="pref-switch disabled checked">
-                <div className="switch-thumb"><Check size={12} className="text-primary" /></div>
-              </div>
-            </div>
-
-            <div className="pref-item cursor-pointer" onClick={() => togglePref('analytics')}>
-              <div className="pref-info">
-                <span className="pref-name font-medium">Analytics Cookies</span>
-                <p className="text-xs text-muted mt-1">Help us understand how visitors interact with the website.</p>
-              </div>
-              <div className={`pref-switch ${prefs.analytics ? 'checked' : ''}`}>
-                <div className="switch-thumb">{prefs.analytics && <Check size={12} className="text-primary" />}</div>
-              </div>
-            </div>
-
-            <div className="pref-item cursor-pointer" onClick={() => togglePref('marketing')}>
-              <div className="pref-info">
-                <span className="pref-name font-medium">Marketing Cookies</span>
-                <p className="text-xs text-muted mt-1">Used to deliver advertisements relevant to you.</p>
-              </div>
-              <div className={`pref-switch ${prefs.marketing ? 'checked' : ''}`}>
-                <div className="switch-thumb">{prefs.marketing && <Check size={12} className="text-primary" />}</div>
-              </div>
-            </div>
-            
-            <div className="pref-item cursor-pointer" onClick={() => togglePref('preferences')}>
-              <div className="pref-info">
-                <span className="pref-name font-medium">Preference Cookies</span>
-                <p className="text-xs text-muted mt-1">Allows the website to remember choices you make.</p>
-              </div>
-              <div className={`pref-switch ${prefs.preferences ? 'checked' : ''}`}>
-                <div className="switch-thumb">{prefs.preferences && <Check size={12} className="text-primary" />}</div>
-              </div>
-            </div>
+            )) : (
+              <div className="text-sm text-gray-500 text-center py-4">No scan data available. Please run a website scan first.</div>
+            )}
           </div>
         )}
 
         <div className="cookie-banner-actions">
           <button 
-            className="customize-btn text-sm font-medium flex items-center gap-1 text-muted hover:text-primary transition"
+            className="customize-btn text-sm font-medium flex items-center gap-1 text-muted transition"
             onClick={() => setIsDetailsOpen(!isDetailsOpen)}
           >
             {isDetailsOpen ? 'Hide Preferences' : 'Customize Preferences'}

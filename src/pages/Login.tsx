@@ -1,5 +1,5 @@
 import { Shield } from 'lucide-react';
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card, CardContent } from '../components/Card';
@@ -9,11 +9,27 @@ import './Auth.css';
 
 export const Login: React.FC = () => {
   const navigate = useNavigate();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login -> redirect to dashboard
-    navigate('/dashboard');
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) throw error;
+      navigate('/dashboard');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Invalid login credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleLogin = async () => {
@@ -44,21 +60,26 @@ export const Login: React.FC = () => {
               </div>
             </div>
             <h1 className="auth-title">Welcome back</h1>
-            <p className="auth-subtitle">Log in to your Uterm account</p>
+            <p className="auth-subtitle">Log in to your uTerms account</p>
           </div>
 
+          {errorMsg && <div className="text-red-500 text-sm mb-4">{errorMsg}</div>}
           <form className="auth-form" onSubmit={handleLogin}>
             <Input 
               label="Work Email" 
               type="email" 
               placeholder="you@company.com" 
               required 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
             />
             <Input 
               label="Password" 
               type="password" 
               placeholder="••••••••" 
               required 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
             <div className="flex justify-between items-center text-sm">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -68,8 +89,8 @@ export const Login: React.FC = () => {
               <Link to="/forgot-password" className="auth-link">Forgot password?</Link>
             </div>
             
-            <Button type="submit" variant="primary" fullWidth className="mt-2">
-              Sign in
+            <Button type="submit" variant="primary" fullWidth className="mt-2" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign in'}
             </Button>
           </form>
 

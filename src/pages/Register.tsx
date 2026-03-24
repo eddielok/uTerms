@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card, CardContent } from '../components/Card';
@@ -8,11 +8,37 @@ import './Auth.css';
 
 export const Register: React.FC = () => {
   const navigate = useNavigate();
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock register -> redirect to dashboard
-    navigate('/dashboard');
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+            company_name: companyName,
+          }
+        }
+      });
+      if (error) throw error;
+      navigate('/dashboard');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'An error occurred during sign up.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleGoogleSignUp = async () => {
@@ -38,38 +64,44 @@ export const Register: React.FC = () => {
         <CardContent className="p-8">
           <div className="auth-header">
             <h1 className="auth-title">Create an account</h1>
-            <p className="auth-subtitle">Start your 14-day free trial</p>
           </div>
 
+          {errorMsg && <div className="text-red-500 text-sm mb-4">{errorMsg}</div>}
           <form className="auth-form" onSubmit={handleRegister}>
             <div className="flex gap-4">
-              <Input label="First Name" placeholder="Jane" required />
-              <Input label="Last Name" placeholder="Doe" required />
+              <Input label="First Name" placeholder="Jane" required value={firstName} onChange={e => setFirstName(e.target.value)} />
+              <Input label="Last Name" placeholder="Doe" required value={lastName} onChange={e => setLastName(e.target.value)} />
             </div>
             <Input 
               label="Work Email" 
               type="email" 
               placeholder="jane@company.com" 
               required 
+              value={email}
+              onChange={e => setEmail(e.target.value)}
             />
             <Input 
               label="Company Name" 
               placeholder="Acme Corp" 
               required 
+              value={companyName}
+              onChange={e => setCompanyName(e.target.value)}
             />
             <Input 
               label="Password" 
               type="password" 
               placeholder="••••••••" 
               required 
+              value={password}
+              onChange={e => setPassword(e.target.value)}
             />
             
             <div className="text-xs text-muted mt-2">
               By creating an account, you agree to our <Link to="/policies?tab=terms" className="auth-link">Terms of Service</Link> and <Link to="/policies?tab=privacy" className="auth-link">Privacy Policy</Link>.
             </div>
 
-            <Button type="submit" variant="primary" fullWidth className="mt-2">
-              Sign Up
+            <Button type="submit" variant="primary" fullWidth className="mt-2" disabled={loading}>
+              {loading ? 'Creating account...' : 'Sign Up'}
             </Button>
           </form>
 

@@ -67,7 +67,7 @@ export const Features: React.FC = () => {
               AI-Generated <span className="text-gradient">Policy Suite</span>
             </h1>
             <p className="features-subtitle">
-              Like Termly, but supercharged. Let our state-of-the-art AI automatically generate, orchestrate, and update your entire legal compliance suite in minutes.
+             Let our state-of-the-art AI automatically generate, orchestrate, and update your entire legal compliance suite in minutes.
             </p>
           </div>
         </div>
