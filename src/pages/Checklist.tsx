@@ -68,7 +68,7 @@ export const Checklist: React.FC = () => {
   };
 
   const handleCopyPref = () => {
-    const prefText = `<a href="#" class="uterms-display-preferences">Consent Preferences</a>`;
+    const prefText = `<a href="#" class="uterms-preferences">Consent Preferences</a>`;
     navigator.clipboard.writeText(prefText);
     setCopiedPref(true);
     setTimeout(() => setCopiedPref(false), 2000);
