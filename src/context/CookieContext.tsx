@@ -29,6 +29,22 @@ export interface ScannedData {
   pages: number;
   cookiesCount: number;
   categories: CookieCategory[];
+  detectedFeatures?: {
+    emails: string[];
+    inputs: {
+       name: boolean;
+       email: boolean;
+       phone: boolean;
+       address: boolean;
+       payment: boolean;
+    };
+    thirdParties: {
+       analytics: boolean;
+       marketing: boolean;
+       payment: boolean;
+       social: boolean;
+    };
+  };
 }
 
 export interface BannerConfig {

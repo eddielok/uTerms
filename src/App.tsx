@@ -15,6 +15,8 @@ import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Policies } from "./pages/Policies";
 import { PolicyManagement } from "./pages/PolicyManagement";
+import { PolicyPreview } from "./pages/PolicyPreview";
+import { PrivacyPolicyWizard } from "./pages/PrivacyPolicyWizard";
 import { Register } from "./pages/Register";
 import { Settings } from "./pages/Settings";
 import { WebsiteCookie } from "./pages/WebsiteCookie";
@@ -53,6 +55,9 @@ function App() {
             />
             <Route path="consent-management/logs" element={<CookieLog />} />
             <Route path="policy-management" element={<PolicyManagement />} />
+            <Route path="policy-management/new" element={<PrivacyPolicyWizard />} />
+            <Route path="policy-management/:id/edit" element={<PrivacyPolicyWizard />} />
+            <Route path="policy-management/:id/preview" element={<PolicyPreview />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>

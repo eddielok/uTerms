@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const u = require\\(''./utils''\\); console.log\\(''categorizeCookie tests:''\\); [[''_ga'',''google.com''],[''_fbp'',''example.com''],[''connect.sid'',''example.com''],[''ysc'',''youtube.com''],[''li_at'',''linkedin.com''],[''_clck'',''example.com''],[''__cf_bm'',''example.com''],[''cookieconsent_status'',''example.com''],[''JSESSIONID'',''example.com''],[''unknown_xyz'',''example.com'']].forEach\\(\\([n,d]\\) => console.log\\('' '', n, ''->'', u.categorizeCookie\\({name:n, domain:d}\\)\\)\\);\")"
+    ]
+  }
+}

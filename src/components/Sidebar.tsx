@@ -10,6 +10,9 @@ export const Sidebar: React.FC = () => {
   const [isConsentOpen, setIsConsentOpen] = useState(
     location.pathname.startsWith('/consent-management')
   );
+  const [isPolicyOpen, setIsPolicyOpen] = useState(
+    location.pathname.startsWith('/policy-management')
+  );
   
   const [userEmail, setUserEmail] = useState<string>('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -18,6 +21,9 @@ export const Sidebar: React.FC = () => {
   useEffect(() => {
     if (location.pathname.startsWith('/consent-management')) {
       setIsConsentOpen(true);
+    }
+    if (location.pathname.startsWith('/policy-management')) {
+      setIsPolicyOpen(true);
     }
   }, [location.pathname]);
 
@@ -97,13 +103,24 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
         
-        <NavLink 
-          to="/policy-management" 
-          className={({ isActive }) => `sidebar-link ${isActive ? 'active' : ''}`}
-        >
-          <FileText size={20} />
-          <span>Policy Management</span>
-        </NavLink>
+        <div className="sidebar-group">
+          <button
+            className={`sidebar-link ${location.pathname.startsWith('/policy-management') ? 'active-group' : ''}`}
+            onClick={() => setIsPolicyOpen(!isPolicyOpen)}
+          >
+            <FileText size={20} />
+            <span style={{ flex: 1, textAlign: 'left' }}>Policy Management</span>
+            {isPolicyOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+
+          {isPolicyOpen && (
+            <div className="sidebar-sub-menu">
+              <NavLink to="/policy-management" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
+                Privacy Policy
+              </NavLink>
+            </div>
+          )}
+        </div>
         
         <NavLink 
           to="/settings" 
