@@ -84,116 +84,6 @@ app.post("/api/scan", async (req, res) => {
     // Go to URL and wait until network is mostly idle
     await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
 
-    // --- NEW: Extract Page Metadata & Heuristics for Privacy Policy ---
-    const detectedFeatures = await page.evaluate(() => {
-      const features = {
-        emails: [],
-        inputs: {
-          email: false,
-          name: false,
-          phone: false,
-          address: false,
-          payment: false,
-        },
-        thirdParties: {
-          analytics: false,
-          marketing: false,
-          payment: false,
-          social: false,
-        },
-      };
-
-      // 1. Detect Emails (visible text and mailto links)
-      // Regex simplified to avoid ReDoS in browser context, matches common patterns
-      const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6})/g;
-      const bodyText = document.body.innerText;
-      const foundEmails = bodyText.match(emailRegex) || [];
-      const mailtoLinks = Array.from(
-        document.querySelectorAll('a[href^="mailto:"]'),
-      ).map((a) => a.href.replace("mailto:", "").split("?")[0]);
-
-      features.emails = [...new Set([...foundEmails, ...mailtoLinks])].slice(
-        0,
-        5,
-      ); // Unique emails, max 5
-
-      // 2. Detect Inputs (Forms)
-      if (document.querySelector('input[type="email"], input[name*="email" i]'))
-        features.inputs.email = true;
-      if (
-        document.querySelector(
-          'input[name*="name" i], input[name*="first" i], input[name*="last" i]',
-        )
-      )
-        features.inputs.name = true;
-      if (
-        document.querySelector(
-          'input[type="tel"], input[name*="phone" i], input[name*="mobile" i]',
-        )
-      )
-        features.inputs.phone = true;
-      if (
-        document.querySelector(
-          'input[name*="address" i], input[name*="city" i], input[name*="zip" i]',
-        )
-      )
-        features.inputs.address = true;
-      if (
-        document.querySelector(
-          'input[name*="card" i], input[name*="cc_" i], form[action*="stripe"], form[action*="paypal"]',
-        )
-      )
-        features.inputs.payment = true;
-
-      // 3. Detect Third-Party Scripts / Resources
-      const scripts = Array.from(document.querySelectorAll("script[src]")).map(
-        (s) => s.src.toLowerCase(),
-      );
-      const links = Array.from(document.querySelectorAll("link[href]")).map(
-        (l) => l.href.toLowerCase(),
-      );
-      const allResources = [...scripts, ...links].join(" ");
-
-      // Analytics
-      if (
-        allResources.includes("google-analytics") ||
-        allResources.includes("googletagmanager") ||
-        allResources.includes("segment.com") ||
-        allResources.includes("mixpanel")
-      ) {
-        features.thirdParties.analytics = true;
-      }
-      // Marketing
-      if (
-        allResources.includes("doubleclick") ||
-        allResources.includes("facebook.net/en_US/fbevents.js") ||
-        allResources.includes("ads") ||
-        allResources.includes("criteo")
-      ) {
-        features.thirdParties.marketing = true;
-      }
-      // Payment
-      if (
-        allResources.includes("stripe.com") ||
-        allResources.includes("paypal.com") ||
-        allResources.includes("braintree")
-      ) {
-        features.thirdParties.payment = true;
-      }
-      // Social
-      if (
-        allResources.includes("facebook") ||
-        allResources.includes("twitter") ||
-        allResources.includes("linkedin") ||
-        allResources.includes("pinterest")
-      ) {
-        features.thirdParties.social = true;
-      }
-
-      return features;
-    });
-    // ------------------------------------------------------------------
-
     // Auto-scroll to trigger lazy-loaded scripts
     await page.evaluate(async () => {
       await new Promise((resolve) => {
@@ -308,8 +198,7 @@ app.post("/api/scan", async (req, res) => {
     res.json({
       url: targetUrl,
       cookiesCount: cookies.length,
-      categories, 
-      detectedFeatures  // <-- Added new field for Wizard population
+      categories,
     });
   } catch (err) {
     console.error("Scan Error:", err);

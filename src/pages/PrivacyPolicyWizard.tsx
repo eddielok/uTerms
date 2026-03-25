@@ -132,8 +132,6 @@ export const PrivacyPolicyWizard: React.FC = () => {
           typesFound.push("Unclassified");
         }
 
-        const features = scannedData.detectedFeatures;
-
         setAnswers((prev) => ({
           ...prev,
           websiteUrl: prev.websiteUrl || scannedData.url || "",
@@ -143,42 +141,6 @@ export const PrivacyPolicyWizard: React.FC = () => {
           cookiePolicyUrl:
             prev.cookiePolicyUrl ||
             (scannedData.url ? `${scannedData.url}/cookie-policy` : ""),
-
-          // Enhanced: Auto-fill from detected features
-          collectsName: features?.inputs?.name ?? prev.collectsName,
-          collectsEmail: features?.inputs?.email ?? prev.collectsEmail,
-          collectsPhone: features?.inputs?.phone ?? prev.collectsPhone,
-          collectsAddress: features?.inputs?.address ?? prev.collectsAddress,
-          collectsPayment: features?.inputs?.payment ?? prev.collectsPayment,
-          collectsUsageData:
-            features?.thirdParties?.analytics ?? prev.collectsUsageData,
-
-          purposeAnalytics:
-            features?.thirdParties?.analytics ?? prev.purposeAnalytics,
-          purposeMarketing:
-            features?.thirdParties?.marketing ?? prev.purposeMarketing,
-
-          sharesWithAnalytics:
-            features?.thirdParties?.analytics ?? prev.sharesWithAnalytics,
-          sharesWithAdNetworks:
-            features?.thirdParties?.marketing ?? prev.sharesWithAdNetworks,
-          sharesWithPaymentProcessors:
-            features?.thirdParties?.payment ?? prev.sharesWithPaymentProcessors,
-          sharesWithSocialMedia:
-            features?.thirdParties?.social ?? prev.sharesWithSocialMedia,
-
-          sharesData:
-            (features?.thirdParties?.analytics ||
-              features?.thirdParties?.marketing ||
-              features?.thirdParties?.payment ||
-              features?.thirdParties?.social) ??
-            prev.sharesData,
-
-          privacyEmail:
-            features?.emails && features.emails.length > 0
-              ? features.emails[0]
-              : prev.privacyEmail,
-
           scannedCookies: scannedData, // Save the full scan data
         }));
       } else {
