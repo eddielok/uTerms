@@ -2,17 +2,9 @@ import { Download, FileText, Search } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useCookieConfig } from '../context/CookieContext';
 import { supabase } from '../lib/supabase';
+import type { ConsentLog } from '../utils/csvExport';
+import { buildCsvContent } from '../utils/csvExport';
 import './CookieLog.css';
-
-interface ConsentLog {
-  id: string;
-  visitor_id: string;
-  consent_data: Record<string, boolean>;
-  url: string;
-  ip_address: string;
-  user_agent: string;
-  created_at: string;
-}
 
 export const CookieLog: React.FC = () => {
   const { userId } = useCookieConfig();
@@ -64,25 +56,8 @@ export const CookieLog: React.FC = () => {
 
   const handleExportCSV = () => {
     if (logs.length === 0) return;
-    
-    const headers = ['Date', 'Visitor ID', 'URL', 'IP Address', 'Consent Details'];
-    const csvContent = [
-      headers.join(','),
-      ...logs.map(log => {
-        const date = new Date(log.created_at).toLocaleString();
-        const consentStr = Object.entries(log.consent_data)
-          .map(([k, v]) => `${k}:${v?'yes':'no'}`)
-          .join('; ');
-        
-        return [
-          `"${date}"`,
-          `"${log.visitor_id || 'Unknown'}"`,
-          `"${log.url || ''}"`,
-          `"${log.ip_address || ''}"`,
-          `"${consentStr}"`
-        ].join(',');
-      })
-    ].join('\n');
+
+    const csvContent = buildCsvContent(logs);
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);

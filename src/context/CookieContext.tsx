@@ -1,9 +1,27 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { supabase } from '../lib/supabase';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { supabase } from "../lib/supabase";
 
-export interface CookieItem { name: string; description: string; domain: string; }
-export interface CookieProvider { name: string; cookies: CookieItem[]; }
-export interface CookieCategory { id: string; name: string; description: string; providers: CookieProvider[]; }
+export interface CookieItem {
+  name: string;
+  description: string;
+  domain: string;
+}
+export interface CookieProvider {
+  name: string;
+  cookies: CookieItem[];
+}
+export interface CookieCategory {
+  id: string;
+  name: string;
+  description: string;
+  providers: CookieProvider[];
+}
 
 export interface ScannedData {
   url: string;
@@ -15,9 +33,9 @@ export interface ScannedData {
 
 export interface BannerConfig {
   theme: string;
-  styleMode: 'stretch' | 'banner' | 'modal' | 'tooltip';
-  position: 'top' | 'bottom';
-  size: 'standard' | 'compact';
+  styleMode: "stretch" | "banner" | "modal" | "tooltip";
+  position: "top" | "bottom";
+  size: "standard" | "compact";
   isConfigured?: boolean;
 }
 
@@ -29,31 +47,39 @@ interface CookieContextType {
   isPreviewVisible: boolean;
   setIsPreviewVisible: (v: boolean) => void;
   userId: string | null;
+  isAuthLoading: boolean;
 }
 
 const CookieContext = createContext<CookieContextType | undefined>(undefined);
 
-export const CookieContextProvider: React.FC<{children: React.ReactNode}> = ({ children }) => {
+export const CookieContextProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [scannedData, setScannedData] = useState<ScannedData | null>(null);
   const [bannerConfig, setBannerConfig] = useState<BannerConfig>({
-    theme: '#3b82f6', // Default blue equivalent
-    styleMode: 'banner',
-    position: 'bottom',
-    size: 'standard',
-    isConfigured: false
+    theme: "#3b82f6", // Default blue equivalent
+    styleMode: "banner",
+    position: "bottom",
+    size: "standard",
+    isConfigured: false,
   });
   const [isPreviewVisible, setIsPreviewVisible] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [isLoaded, setIsLoaded] = useState(false);
 
   // 1. Listen for auth changes and set user ID
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUserId(session?.user?.id || null);
+      setIsAuthLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setUserId(session?.user?.id || null);
+      setIsAuthLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -65,23 +91,24 @@ export const CookieContextProvider: React.FC<{children: React.ReactNode}> = ({ c
       if (!userId) {
         setScannedData(null);
         setBannerConfig({
-          theme: '#3b82f6', // Default blue equivalent
-          styleMode: 'banner',
-          position: 'bottom',
-          size: 'standard'
+          theme: "#3b82f6", // Default blue equivalent
+          styleMode: "banner",
+          position: "bottom",
+          size: "standard",
         });
         setIsLoaded(true);
         return;
       }
       try {
         const { data, error } = await supabase
-          .from('user_cookie_settings')
-          .select('scanned_data, banner_config')
-          .eq('user_id', userId)
+          .from("user_cookie_settings")
+          .select("scanned_data, banner_config")
+          .eq("user_id", userId)
           .single();
 
-        if (error && error.code !== 'PGRST116') { // PGRST116 is "PostgREST Row Not Found" - this is expected for new users
-          console.error('Error fetching cookie settings', error);
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 is "PostgREST Row Not Found" - this is expected for new users
+          console.error("Error fetching cookie settings", error);
         }
 
         if (data) {
@@ -89,7 +116,7 @@ export const CookieContextProvider: React.FC<{children: React.ReactNode}> = ({ c
           if (data.banner_config) setBannerConfig(data.banner_config);
         }
       } catch (err) {
-        console.error('Failed to fetch cookie settings', err);
+        console.error("Failed to fetch cookie settings", err);
       } finally {
         setIsLoaded(true);
       }
@@ -107,22 +134,30 @@ export const CookieContextProvider: React.FC<{children: React.ReactNode}> = ({ c
       return;
     }
 
-    if (!isLoaded || !userId) return;
+    if (!isLoaded || !userId || scannedData === null) return;
 
     const timeoutId = setTimeout(async () => {
       try {
-        const { error } = await supabase
-          .from('user_cookie_settings')
-          .upsert({
+        console.log("Auto-saving cookie settings for user:", userId);
+        const { error } = await supabase.from("user_cookie_settings").upsert(
+          {
             user_id: userId,
             scanned_data: scannedData,
             banner_config: bannerConfig,
-            updated_at: new Date().toISOString()
-          }, { onConflict: 'user_id' }); // Note: onConflict requires the user_id column to have a UNIQUE constraint or be a PRIMARY KEY.
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "user_id" },
+        );
 
-        if (error) console.error('Error saving cookie settings', error);
+        if (error) {
+          console.error("Error saving cookie settings:", error);
+          console.error("Error code:", error.code);
+          console.error("Error details:", error.details);
+        } else {
+          console.log("Cookie settings saved successfully");
+        }
       } catch (err) {
-        console.error('Failed to save cookie settings', err);
+        console.error("Failed to save cookie settings", err);
       }
     }, 1000);
 
@@ -130,12 +165,18 @@ export const CookieContextProvider: React.FC<{children: React.ReactNode}> = ({ c
   }, [scannedData, bannerConfig, isLoaded, userId]);
 
   return (
-    <CookieContext.Provider value={{
-      scannedData, setScannedData,
-      bannerConfig, setBannerConfig,
-      isPreviewVisible, setIsPreviewVisible,
-      userId
-    }}>
+    <CookieContext.Provider
+      value={{
+        scannedData,
+        setScannedData,
+        bannerConfig,
+        isAuthLoading,
+        setBannerConfig,
+        isPreviewVisible,
+        setIsPreviewVisible,
+        userId,
+      }}
+    >
       {children}
     </CookieContext.Provider>
   );
@@ -143,6 +184,9 @@ export const CookieContextProvider: React.FC<{children: React.ReactNode}> = ({ c
 
 export const useCookieConfig = () => {
   const context = useContext(CookieContext);
-  if (!context) throw new Error("useCookieConfig must be used within CookieContextProvider");
+  if (!context)
+    throw new Error(
+      "useCookieConfig must be used within CookieContextProvider",
+    );
   return context;
 };

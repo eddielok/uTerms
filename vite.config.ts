@@ -104,5 +104,9 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
     plugins: [react(), resourceBlockerPlugin(env)],
+    test: {
+      environment: 'node',
+      include: ['src/**/*.test.{ts,tsx}'],
+    },
   };
 });
