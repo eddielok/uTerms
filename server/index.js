@@ -1,6 +1,10 @@
 const express = require("express");
 const cors = require("cors");
 const puppeteer = require("puppeteer");
+
+require("dotenv").config({
+  path: require("path").resolve(__dirname, "../.env"),
+});
 const {
   categorizeCookie,
   enrichCookieDescription,
@@ -291,6 +295,203 @@ app.post("/api/consent", async (req, res) => {
   } catch (err) {
     console.error("Consent API Error:", err);
     res.status(500).json({ error: "Failed to record consent" });
+  }
+});
+
+app.post("/api/analyze-policy", async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "URL is required" });
+
+  const targetUrl = normalizeUrl(url);
+  console.log(`Analyzing policy for: ${targetUrl}`);
+
+  let browser = null;
+  try {
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    );
+    await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+
+    // Extract homepage metadata, content, and legal registration data
+    const homepageContent = await page.evaluate(() => {
+      const title = document.title || "";
+      const description =
+        document
+          .querySelector('meta[name="description"]')
+          ?.getAttribute("content") || "";
+      const ogSiteName =
+        document
+          .querySelector('meta[property="og:site_name"]')
+          ?.getAttribute("content") || "";
+
+      // Grab footer + last portion of body (legal text often lives here)
+      const footerEl = document.querySelector(
+        "footer, .footer, #footer, [class*='footer'], [id*='footer']",
+      );
+      const footer = (footerEl?.innerText || "").slice(0, 3000);
+      const bodyTail = (document.body?.innerText || "").slice(-10000);
+      const corpus = footer + "\n" + bodyTail;
+
+      // ── Legal registration extraction ──────────────────────────────────────
+      // Company number: matches "Company No. 12345678", "registered under
+      // reference number 12570147", "registration number SC123456", etc.
+      const coNoMatch = corpus.match(
+        /(?:company\s*(?:no|number|reg(?:istration)?)[\s.:#]*|(?:reference|registration)\s+number\s+)([A-Z0-9]{6,12})/i,
+      );
+      const companyNo = coNoMatch ? coNoMatch[1].trim() : "";
+
+      // Registered address: matches "registered office address: ...",
+      // "registered offices are located at ...", "registered office at ..."
+      const addrMatch = corpus.match(
+        /registered\s+offices?\s+(?:address[:\s]+|(?:is\s+)?(?:are\s+)?located\s+at\s+|at\s+)([^.\n]{10,200})/i,
+      );
+      const registeredAddress = addrMatch ? addrMatch[1].trim() : "";
+
+      // VAT number
+      const vatMatch = corpus.match(
+        /vat\s*(?:no|number|reg(?:istration)?)[\s.:]*([A-Z]{0,2}[0-9]{9,12})/i,
+      );
+      const vatNo = vatMatch ? vatMatch[1].trim() : "";
+
+      // Country from "registered in England & Wales / Scotland / ..."
+      let detectedCountry = "";
+      const regInMatch = corpus.match(
+        /registered\s+in\s+(England\s*(?:&|and)\s*Wales|Scotland|Northern\s+Ireland|Wales|United\s+Kingdom|United\s+States|Canada|Australia|Germany|France|Netherlands|Singapore|India|Malaysia)/i,
+      );
+      if (regInMatch) detectedCountry = regInMatch[1].trim();
+
+      const bodyText = (document.body?.innerText || "").slice(0, 5000);
+      return {
+        title,
+        description,
+        ogSiteName,
+        footer,
+        bodyText,
+        companyNo,
+        registeredAddress,
+        vatNo,
+        detectedCountry,
+      };
+    });
+
+    // Try to find and visit the privacy policy page
+    let privacyPageContent = "";
+    try {
+      const privacyLink = await page.evaluate(() => {
+        const links = Array.from(document.querySelectorAll("a[href]"));
+        const found = links.find((l) => {
+          const text = (l.textContent || "").toLowerCase();
+          const href = (l.getAttribute("href") || "").toLowerCase();
+          return text.includes("privacy") || href.includes("privacy");
+        });
+        return found ? found.href : null;
+      });
+      if (privacyLink) {
+        await page.goto(privacyLink, {
+          waitUntil: "networkidle2",
+          timeout: 15000,
+        });
+        privacyPageContent = await page.evaluate(() =>
+          (document.body?.innerText || "").slice(0, 8000),
+        );
+      }
+    } catch (e) {
+      console.log("Could not fetch privacy page:", e.message);
+    }
+
+    // ── Local Analysis (No AI) ────────────────────────────────────────────────
+    // Infer Company Name
+    let companyName = homepageContent.ogSiteName;
+    if (!companyName) {
+      // Try to get from title (e.g. "My Company - Home")
+      const titleParts = homepageContent.title.split(/[-|]/);
+      if (titleParts.length > 0) {
+        companyName = titleParts[0].trim();
+      } else {
+        // Fallback to domain
+        try {
+          const u = new URL(targetUrl);
+          companyName = u.hostname.replace("www.", "");
+          companyName =
+            companyName.charAt(0).toUpperCase() + companyName.slice(1);
+        } catch (e) {
+          companyName = "My Company";
+        }
+      }
+    }
+
+    // Attempt to find email
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+    const combinedText = (
+      homepageContent.footer +
+      " " +
+      privacyPageContent
+    ).slice(0, 10000);
+    const emails = combinedText.match(emailRegex) || [];
+    // Filter out common false positives if necessary, or just take first unique
+    const uniqueEmails = [...new Set(emails.map((e) => e.toLowerCase()))];
+    // Prefer info@, contact@, privacy@, support@
+    const privacyEmail =
+      uniqueEmails.find((e) => /privacy|legal|compliance|dpo/i.test(e)) ||
+      uniqueEmails.find((e) => /info|contact|support|hello/i.test(e)) ||
+      uniqueEmails[0] ||
+      "";
+
+    // Default structure without AI
+    const analysis = {
+      companyName: companyName,
+      websiteUrl: targetUrl,
+      country: homepageContent.detectedCountry || "United Kingdom", // heuristic default? or empty
+      state: "",
+      collectsName: false,
+      collectsEmail: false,
+      collectsPhone: false,
+      collectsAddress: false,
+      collectsPayment: false,
+      collectsDeviceInfo: false,
+      collectsUsageData: false,
+      collectsLocation: false,
+      purposeServiceDelivery: false,
+      purposeMarketing: false,
+      purposeAnalytics: false,
+      purposeLegal: false,
+      purposeSecurity: false,
+      sharesData: false,
+      sharesWithAdNetworks: false,
+      sharesWithAnalytics: false,
+      sharesWithPaymentProcessors: false,
+      sharesWithSocialMedia: false,
+      sharesWithCloud: false,
+      rightToAccess: false,
+      rightToDeletion: false,
+      rightToPortability: false,
+      rightToRestriction: false,
+      rightToOptOut: false,
+      usesCookies: false,
+      cookieTypes: [],
+      privacyEmail: privacyEmail,
+      scrapedDetails: {
+        // Keep these for debug/display if frontend wants them
+        companyNo: homepageContent.companyNo,
+        vatNo: homepageContent.vatNo,
+        registeredAddress: homepageContent.registeredAddress,
+      },
+    };
+
+    res.json({ success: true, analysis });
+  } catch (err) {
+    console.error("Analyze Policy Error:", err);
+    res
+      .status(500)
+      .json({ error: "Failed to analyze website", details: err.message });
+  } finally {
+    if (browser) await browser.close();
   }
 });
 
