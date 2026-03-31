@@ -132,7 +132,7 @@ export function generateDisclaimer(a: DisclaimerAnswers): string {
 
     sections.push(`<section>
   <h2>${next()}. Not Professional Advice</h2>
-  <p>The information on this website does <strong>not</strong> constitute — and is not intended as a substitute for — professional advice. You should not act or refrain from acting based solely on the content of this website without first seeking ${professionsToRecommend.length > 0 ? professionsToRecommend.join(', ') + ' or another relevant licensed professional' : 'appropriate qualified professional advice'} who is familiar with your individual circumstances.</p>
+  <p>The information on this website does <strong>not</strong> constitute — and is not intended as a substitute for — professional advice. You should not act or refrain from acting based solely on the content of this website without first seeking ${professionsToRecommend.length > 0 ? professionsToRecommend.join(', ') + ', or another relevant licensed professional appropriate to the subject matter (including, where applicable, a qualified engineer, safety specialist, or other technical expert),' : 'appropriate qualified professional advice from a licensed professional appropriate to the subject matter'} who is familiar with your individual circumstances.</p>
   ${a.notLicensedInJurisdiction ? `<p><strong>${company}</strong> does not represent that the information on this site is appropriate for use in your jurisdiction. Professional licensing, regulations, and standards vary by country and region. Always verify that any advice or information you act on is applicable to your location.</p>` : ''}
 </section>`);
   }
@@ -258,10 +258,34 @@ export function generateDisclaimer(a: DisclaimerAnswers): string {
   sections.push(`<section>
   <h2>${next()}. Changes to This Disclaimer</h2>
   <p>We reserve the right to update or modify this Disclaimer at any time without prior notice. Any changes will take effect immediately upon posting to this page. We encourage you to review this Disclaimer periodically. Your continued use of this website following any changes constitutes your acceptance of the revised Disclaimer.</p>
+  <p><strong>No waiver:</strong> Our failure to enforce any right or provision of this Disclaimer will not be considered a waiver of those rights. Any waiver of any provision of this Disclaimer will only be effective if made in writing and signed by an authorised representative of <strong>${company}</strong>.</p>
   <p>This Disclaimer was last updated on <strong>${effectiveDateStr}</strong>.</p>
 </section>`);
 
-  // ─── 15. Contact Us ───────────────────────────────────────────────────────
+  // ─── 15. Governing Law ───────────────────────────────────────────────────
+  const jurisdictionMap: Record<string, { law: string; courts: string }> = {
+    'England and Wales': { law: 'England and Wales', courts: 'England and Wales' },
+    'Scotland': { law: 'Scotland', courts: 'Scotland' },
+    'United Kingdom': { law: 'England and Wales', courts: 'England and Wales' },
+    'United States': { law: 'the United States of America', courts: 'the United States' },
+    'Canada': { law: 'Canada', courts: 'Canada' },
+    'Australia': { law: 'Australia', courts: 'Australia' },
+    'Germany': { law: 'Germany', courts: 'Germany' },
+    'France': { law: 'France', courts: 'France' },
+    'Netherlands': { law: 'the Netherlands', courts: 'the Netherlands' },
+    'Singapore': { law: 'Singapore', courts: 'Singapore' },
+    'India': { law: 'India', courts: 'India' },
+  };
+  const jurisdiction = jurisdictionMap[a.country] ?? { law: a.country || 'England and Wales', courts: a.country || 'England and Wales' };
+
+  sections.push(`<section>
+  <h2>${next()}. Governing Law</h2>
+  <p>This Disclaimer and any dispute or claim arising out of or in connection with it (including non-contractual disputes or claims) shall be governed by and construed in accordance with the laws of <strong>${jurisdiction.law}</strong>.</p>
+  <p>You irrevocably agree that the courts of <strong>${jurisdiction.courts}</strong> shall have exclusive jurisdiction to settle any dispute or claim that arises out of or in connection with this Disclaimer or its subject matter or formation.</p>
+  <p>Our failure to enforce any right or provision of this Disclaimer will not be considered a waiver of those rights. If any provision of this Disclaimer is held to be invalid or unenforceable by a court, the remaining provisions will continue in full force and effect.</p>
+</section>`);
+
+  // ─── 16. Contact Us ───────────────────────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Contact Us</h2>
   <p>If you have any questions about this Disclaimer, please contact us:</p>

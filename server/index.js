@@ -828,6 +828,48 @@ app.get("/uterms-return-policy-embed.js", (req, res) => {
   res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-return-policy-embed.js"));
 });
 
+app.get("/api/disclaimer/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/disclaimer?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch Disclaimer" });
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      res.status(404).json({ error: "No published Disclaimer found for this user" });
+    }
+  } catch (err) {
+    console.error("Disclaimer API Error:", err);
+    res.status(500).json({ error: "Failed to fetch Disclaimer" });
+  }
+});
+
+app.get("/uterms-disclaimer-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+  }
+  const path = require("path");
+  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-disclaimer-embed.js"));
+});
+
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Scanner API running on http://localhost:${PORT}`);

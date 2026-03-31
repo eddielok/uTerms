@@ -27,6 +27,9 @@ import { EULAWizard } from "./pages/EULAWizard";
 import { ReturnPolicyManagement } from "./pages/ReturnPolicyManagement";
 import { ReturnPolicyPreview } from "./pages/ReturnPolicyPreview";
 import { ReturnPolicyWizard } from "./pages/ReturnPolicyWizard";
+import { DisclaimerManagement } from "./pages/DisclaimerManagement";
+import { DisclaimerPreview } from "./pages/DisclaimerPreview";
+import { DisclaimerWizard } from "./pages/DisclaimerWizard";
 import { PolicyPreview } from "./pages/PolicyPreview";
 import { PrivacyPolicyWizard } from "./pages/PrivacyPolicyWizard";
 import { Register } from "./pages/Register";
@@ -86,6 +89,10 @@ function App() {
             <Route path="return-policy/new" element={<ReturnPolicyWizard />} />
             <Route path="return-policy/:id/edit" element={<ReturnPolicyWizard />} />
             <Route path="return-policy/:id/preview" element={<ReturnPolicyPreview />} />
+            <Route path="disclaimer" element={<DisclaimerManagement />} />
+            <Route path="disclaimer/new" element={<DisclaimerWizard />} />
+            <Route path="disclaimer/:id/edit" element={<DisclaimerWizard />} />
+            <Route path="disclaimer/:id/preview" element={<DisclaimerPreview />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>

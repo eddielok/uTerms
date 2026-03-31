@@ -11,7 +11,7 @@ export const Sidebar: React.FC = () => {
     location.pathname.startsWith('/consent-management')
   );
   const [isPolicyOpen, setIsPolicyOpen] = useState(
-    location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy')
+    location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy') || location.pathname.startsWith('/disclaimer')
   );
   
   const [userEmail, setUserEmail] = useState<string>('');
@@ -22,7 +22,7 @@ export const Sidebar: React.FC = () => {
     if (location.pathname.startsWith('/consent-management')) {
       setIsConsentOpen(true);
     }
-    if (location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy')) {
+    if (location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy') || location.pathname.startsWith('/disclaimer')) {
       setIsPolicyOpen(true);
     }
   }, [location.pathname]);
@@ -105,7 +105,7 @@ export const Sidebar: React.FC = () => {
         
         <div className="sidebar-group">
           <button
-            className={`sidebar-link ${(location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy')) ? 'active-group' : ''}`}
+            className={`sidebar-link ${(location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy') || location.pathname.startsWith('/disclaimer')) ? 'active-group' : ''}`}
             onClick={() => setIsPolicyOpen(!isPolicyOpen)}
           >
             <FileText size={20} />
@@ -129,6 +129,9 @@ export const Sidebar: React.FC = () => {
               </NavLink>
               <NavLink to="/return-policy" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
                 Return Policy
+              </NavLink>
+              <NavLink to="/disclaimer" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
+                Disclaimer
               </NavLink>
             </div>
           )}
