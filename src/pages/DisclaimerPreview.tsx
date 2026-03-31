@@ -13,7 +13,7 @@ interface Policy {
   updated_at: string;
 }
 
-export const PolicyPreview: React.FC = () => {
+export const DisclaimerPreview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userId } = useCookieConfig();
@@ -27,7 +27,7 @@ export const PolicyPreview: React.FC = () => {
     if (!id) return;
     (async () => {
       const { data } = await supabase
-        .from('privacy_policies')
+        .from('disclaimer')
         .select('id, title, status, generated, updated_at')
         .eq('id', id)
         .single();
@@ -38,7 +38,11 @@ export const PolicyPreview: React.FC = () => {
 
   const handleCopy = async () => {
     if (!policy?.generated) return;
-    const text = policy.generated.replace(/<[^>]+>/g, '').replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&amp;/g, '&');
+    const text = policy.generated
+      .replace(/<[^>]+>/g, '')
+      .replace(/&ldquo;/g, '"')
+      .replace(/&rdquo;/g, '"')
+      .replace(/&amp;/g, '&');
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -46,7 +50,11 @@ export const PolicyPreview: React.FC = () => {
 
   const handleDownload = () => {
     if (!policy?.generated) return;
-    const text = policy.generated.replace(/<[^>]+>/g, '').replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&amp;/g, '&');
+    const text = policy.generated
+      .replace(/<[^>]+>/g, '')
+      .replace(/&ldquo;/g, '"')
+      .replace(/&rdquo;/g, '"')
+      .replace(/&amp;/g, '&');
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -63,17 +71,17 @@ export const PolicyPreview: React.FC = () => {
     setIsToggling(true);
     const newStatus = policy.status === 'published' ? 'draft' : 'published';
     const { error } = await supabase
-      .from('privacy_policies')
+      .from('disclaimer')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', policy.id);
     if (!error) {
-      setPolicy(prev => prev ? { ...prev, status: newStatus } : prev);
+      setPolicy((prev) => (prev ? { ...prev, status: newStatus } : prev));
     }
     setIsToggling(false);
   };
 
   const embedScript = userId
-    ? `<!-- Step 1: place this where you want the policy to appear -->\n<div id="uterms-policy"></div>\n\n<!-- Step 2: add this script tag (e.g. before </body>) -->\n<script src="http://localhost:3001/uterms-policy-embed.js?id=${userId}"></script>`
+    ? `<!-- Step 1: place this where you want the Disclaimer to appear -->\n<div id="uterms-disclaimer"></div>\n\n<!-- Step 2: add this script tag (e.g. before </body>) -->\n<script src="http://localhost:3001/uterms-disclaimer-embed.js?id=${userId}"></script>`
     : '';
 
   const handleCopyEmbed = async () => {
@@ -91,7 +99,7 @@ export const PolicyPreview: React.FC = () => {
     return (
       <div className="preview-loading">
         <p>Policy not found.</p>
-        <button className="preview-back-btn" onClick={() => navigate('/policy-management')}>
+        <button className="preview-back-btn" onClick={() => navigate('/disclaimer')}>
           <ArrowLeft size={16} /> Back to Policies
         </button>
       </div>
@@ -101,7 +109,7 @@ export const PolicyPreview: React.FC = () => {
   return (
     <div className="preview-container">
       <div className="preview-topbar">
-        <button className="preview-back-btn" onClick={() => navigate('/policy-management')}>
+        <button className="preview-back-btn" onClick={() => navigate('/disclaimer')}>
           <ArrowLeft size={16} /> Back to Policies
         </button>
 
@@ -116,7 +124,7 @@ export const PolicyPreview: React.FC = () => {
           <button className="preview-btn" onClick={handleDownload}>
             <Download size={15} /> Download
           </button>
-          <button className="preview-btn" onClick={() => navigate(`/policy-management/${id}/edit`)}>
+          <button className="preview-btn" onClick={() => navigate(`/disclaimer/${id}/edit`)}>
             <Pencil size={15} /> Edit
           </button>
           <button
@@ -132,7 +140,14 @@ export const PolicyPreview: React.FC = () => {
 
       <div className="preview-meta">
         <h1>{policy.title}</h1>
-        <p className="preview-updated">Last updated: {new Date(policy.updated_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+        <p className="preview-updated">
+          Last updated:{' '}
+          {new Date(policy.updated_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })}
+        </p>
       </div>
 
       <div className="preview-doc-wrapper">
@@ -149,12 +164,12 @@ export const PolicyPreview: React.FC = () => {
         </div>
 
         {policy.status !== 'published' ? (
-          <p className="embed-notice">Publish this policy first to get the embed snippet.</p>
+          <p className="embed-notice">Publish this Disclaimer first to get the embed snippet.</p>
         ) : (
           <>
             <p className="embed-description">
-              Paste the snippet below into any page to display your privacy policy. Place the{' '}
-              <code>&lt;div&gt;</code> where you want the policy to appear, and the{' '}
+              Paste the snippet below into any page to display your Disclaimer. Place the{' '}
+              <code>&lt;div&gt;</code> where you want it to appear, and the{' '}
               <code>&lt;script&gt;</code> tag before <code>&lt;/body&gt;</code>.
             </p>
             <div className="embed-code-block">
@@ -167,7 +182,7 @@ export const PolicyPreview: React.FC = () => {
             <div style={{ display: 'flex' }}>
               <button
                 className="embed-preview-btn"
-                onClick={() => window.open(`/test-policy.html?id=${userId}`, '_blank')}
+                onClick={() => window.open(`/test-disclaimer.html?id=${userId}`, '_blank')}
               >
                 <Eye size={15} /> Preview embed
               </button>

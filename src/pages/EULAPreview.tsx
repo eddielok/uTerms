@@ -13,7 +13,7 @@ interface Policy {
   updated_at: string;
 }
 
-export const PolicyPreview: React.FC = () => {
+export const EULAPreview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userId } = useCookieConfig();
@@ -27,7 +27,7 @@ export const PolicyPreview: React.FC = () => {
     if (!id) return;
     (async () => {
       const { data } = await supabase
-        .from('privacy_policies')
+        .from('eula')
         .select('id, title, status, generated, updated_at')
         .eq('id', id)
         .single();
@@ -38,7 +38,7 @@ export const PolicyPreview: React.FC = () => {
 
   const handleCopy = async () => {
     if (!policy?.generated) return;
-    const text = policy.generated.replace(/<[^>]+>/g, '').replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&amp;/g, '&');
+    const text = policy.generated.replace(/<[^>]+>/g, '').replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&amp;/g, '&').replace(/&rsquo;/g, "'");
     await navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -46,7 +46,7 @@ export const PolicyPreview: React.FC = () => {
 
   const handleDownload = () => {
     if (!policy?.generated) return;
-    const text = policy.generated.replace(/<[^>]+>/g, '').replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&amp;/g, '&');
+    const text = policy.generated.replace(/<[^>]+>/g, '').replace(/&ldquo;/g, '"').replace(/&rdquo;/g, '"').replace(/&amp;/g, '&').replace(/&rsquo;/g, "'");
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -63,7 +63,7 @@ export const PolicyPreview: React.FC = () => {
     setIsToggling(true);
     const newStatus = policy.status === 'published' ? 'draft' : 'published';
     const { error } = await supabase
-      .from('privacy_policies')
+      .from('eula')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', policy.id);
     if (!error) {
@@ -73,7 +73,7 @@ export const PolicyPreview: React.FC = () => {
   };
 
   const embedScript = userId
-    ? `<!-- Step 1: place this where you want the policy to appear -->\n<div id="uterms-policy"></div>\n\n<!-- Step 2: add this script tag (e.g. before </body>) -->\n<script src="http://localhost:3001/uterms-policy-embed.js?id=${userId}"></script>`
+    ? `<!-- Step 1: place this where you want the EULA to appear -->\n<div id="uterms-eula"></div>\n\n<!-- Step 2: add this script tag (e.g. before </body>) -->\n<script src="http://localhost:3001/uterms-eula-embed.js?id=${userId}"></script>`
     : '';
 
   const handleCopyEmbed = async () => {
@@ -84,15 +84,15 @@ export const PolicyPreview: React.FC = () => {
   };
 
   if (isLoading) {
-    return <div className="preview-loading">Loading policy...</div>;
+    return <div className="preview-loading">Loading EULA...</div>;
   }
 
   if (!policy) {
     return (
       <div className="preview-loading">
-        <p>Policy not found.</p>
-        <button className="preview-back-btn" onClick={() => navigate('/policy-management')}>
-          <ArrowLeft size={16} /> Back to Policies
+        <p>EULA not found.</p>
+        <button className="preview-back-btn" onClick={() => navigate('/eula')}>
+          <ArrowLeft size={16} /> Back to EULAs
         </button>
       </div>
     );
@@ -101,8 +101,8 @@ export const PolicyPreview: React.FC = () => {
   return (
     <div className="preview-container">
       <div className="preview-topbar">
-        <button className="preview-back-btn" onClick={() => navigate('/policy-management')}>
-          <ArrowLeft size={16} /> Back to Policies
+        <button className="preview-back-btn" onClick={() => navigate('/eula')}>
+          <ArrowLeft size={16} /> Back to EULAs
         </button>
 
         <div className="preview-actions">
@@ -116,7 +116,7 @@ export const PolicyPreview: React.FC = () => {
           <button className="preview-btn" onClick={handleDownload}>
             <Download size={15} /> Download
           </button>
-          <button className="preview-btn" onClick={() => navigate(`/policy-management/${id}/edit`)}>
+          <button className="preview-btn" onClick={() => navigate(`/eula/${id}/edit`)}>
             <Pencil size={15} /> Edit
           </button>
           <button
@@ -149,12 +149,12 @@ export const PolicyPreview: React.FC = () => {
         </div>
 
         {policy.status !== 'published' ? (
-          <p className="embed-notice">Publish this policy first to get the embed snippet.</p>
+          <p className="embed-notice">Publish this EULA first to get the embed snippet.</p>
         ) : (
           <>
             <p className="embed-description">
-              Paste the snippet below into any page to display your privacy policy. Place the{' '}
-              <code>&lt;div&gt;</code> where you want the policy to appear, and the{' '}
+              Paste the snippet below into any page to display your EULA. Place the{' '}
+              <code>&lt;div&gt;</code> where you want it to appear, and the{' '}
               <code>&lt;script&gt;</code> tag before <code>&lt;/body&gt;</code>.
             </p>
             <div className="embed-code-block">
@@ -167,7 +167,7 @@ export const PolicyPreview: React.FC = () => {
             <div style={{ display: 'flex' }}>
               <button
                 className="embed-preview-btn"
-                onClick={() => window.open(`/test-policy.html?id=${userId}`, '_blank')}
+                onClick={() => window.open(`/test-eula.html?id=${userId}`, '_blank')}
               >
                 <Eye size={15} /> Preview embed
               </button>

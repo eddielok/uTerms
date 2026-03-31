@@ -74,7 +74,7 @@ app.post("/api/scan", async (req, res) => {
   let browser = null;
   try {
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
@@ -85,21 +85,36 @@ app.post("/api/scan", async (req, res) => {
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     );
 
-    // Go to URL and wait until network is mostly idle
-    await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+    // Go to URL and wait until network is mostly idle, with extended timeout
+    try {
+      await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 60000 });
+    } catch (timeoutErr) {
+      // If networkidle2 times out, try with a faster condition
+      console.warn(
+        `networkidle2 timeout for ${targetUrl}, retrying with domcontentloaded`,
+      );
+      await page.goto(targetUrl, {
+        waitUntil: "domcontentloaded",
+        timeout: 30000,
+      });
+    }
 
-    // Auto-scroll to trigger lazy-loaded scripts
-    await page.evaluate(async () => {
-      await new Promise((resolve) => {
+    // Auto-scroll to trigger lazy-loaded scripts (cap at 10 s to avoid infinite-scroll hangs)
+    await page.evaluate(() => {
+      return new Promise((resolve) => {
         let totalHeight = 0;
         const distance = 100;
+        const deadline = Date.now() + 10_000;
         const timer = setInterval(() => {
           const scrollHeight = document.body.scrollHeight;
           window.scrollBy(0, distance);
           totalHeight += distance;
-          if (totalHeight >= scrollHeight - window.innerHeight) {
+          if (
+            totalHeight >= scrollHeight - window.innerHeight ||
+            Date.now() >= deadline
+          ) {
             clearInterval(timer);
-            resolve();
+            resolve(undefined);
           }
         }, 100);
       });
@@ -133,7 +148,7 @@ app.post("/api/scan", async (req, res) => {
     }
 
     // Use CDP session to get ALL cookies (including HttpOnly and third-party)
-    const client = await page.target().createCDPSession();
+    const client = await page.createCDPSession();
     const { cookies: cdpCookies } = await client.send("Network.getAllCookies");
     let cookies = cdpCookies;
 
@@ -298,6 +313,41 @@ app.post("/api/consent", async (req, res) => {
   }
 });
 
+app.get("/api/policy/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(userId)}&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch policy" });
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      res.status(404).json({ error: "No policy found for this user" });
+    }
+  } catch (err) {
+    console.error("Policy API Error:", err);
+    res.status(500).json({ error: "Failed to fetch policy" });
+  }
+});
+
 app.post("/api/analyze-policy", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
@@ -308,7 +358,7 @@ app.post("/api/analyze-policy", async (req, res) => {
   let browser = null;
   try {
     browser = await puppeteer.launch({
-      headless: "new",
+      headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
 
@@ -493,6 +543,289 @@ app.post("/api/analyze-policy", async (req, res) => {
   } finally {
     if (browser) await browser.close();
   }
+});
+
+app.get("/uterms-policy-embed.js", async (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
+  }
+
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(id)}&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res
+        .type("text/javascript")
+        .send('console.error("Failed to fetch policy");');
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      if (data[0].generated) {
+        const policyHtml = data[0].generated;
+
+        // Serve as JavaScript that injects the HTML into the DOM
+        const script = `
+(function() {
+  const container = document.getElementById('uterms-policy');
+  if (!container) {
+    console.error('uterms-policy container not found');
+    return;
+  }
+  container.innerHTML = ${JSON.stringify(policyHtml)};
+  
+  // Style the policy
+  const style = document.createElement('style');
+  style.textContent = \`
+    #uterms-policy {
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.6;
+      color: #333;
+    }
+    #uterms-policy h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+    #uterms-policy h2 {
+      font-size: 1.5rem;
+      margin: 1.5rem 0 1rem 0;
+    }
+    #uterms-policy section {
+      margin-bottom: 2rem;
+    }
+    #uterms-policy table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #uterms-policy th, #uterms-policy td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    #uterms-policy th {
+      background-color: #f5f5f5;
+      font-weight: bold;
+    }
+    #uterms-policy ul {
+      margin-left: 20px;
+    }
+    #uterms-policy li {
+      margin-bottom: 0.5rem;
+    }
+  \`;
+  document.head.appendChild(style);
+})();
+      `;
+
+        res.type("text/javascript").send(script);
+      } else {
+        res
+          .type("text/javascript")
+          .send(
+            'console.error("Policy found but not yet generated. Please generate the policy first.");',
+          );
+      }
+    } else {
+      res
+        .type("text/javascript")
+        .send(
+          'console.error("No policy found for this user. Please create and generate a privacy policy first.");',
+        );
+    }
+  } catch (err) {
+    console.error("Policy Embed Error:", err);
+    res.type("text/javascript").send('console.error("Failed to load policy");');
+  }
+});
+
+app.get("/api/cookie-policy/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/cookie_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch cookie policy" });
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      res.status(404).json({ error: "No published cookie policy found for this user" });
+    }
+  } catch (err) {
+    console.error("Cookie Policy API Error:", err);
+    res.status(500).json({ error: "Failed to fetch cookie policy" });
+  }
+});
+
+app.get("/uterms-cookie-embed.js", async (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+  }
+
+  // Serve the static embed script from public/
+  const path = require("path");
+  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-cookie-embed.js"));
+});
+
+app.get("/api/tos/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/terms_of_service?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch Terms of Service" });
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      res.status(404).json({ error: "No published Terms of Service found for this user" });
+    }
+  } catch (err) {
+    console.error("ToS API Error:", err);
+    res.status(500).json({ error: "Failed to fetch Terms of Service" });
+  }
+});
+
+app.get("/uterms-tos-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+  }
+
+  const path = require("path");
+  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-tos-embed.js"));
+});
+
+app.get("/api/eula/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/eula?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch EULA" });
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      res.status(404).json({ error: "No published EULA found for this user" });
+    }
+  } catch (err) {
+    console.error("EULA API Error:", err);
+    res.status(500).json({ error: "Failed to fetch EULA" });
+  }
+});
+
+app.get("/uterms-eula-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+  }
+
+  const path = require("path");
+  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-eula-embed.js"));
+});
+
+app.get("/api/return-policy/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/return_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      },
+    );
+
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to fetch Return Policy" });
+    }
+
+    const data = await response.json();
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      res.status(404).json({ error: "No published Return Policy found for this user" });
+    }
+  } catch (err) {
+    console.error("Return Policy API Error:", err);
+    res.status(500).json({ error: "Failed to fetch Return Policy" });
+  }
+});
+
+app.get("/uterms-return-policy-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+  }
+
+  const path = require("path");
+  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-return-policy-embed.js"));
 });
 
 const PORT = 3001;

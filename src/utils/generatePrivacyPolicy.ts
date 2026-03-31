@@ -26,6 +26,7 @@ export interface WizardAnswers {
   sharesData: boolean;
   sharesWithAdNetworks: boolean;
   sharesWithAnalytics: boolean;
+  analyticsIpAnonymization: boolean;
   sharesWithPaymentProcessors: boolean;
   sharesWithSocialMedia: boolean;
   sharesWithCloud: boolean;
@@ -71,6 +72,7 @@ export const DEFAULT_ANSWERS: WizardAnswers = {
   sharesData: false,
   sharesWithAdNetworks: false,
   sharesWithAnalytics: false,
+  analyticsIpAnonymization: false,
   sharesWithPaymentProcessors: false,
   sharesWithSocialMedia: false,
   sharesWithCloud: false,
@@ -125,6 +127,7 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
     sharesData,
     sharesWithAdNetworks,
     sharesWithAnalytics,
+    analyticsIpAnonymization,
     sharesWithPaymentProcessors,
     sharesWithSocialMedia,
     sharesWithCloud,
@@ -208,15 +211,12 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
         day: "numeric",
       });
 
-  let jurisdiction = state ? `${state}, ${country}` : country || "";
+  let jurisdiction = country || "";
 
-  // Formatting fix for United Kingdom
-  if (country === "United Kingdom") {
-    if (
-      !state ||
-      state.trim().toUpperCase() === "UK" ||
-      state === "United Kingdom"
-    ) {
+  if (country === "England and Wales") {
+    jurisdiction = "England and Wales";
+  } else if (country === "United Kingdom") {
+    if (!state || state.trim().toUpperCase() === "UK" || state === "United Kingdom") {
       jurisdiction = "the United Kingdom";
     }
   }
@@ -231,6 +231,91 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
   const email = privacyEmail || "privacy@yourcompany.com";
   const company = companyName || "our company";
   const site = websiteUrl || "#";
+
+  // Legal basis entries (GDPR Article 6)
+  const legalBasisEntries: {
+    purpose: string;
+    basis: string;
+    article: string;
+  }[] = [
+    purposeServiceDelivery && {
+      purpose: "Providing, operating, and maintaining our services",
+      basis: "Contractual Necessity",
+      article: "Article 6(1)(b) GDPR",
+    },
+    (purposeAnalytics || purposeSecurity) && {
+      purpose: "Analytics, service improvement, and security",
+      basis: "Legitimate Interest",
+      article: "Article 6(1)(f) GDPR",
+    },
+    purposeMarketing && {
+      purpose: "Marketing and promotional communications",
+      basis: "Consent",
+      article: "Article 6(1)(a) GDPR",
+    },
+    purposeLegal && {
+      purpose: "Legal and regulatory compliance",
+      basis: "Legal Obligation",
+      article: "Article 6(1)(c) GDPR",
+    },
+    usesCookies && {
+      purpose: "Cookie-based tracking and personalisation",
+      basis: "Consent",
+      article: "Article 6(1)(a) GDPR",
+    },
+  ].filter(Boolean) as { purpose: string; basis: string; article: string }[];
+
+  // International data transfer: flag if sharing with analytics/cloud/ads/social/payments
+  const hasInternationalTransfers =
+    sharesWithAnalytics ||
+    sharesWithCloud ||
+    sharesWithAdNetworks ||
+    sharesWithPaymentProcessors ||
+    sharesWithSocialMedia;
+
+  // Check if we have GA or other analytics cookies
+  const hasAnalyticsCookies = scannedCookies?.categories?.some((cat: any) => {
+    return cat.providers?.some((prov: any) => {
+      return prov.cookies?.some((c: any) => {
+        const name = c.name?.toLowerCase() || "";
+        return (
+          name.includes("_ga") ||
+          name.includes("_gid") ||
+          name.includes("_gat") ||
+          name.includes("__utm") ||
+          name.includes("_hjid") ||
+          name.includes("_clck") ||
+          name.includes("_pk_")
+        );
+      });
+    });
+  });
+
+  // Check if we have API-related functional cookies
+  const hasApiCookies = scannedCookies?.categories?.some((cat: any) => {
+    return cat.providers?.some((prov: any) => {
+      return prov.cookies?.some((c: any) => {
+        const name = c.name?.toLowerCase() || "";
+        return name.includes("api") || name.includes("_cache");
+      });
+    });
+  });
+
+  // CCPA categories of data collected
+  const ccpaCategories: string[] = [
+    collectsName && "Identifiers (e.g. name)",
+    collectsEmail && "Identifiers (e.g. email address)",
+    collectsPhone && "Identifiers (e.g. phone number)",
+    collectsAddress && "Identifiers (e.g. physical address)",
+    collectsPayment && "Financial information (e.g. payment and billing data)",
+    collectsDeviceInfo &&
+      "Internet / network activity (e.g. device and browser information)",
+    collectsUsageData &&
+      "Internet / network activity (e.g. usage and interaction data)",
+    hasAnalyticsCookies &&
+      "Internet or other electronic network activity information (e.g., browsing history, IP address)",
+    collectsLocation && "Geolocation data",
+  ].filter(Boolean) as string[];
 
   // Generate Cookie Table
   let cookieTableHtml = "";
@@ -280,9 +365,9 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
     }
   }
 
-  return `<article class="policy-document">
-  <h1>Privacy Policy</h1>
-  <p class="policy-meta"><strong>Effective Date:</strong> ${formattedDate}</p>
+  return `
+<h1>Privacy Policy</h1>
+<p class="policy-meta">Last updated: ${formattedDate}</p>
 
   <section>
     <h2>1. Introduction</h2>
@@ -306,6 +391,33 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
         ? `<p>We use the information we collect for the following purposes:</p><ul>${purposes.map(li).join("")}</ul>`
         : "<p>We use the information we collect solely to provide and improve our services to you.</p>"
     }
+    ${
+      legalBasisEntries.length > 0
+        ? `<p>Where required by applicable law (including GDPR), we process personal data on one or more of the following legal grounds:</p>
+    <div style="overflow-x:auto;margin:0.75rem 0;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+        <thead>
+          <tr style="background:#f3f4f6;text-align:left;">
+            <th style="text-align:left;padding:0.6rem 0.75rem;border:1px solid #e5e7eb;">Processing Activity</th>
+            <th style="text-align:left;padding:0.6rem 0.75rem;border:1px solid #e5e7eb;">Legal Basis</th>
+            <th style="text-align:left;padding:0.6rem 0.75rem;border:1px solid #e5e7eb;">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${legalBasisEntries
+            .map(
+              (e) => `<tr>
+            <td style="padding:0.6rem 0.75rem;border:1px solid #e5e7eb;">${e.purpose}</td>
+            <td style="padding:0.6rem 0.75rem;border:1px solid #e5e7eb;">${e.basis}</td>
+            <td style="padding:0.6rem 0.75rem;border:1px solid #e5e7eb;">${e.article}</td>
+          </tr>`,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>`
+        : ""
+    }
   </section>
 
   <section>
@@ -315,10 +427,30 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
         ? `<p>We may share your personal information with the following categories of trusted third-party service providers, only as necessary to operate our services:</p><ul>${thirdParties.map(li).join("")}</ul><p>We do not sell your personal information to any third party.</p>`
         : "<p>We do not sell, trade, or otherwise transfer your personal information to third parties, except as required by applicable law or to protect our legal rights.</p>"
     }
+    ${
+      sharesWithAnalytics && analyticsIpAnonymization
+        ? `<p><strong>Google Analytics &amp; IP Anonymization:</strong> We use Google Analytics to understand how visitors interact with our website. We have enabled <strong>IP Anonymization</strong> (also known as IP masking), which means Google truncates your IP address before storing it — your full IP address is never written to disk. This measure reduces the personal data transmitted to Google and supports our compliance with GDPR and the UK GDPR. You can learn more at <a href="https://support.google.com/analytics/answer/2763052" target="_blank" rel="noopener noreferrer">Google&rsquo;s IP anonymization documentation</a>.</p>`
+        : ""
+    }
   </section>
 
   <section>
-    <h2>5. Cookies &amp; Tracking Technologies</h2>
+    <h2>5. International Data Transfers</h2>
+    ${
+      hasInternationalTransfers
+        ? `<p>Some of the third-party service providers we use (such as analytics platforms and cloud infrastructure providers) may process your personal data on servers located outside the United Kingdom (UK) or the European Economic Area (EEA), including in the United States.</p>
+    <p>Where such transfers occur, we ensure appropriate safeguards are in place in accordance with applicable data protection law. These safeguards may include:</p>
+    <ul>
+      <li>Standard Contractual Clauses (SCCs) approved by the European Commission or the UK Information Commissioner&rsquo;s Office (ICO)</li>
+      <li>Adequacy decisions confirming the recipient country provides equivalent data protection</li>
+    </ul>
+    <p>You may request a copy of the applicable transfer mechanism by contacting us at <a href="mailto:${email}">${email}</a>.</p>`
+        : `<p>We endeavour to store and process your personal data within the United Kingdom (UK) or the European Economic Area (EEA). If we need to transfer data outside these regions, we will ensure adequate safeguards are in place, such as Standard Contractual Clauses (SCCs), before doing so.</p>`
+    }
+  </section>
+
+  <section>
+    <h2>6. Cookies &amp; Tracking Technologies</h2>
     ${
       usesCookies
         ? `<p>We use cookies and similar tracking technologies on our website.${
@@ -339,38 +471,50 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
             )}</p>`
           : ""
       }
+      ${
+        hasApiCookies
+          ? `<p><strong>Functional Cookies:</strong> We use functional cookies to enhance your experience and store your privacy preferences. These cookies (such as API cache cookies) are necessary to provide core functionality and remember your settings.</p>`
+          : ""
+      }
       ${cookieTableHtml}`
         : "<p>We do not use cookies or similar tracking technologies on our website.</p>"
     }
   </section>
 
   <section>
-    <h2>6. Your Privacy Rights</h2>
+    <h2>7. Your Privacy Rights</h2>
+    <p>We do not &ldquo;Sell&rdquo; your personal information collected via cookies or otherwise, nor do we &ldquo;Share&rdquo; it for cross-context behavioral advertising, as those terms are defined by the California Consumer Privacy Act (CCPA) and the California Privacy Rights Act (CPRA).</p>
+    ${
+      ccpaCategories.length > 0
+        ? `<p>In the preceding 12 months, we have collected the following categories of personal information:</p><ul>${ccpaCategories.map(li).join("")}</ul>`
+        : ""
+    }
     ${
       rights.length > 0
         ? `<p>Depending on your jurisdiction, you may have the following rights regarding your personal data:</p><ul>${rights.map((r) => li(`<strong>${r.title}:</strong> ${r.desc}`)).join("")}</ul><p>To exercise any of these rights, please contact us at <a href="mailto:${email}">${email}</a>. We will respond within 30 days.</p>`
         : `<p>You may have certain rights regarding your personal data depending on your location. Please contact us at <a href="mailto:${email}">${email}</a> to learn more.</p>`
     }
-    <p>If you are a UK resident, you have the right to lodge a complaint with the Information Commissioner’s Office (ICO) at <a href="https://www.ico.org.uk" target="_blank" rel="noopener noreferrer">www.ico.org.uk</a>.</p>
+    <p>If you are a UK resident, you have the right to lodge a complaint with the Information Commissioner&rsquo;s Office (ICO) at <a href="https://www.ico.org.uk" target="_blank" rel="noopener noreferrer">www.ico.org.uk</a>.</p>
+    <p>If you are a California resident, you may also submit a verifiable consumer request to us at <a href="mailto:${email}">${email}</a> to exercise your CCPA/CPRA rights, including the right to know, the right to delete, and the right to correct your personal information.</p>
   </section>
 
   <section>
-    <h2>7. Data Security</h2>
+    <h2>8. Data Security</h2>
     <p>We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, disclosure, alteration, or destruction. However, no method of transmission over the Internet is 100% secure, and we cannot guarantee absolute security.</p>
   </section>
 
   <section>
-    <h2>8. Data Retention</h2>
+    <h2>9. Data Retention</h2>
     <p>We retain your personal information only for as long as necessary to fulfill the purposes described in this policy, or as required by applicable law. When data is no longer needed, we securely delete or anonymize it.</p>
   </section>
 
   <section>
-    <h2>9. Changes to This Policy</h2>
+    <h2>10. Changes to This Policy</h2>
     <p>${notifText} The &ldquo;Effective Date&rdquo; at the top of this page reflects when this policy was last revised. We encourage you to review this policy periodically.</p>
   </section>
 
   <section>
-    <h2>10. Contact Us</h2>
+    <h2>11. Contact Us</h2>
     <p>If you have any questions, concerns, or requests regarding this Privacy Policy, please contact us:</p>
     <ul>
       ${email ? li(`<strong>Email:</strong> <a href="mailto:${email}">${email}</a>`) : ""}
@@ -378,5 +522,5 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
       ${websiteUrl ? li(`<strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteUrl}</a>`) : ""}
     </ul>
   </section>
-</article>`;
+`.trim();
 }

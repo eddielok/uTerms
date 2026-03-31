@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EULA Embed Test</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      }
+      .container { max-width: 900px; margin: 0 auto; }
+      h1 { color: #333; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>EULA Embed Test</h1>
+      <p>Loading EULA... (This should display the generated document below)</p>
+
+      <div
+        id="uterms-eula"
+        style="border:1px solid #ddd;padding:20px;margin-top:20px;background-color:#f9f9f9;"
+      >
+        <p>Loading EULA...</p>
+      </div>
+
+      <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const userId = urlParams.get("id") || "";
+
+        const eulaContainer = document.getElementById("uterms-eula");
+        eulaContainer.innerHTML = `<p>Loading EULA for user: <code>${userId}</code>...</p>`;
+
+        fetch(`http://localhost:3001/api/eula/${encodeURIComponent(userId)}`)
+          .then((r) => r.json())
+          .then((data) => {
+            if (data.error) {
+              eulaContainer.innerHTML = `
+                <div style="color:#d32f2f;background-color:#ffebee;padding:15px;border-radius:4px;border:1px solid #f44336;">
+                  <strong>Error:</strong> ${data.error}
+                  <p style="margin:10px 0 0 0;font-size:0.9em;">
+                    This user ID does not have a published EULA yet.
+                    Please <a href="/eula">go to EULA</a> and create one first.
+                  </p>
+                </div>`;
+            } else {
+              const script = document.createElement("script");
+              script.src = `http://localhost:3001/uterms-eula-embed.js?id=${encodeURIComponent(userId)}`;
+              script.onerror = () => {
+                eulaContainer.innerHTML = `
+                  <div style="color:#d32f2f;background-color:#ffebee;padding:15px;border-radius:4px;border:1px solid #f44336;">
+                    <strong>Error:</strong> Failed to load EULA script
+                    <p style="margin:10px 0 0 0;font-size:0.9em;">
+                      Please check that the backend server is running on http://localhost:3001
+                    </p>
+                  </div>`;
+              };
+              document.body.appendChild(script);
+            }
+          })
+          .catch((err) => {
+            eulaContainer.innerHTML = `
+              <div style="color:#d32f2f;background-color:#ffebee;padding:15px;border-radius:4px;border:1px solid #f44336;">
+                <strong>Error:</strong> Cannot connect to backend
+                <p style="margin:10px 0 0 0;font-size:0.9em;">
+                  ${err.message}<br>Make sure the backend server is running: <code>node server/index.js</code>
+                </p>
+              </div>`;
+          });
+      </script>
+    </div>
+  </body>
+</html>

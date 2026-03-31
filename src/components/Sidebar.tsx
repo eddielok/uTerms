@@ -11,7 +11,7 @@ export const Sidebar: React.FC = () => {
     location.pathname.startsWith('/consent-management')
   );
   const [isPolicyOpen, setIsPolicyOpen] = useState(
-    location.pathname.startsWith('/policy-management')
+    location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy')
   );
   
   const [userEmail, setUserEmail] = useState<string>('');
@@ -22,7 +22,7 @@ export const Sidebar: React.FC = () => {
     if (location.pathname.startsWith('/consent-management')) {
       setIsConsentOpen(true);
     }
-    if (location.pathname.startsWith('/policy-management')) {
+    if (location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy')) {
       setIsPolicyOpen(true);
     }
   }, [location.pathname]);
@@ -105,7 +105,7 @@ export const Sidebar: React.FC = () => {
         
         <div className="sidebar-group">
           <button
-            className={`sidebar-link ${location.pathname.startsWith('/policy-management') ? 'active-group' : ''}`}
+            className={`sidebar-link ${(location.pathname.startsWith('/policy-management') || location.pathname.startsWith('/cookie-policy') || location.pathname.startsWith('/terms-of-service') || location.pathname.startsWith('/eula') || location.pathname.startsWith('/return-policy')) ? 'active-group' : ''}`}
             onClick={() => setIsPolicyOpen(!isPolicyOpen)}
           >
             <FileText size={20} />
@@ -117,6 +117,18 @@ export const Sidebar: React.FC = () => {
             <div className="sidebar-sub-menu">
               <NavLink to="/policy-management" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
                 Privacy Policy
+              </NavLink>
+              <NavLink to="/cookie-policy" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
+                Cookie Policy
+              </NavLink>
+              <NavLink to="/terms-of-service" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
+                Terms of Service
+              </NavLink>
+              <NavLink to="/eula" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
+                EULA
+              </NavLink>
+              <NavLink to="/return-policy" end className={({ isActive }) => `sidebar-sub-link ${isActive ? 'active' : ''}`}>
+                Return Policy
               </NavLink>
             </div>
           )}

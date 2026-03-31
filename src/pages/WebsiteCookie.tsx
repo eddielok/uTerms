@@ -71,7 +71,8 @@ export const WebsiteCookie: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to scan website");
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.details || body.error || "Failed to scan website");
       }
 
       const result = await response.json();

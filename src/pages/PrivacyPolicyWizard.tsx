@@ -50,6 +50,7 @@ const COOKIE_TYPE_OPTIONS = [
 const COUNTRIES = [
   "United States",
   "United Kingdom",
+  "England and Wales",
   "Canada",
   "Australia",
   "Germany",
@@ -478,14 +479,8 @@ export const PrivacyPolicyWizard: React.FC = () => {
                   {(
                     [
                       ["sharesWithAdNetworks", "Advertising networks"],
-                      [
-                        "sharesWithAnalytics",
-                        "Analytics providers (e.g. Google Analytics)",
-                      ],
-                      [
-                        "sharesWithPaymentProcessors",
-                        "Payment processors (e.g. Stripe)",
-                      ],
+                      ["sharesWithAnalytics", "Analytics providers (e.g. Google Analytics)"],
+                      ["sharesWithPaymentProcessors", "Payment processors (e.g. Stripe)"],
                       ["sharesWithSocialMedia", "Social media platforms"],
                       ["sharesWithCloud", "Cloud / hosting providers"],
                     ] as [keyof WizardAnswers, string][]
@@ -499,6 +494,21 @@ export const PrivacyPolicyWizard: React.FC = () => {
                       <span>{label}</span>
                     </label>
                   ))}
+                  {answers.sharesWithAnalytics && (
+                    <label className="wizard-checkbox-item" style={{ paddingLeft: '1.5rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={answers.analyticsIpAnonymization}
+                        onChange={(e) => set("analyticsIpAnonymization", e.target.checked)}
+                      />
+                      <span>
+                        IP Anonymization enabled{" "}
+                        <span style={{ color: "#6b7280", fontWeight: 400 }}>
+                          — Google truncates IPs before storage (recommended for GDPR/UK GDPR)
+                        </span>
+                      </span>
+                    </label>
+                  )}
                 </div>
               )}
             </div>

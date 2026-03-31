@@ -13,7 +13,7 @@ interface Policy {
   updated_at: string;
 }
 
-export const PolicyPreview: React.FC = () => {
+export const CookiePolicyPreview: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { userId } = useCookieConfig();
@@ -27,7 +27,7 @@ export const PolicyPreview: React.FC = () => {
     if (!id) return;
     (async () => {
       const { data } = await supabase
-        .from('privacy_policies')
+        .from('cookie_policies')
         .select('id, title, status, generated, updated_at')
         .eq('id', id)
         .single();
@@ -63,7 +63,7 @@ export const PolicyPreview: React.FC = () => {
     setIsToggling(true);
     const newStatus = policy.status === 'published' ? 'draft' : 'published';
     const { error } = await supabase
-      .from('privacy_policies')
+      .from('cookie_policies')
       .update({ status: newStatus, updated_at: new Date().toISOString() })
       .eq('id', policy.id);
     if (!error) {
@@ -73,7 +73,7 @@ export const PolicyPreview: React.FC = () => {
   };
 
   const embedScript = userId
-    ? `<!-- Step 1: place this where you want the policy to appear -->\n<div id="uterms-policy"></div>\n\n<!-- Step 2: add this script tag (e.g. before </body>) -->\n<script src="http://localhost:3001/uterms-policy-embed.js?id=${userId}"></script>`
+    ? `<!-- Step 1: place this where you want the policy to appear -->\n<div id="uterms-cookie-policy"></div>\n\n<!-- Step 2: add this script tag (e.g. before </body>) -->\n<script src="http://localhost:3001/uterms-cookie-embed.js?id=${userId}"></script>`
     : '';
 
   const handleCopyEmbed = async () => {
@@ -91,7 +91,7 @@ export const PolicyPreview: React.FC = () => {
     return (
       <div className="preview-loading">
         <p>Policy not found.</p>
-        <button className="preview-back-btn" onClick={() => navigate('/policy-management')}>
+        <button className="preview-back-btn" onClick={() => navigate('/cookie-policy')}>
           <ArrowLeft size={16} /> Back to Policies
         </button>
       </div>
@@ -101,7 +101,7 @@ export const PolicyPreview: React.FC = () => {
   return (
     <div className="preview-container">
       <div className="preview-topbar">
-        <button className="preview-back-btn" onClick={() => navigate('/policy-management')}>
+        <button className="preview-back-btn" onClick={() => navigate('/cookie-policy')}>
           <ArrowLeft size={16} /> Back to Policies
         </button>
 
@@ -116,7 +116,7 @@ export const PolicyPreview: React.FC = () => {
           <button className="preview-btn" onClick={handleDownload}>
             <Download size={15} /> Download
           </button>
-          <button className="preview-btn" onClick={() => navigate(`/policy-management/${id}/edit`)}>
+          <button className="preview-btn" onClick={() => navigate(`/cookie-policy/${id}/edit`)}>
             <Pencil size={15} /> Edit
           </button>
           <button
@@ -153,7 +153,7 @@ export const PolicyPreview: React.FC = () => {
         ) : (
           <>
             <p className="embed-description">
-              Paste the snippet below into any page to display your privacy policy. Place the{' '}
+              Paste the snippet below into any page to display your cookie policy. Place the{' '}
               <code>&lt;div&gt;</code> where you want the policy to appear, and the{' '}
               <code>&lt;script&gt;</code> tag before <code>&lt;/body&gt;</code>.
             </p>
@@ -167,7 +167,7 @@ export const PolicyPreview: React.FC = () => {
             <div style={{ display: 'flex' }}>
               <button
                 className="embed-preview-btn"
-                onClick={() => window.open(`/test-policy.html?id=${userId}`, '_blank')}
+                onClick={() => window.open(`/test-cookie-policy.html?id=${userId}`, '_blank')}
               >
                 <Eye size={15} /> Preview embed
               </button>

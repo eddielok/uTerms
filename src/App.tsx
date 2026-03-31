@@ -14,7 +14,19 @@ import { Features } from "./pages/Features";
 import { Home } from "./pages/Home";
 import { Login } from "./pages/Login";
 import { Policies } from "./pages/Policies";
+import { CookiePolicyManagement } from "./pages/CookiePolicyManagement";
+import { CookiePolicyPreview } from "./pages/CookiePolicyPreview";
+import { CookiePolicyWizard } from "./pages/CookiePolicyWizard";
 import { PolicyManagement } from "./pages/PolicyManagement";
+import { TermsManagement } from "./pages/TermsManagement";
+import { TermsPreview } from "./pages/TermsPreview";
+import { TermsWizard } from "./pages/TermsWizard";
+import { EULAManagement } from "./pages/EULAManagement";
+import { EULAPreview } from "./pages/EULAPreview";
+import { EULAWizard } from "./pages/EULAWizard";
+import { ReturnPolicyManagement } from "./pages/ReturnPolicyManagement";
+import { ReturnPolicyPreview } from "./pages/ReturnPolicyPreview";
+import { ReturnPolicyWizard } from "./pages/ReturnPolicyWizard";
 import { PolicyPreview } from "./pages/PolicyPreview";
 import { PrivacyPolicyWizard } from "./pages/PrivacyPolicyWizard";
 import { Register } from "./pages/Register";
@@ -58,6 +70,22 @@ function App() {
             <Route path="policy-management/new" element={<PrivacyPolicyWizard />} />
             <Route path="policy-management/:id/edit" element={<PrivacyPolicyWizard />} />
             <Route path="policy-management/:id/preview" element={<PolicyPreview />} />
+            <Route path="cookie-policy" element={<CookiePolicyManagement />} />
+            <Route path="cookie-policy/new" element={<CookiePolicyWizard />} />
+            <Route path="cookie-policy/:id/edit" element={<CookiePolicyWizard />} />
+            <Route path="cookie-policy/:id/preview" element={<CookiePolicyPreview />} />
+            <Route path="terms-of-service" element={<TermsManagement />} />
+            <Route path="terms-of-service/new" element={<TermsWizard />} />
+            <Route path="terms-of-service/:id/edit" element={<TermsWizard />} />
+            <Route path="terms-of-service/:id/preview" element={<TermsPreview />} />
+            <Route path="eula" element={<EULAManagement />} />
+            <Route path="eula/new" element={<EULAWizard />} />
+            <Route path="eula/:id/edit" element={<EULAWizard />} />
+            <Route path="eula/:id/preview" element={<EULAPreview />} />
+            <Route path="return-policy" element={<ReturnPolicyManagement />} />
+            <Route path="return-policy/new" element={<ReturnPolicyWizard />} />
+            <Route path="return-policy/:id/edit" element={<ReturnPolicyWizard />} />
+            <Route path="return-policy/:id/preview" element={<ReturnPolicyPreview />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>
