@@ -320,31 +320,47 @@ app.get("/api/policy/:userId", async (req, res) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(userId)}&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+    const url = `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Privacy Policy API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[Privacy Policy API] Response status:", response.status);
 
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Privacy Policy API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch policy" });
+        .json({ error: "Failed to fetch policy", details: errorText });
     }
 
     const data = await response.json();
+    console.log("[Privacy Policy API] Response data length:", data?.length);
+
     if (data && data.length > 0) {
       res.json(data[0]);
     } else {
-      res.status(404).json({ error: "No policy found for this user" });
+      console.warn("[Privacy Policy API] No data found for userId:", userId);
+      res
+        .status(404)
+        .json({ error: "No published policy found for this user" });
     }
   } catch (err) {
     console.error("Policy API Error:", err);
-    res.status(500).json({ error: "Failed to fetch policy" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch policy", details: err.message });
   }
 });
 
@@ -662,41 +678,64 @@ app.get("/api/cookie-policy/:userId", async (req, res) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/cookie_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+    const url = `${SUPABASE_URL}/rest/v1/cookie_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Cookie Policy API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[Cookie Policy API] Response status:", response.status);
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch cookie policy" });
+      const errorText = await response.text();
+      console.error("[Cookie Policy API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch cookie policy", details: errorText });
     }
 
     const data = await response.json();
+    console.log("[Cookie Policy API] Response data length:", data?.length);
+
     if (data && data.length > 0) {
       res.json(data[0]);
     } else {
-      res.status(404).json({ error: "No published cookie policy found for this user" });
+      console.warn("[Cookie Policy API] No data found for userId:", userId);
+      res
+        .status(404)
+        .json({ error: "No published cookie policy found for this user" });
     }
   } catch (err) {
     console.error("Cookie Policy API Error:", err);
-    res.status(500).json({ error: "Failed to fetch cookie policy" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch cookie policy", details: err.message });
   }
 });
 
 app.get("/uterms-cookie-embed.js", async (req, res) => {
   const { id } = req.query;
   if (!id) {
-    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
   }
 
   // Serve the static embed script from public/
   const path = require("path");
-  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-cookie-embed.js"));
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-cookie-embed.js"));
 });
 
 app.get("/api/tos/:userId", async (req, res) => {
@@ -706,40 +745,65 @@ app.get("/api/tos/:userId", async (req, res) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/terms_of_service?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+    const url = `${SUPABASE_URL}/rest/v1/terms_of_service?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Terms of Service API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[Terms of Service API] Response status:", response.status);
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch Terms of Service" });
+      const errorText = await response.text();
+      console.error("[Terms of Service API] Error response:", errorText);
+      return res.status(response.status).json({
+        error: "Failed to fetch Terms of Service",
+        details: errorText,
+      });
     }
 
     const data = await response.json();
+    console.log("[Terms of Service API] Response data length:", data?.length);
+
     if (data && data.length > 0) {
       res.json(data[0]);
     } else {
-      res.status(404).json({ error: "No published Terms of Service found for this user" });
+      console.warn("[Terms of Service API] No data found for userId:", userId);
+      res
+        .status(404)
+        .json({ error: "No published Terms of Service found for this user" });
     }
   } catch (err) {
     console.error("ToS API Error:", err);
-    res.status(500).json({ error: "Failed to fetch Terms of Service" });
+    res.status(500).json({
+      error: "Failed to fetch Terms of Service",
+      details: err.message,
+    });
   }
 });
 
 app.get("/uterms-tos-embed.js", (req, res) => {
   const { id } = req.query;
   if (!id) {
-    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
   }
 
   const path = require("path");
-  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-tos-embed.js"));
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-tos-embed.js"));
 });
 
 app.get("/api/eula/:userId", async (req, res) => {
@@ -749,40 +813,61 @@ app.get("/api/eula/:userId", async (req, res) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/eula?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+    const url = `${SUPABASE_URL}/rest/v1/eula?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[EULA API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[EULA API] Response status:", response.status);
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch EULA" });
+      const errorText = await response.text();
+      console.error("[EULA API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch EULA", details: errorText });
     }
 
     const data = await response.json();
+    console.log("[EULA API] Response data length:", data?.length);
+
     if (data && data.length > 0) {
       res.json(data[0]);
     } else {
+      console.warn("[EULA API] No data found for userId:", userId);
       res.status(404).json({ error: "No published EULA found for this user" });
     }
   } catch (err) {
     console.error("EULA API Error:", err);
-    res.status(500).json({ error: "Failed to fetch EULA" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch EULA", details: err.message });
   }
 });
 
 app.get("/uterms-eula-embed.js", (req, res) => {
   const { id } = req.query;
   if (!id) {
-    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
   }
 
   const path = require("path");
-  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-eula-embed.js"));
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-eula-embed.js"));
 });
 
 app.get("/api/return-policy/:userId", async (req, res) => {
@@ -792,40 +877,65 @@ app.get("/api/return-policy/:userId", async (req, res) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/return_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+    const url = `${SUPABASE_URL}/rest/v1/return_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Return Policy API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[Return Policy API] Response status:", response.status);
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch Return Policy" });
+      const errorText = await response.text();
+      console.error("[Return Policy API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch Return Policy", details: errorText });
     }
 
     const data = await response.json();
+    console.log("[Return Policy API] Response data length:", data?.length);
+
     if (data && data.length > 0) {
       res.json(data[0]);
     } else {
-      res.status(404).json({ error: "No published Return Policy found for this user" });
+      console.warn("[Return Policy API] No data found for userId:", userId);
+      res
+        .status(404)
+        .json({ error: "No published Return Policy found for this user" });
     }
   } catch (err) {
     console.error("Return Policy API Error:", err);
-    res.status(500).json({ error: "Failed to fetch Return Policy" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch Return Policy", details: err.message });
   }
 });
 
 app.get("/uterms-return-policy-embed.js", (req, res) => {
   const { id } = req.query;
   if (!id) {
-    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
   }
 
   const path = require("path");
-  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-return-policy-embed.js"));
+  res
+    .type("text/javascript")
+    .sendFile(
+      path.resolve(__dirname, "../public/uterms-return-policy-embed.js"),
+    );
 });
 
 app.get("/api/disclaimer/:userId", async (req, res) => {
@@ -835,39 +945,250 @@ app.get("/api/disclaimer/:userId", async (req, res) => {
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
-    const response = await fetch(
-      `${SUPABASE_URL}/rest/v1/disclaimer?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      {
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
+    const url = `${SUPABASE_URL}/rest/v1/disclaimer?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Disclaimer API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
       },
-    );
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[Disclaimer API] Response status:", response.status);
 
     if (!response.ok) {
-      return res.status(response.status).json({ error: "Failed to fetch Disclaimer" });
+      const errorText = await response.text();
+      console.error("[Disclaimer API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch Disclaimer", details: errorText });
     }
 
     const data = await response.json();
+    console.log("[Disclaimer API] Response data length:", data?.length);
+
     if (data && data.length > 0) {
       res.json(data[0]);
     } else {
-      res.status(404).json({ error: "No published Disclaimer found for this user" });
+      console.warn("[Disclaimer API] No data found for userId:", userId);
+      res
+        .status(404)
+        .json({ error: "No published Disclaimer found for this user" });
     }
   } catch (err) {
     console.error("Disclaimer API Error:", err);
-    res.status(500).json({ error: "Failed to fetch Disclaimer" });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch Disclaimer", details: err.message });
   }
 });
 
 app.get("/uterms-disclaimer-embed.js", (req, res) => {
   const { id } = req.query;
   if (!id) {
-    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
   }
   const path = require("path");
-  res.type("text/javascript").sendFile(path.resolve(__dirname, "../public/uterms-disclaimer-embed.js"));
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-disclaimer-embed.js"));
+});
+
+app.get("/api/shipping-policy/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/shipping_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Shipping Policy API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[Shipping Policy API] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Shipping Policy API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch Shipping Policy", details: errorText });
+    }
+
+    const data = await response.json();
+    console.log("[Shipping Policy API] Response data length:", data?.length);
+
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      console.warn("[Shipping Policy API] No data found for userId:", userId);
+      res
+        .status(404)
+        .json({ error: "No published Shipping Policy found for this user" });
+    }
+  } catch (err) {
+    console.error("Shipping Policy API Error:", err);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch Shipping Policy", details: err.message });
+  }
+});
+
+app.get("/uterms-shipping-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
+  }
+  const path = require("path");
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-shipping-embed.js"));
+});
+
+app.get("/api/aup/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/acceptable_use_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[AUP API] Fetching from URL:", url);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+    clearTimeout(timeoutId);
+
+    console.log("[AUP API] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[AUP API] Error response:", errorText);
+      return res.status(response.status).json({
+        error: "Failed to fetch Acceptable Use Policy",
+        details: errorText,
+      });
+    }
+
+    const data = await response.json();
+    console.log("[AUP API] Response data length:", data?.length);
+
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      console.warn("[AUP API] No data found for userId:", userId);
+      res.status(404).json({
+        error: "No published Acceptable Use Policy found for this user",
+      });
+    }
+  } catch (err) {
+    console.error("AUP API Error:", err);
+    res.status(500).json({
+      error: "Failed to fetch Acceptable Use Policy",
+      details: err.message,
+    });
+  }
+});
+
+app.get("/uterms-aup-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
+  }
+  const path = require("path");
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-aup-embed.js"));
+});
+
+app.get("/api/impressum/:userId", async (req, res) => {
+  const { userId } = req.params;
+  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+
+  try {
+    const url = `${SUPABASE_URL}/rest/v1/impressum?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
+    console.log("[Impressum API] Fetching from URL:", url);
+
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+
+    console.log("[Impressum API] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Impressum API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch Impressum", details: errorText });
+    }
+
+    const data = await response.json();
+    console.log("[Impressum API] Response data length:", data?.length);
+
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      console.warn("[Impressum API] No data found for userId:", userId);
+      res.status(404).json({ error: "No published Impressum found for this user" });
+    }
+  } catch (err) {
+    console.error("Impressum API Error:", err);
+    res.status(500).json({ error: "Failed to fetch Impressum", details: err.message });
+  }
+});
+
+app.get("/uterms-impressum-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
+  }
+  const path = require("path");
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-impressum-embed.js"));
 });
 
 const PORT = 3001;

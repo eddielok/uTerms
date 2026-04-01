@@ -30,6 +30,15 @@ import { ReturnPolicyWizard } from "./pages/ReturnPolicyWizard";
 import { DisclaimerManagement } from "./pages/DisclaimerManagement";
 import { DisclaimerPreview } from "./pages/DisclaimerPreview";
 import { DisclaimerWizard } from "./pages/DisclaimerWizard";
+import { ShippingPolicyManagement } from "./pages/ShippingPolicyManagement";
+import { ShippingPolicyPreview } from "./pages/ShippingPolicyPreview";
+import { ShippingPolicyWizard } from "./pages/ShippingPolicyWizard";
+import { AUPManagement } from "./pages/AUPManagement";
+import { AUPPreview } from "./pages/AUPPreview";
+import { AUPWizard } from "./pages/AUPWizard";
+import { ImpressumManagement } from "./pages/ImpressumManagement";
+import { ImpressumPreview } from "./pages/ImpressumPreview";
+import { ImpressumWizard } from "./pages/ImpressumWizard";
 import { PolicyPreview } from "./pages/PolicyPreview";
 import { PrivacyPolicyWizard } from "./pages/PrivacyPolicyWizard";
 import { Register } from "./pages/Register";
@@ -93,6 +102,18 @@ function App() {
             <Route path="disclaimer/new" element={<DisclaimerWizard />} />
             <Route path="disclaimer/:id/edit" element={<DisclaimerWizard />} />
             <Route path="disclaimer/:id/preview" element={<DisclaimerPreview />} />
+            <Route path="shipping-policy" element={<ShippingPolicyManagement />} />
+            <Route path="shipping-policy/new" element={<ShippingPolicyWizard />} />
+            <Route path="shipping-policy/:id/edit" element={<ShippingPolicyWizard />} />
+            <Route path="shipping-policy/:id/preview" element={<ShippingPolicyPreview />} />
+            <Route path="acceptable-use-policy" element={<AUPManagement />} />
+            <Route path="acceptable-use-policy/new" element={<AUPWizard />} />
+            <Route path="acceptable-use-policy/:id/edit" element={<AUPWizard />} />
+            <Route path="acceptable-use-policy/:id/preview" element={<AUPPreview />} />
+            <Route path="impressum" element={<ImpressumManagement />} />
+            <Route path="impressum/new" element={<ImpressumWizard />} />
+            <Route path="impressum/:id/edit" element={<ImpressumWizard />} />
+            <Route path="impressum/:id/preview" element={<ImpressumPreview />} />
             <Route path="settings" element={<Settings />} />
           </Route>
         </Route>
