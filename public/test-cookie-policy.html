@@ -50,7 +50,7 @@
         const policyContainer = document.getElementById("uterms-cookie-policy");
         policyContainer.innerHTML = `<p>Loading cookie policy for user: <code>${userId}</code>...</p>`;
 
-        fetch(`http://localhost:3001/api/cookie-policy/${encodeURIComponent(userId)}`)
+        fetch(`http://localhost:3001/api/embed/cookie-policy/${encodeURIComponent(userId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.error) {

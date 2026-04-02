@@ -542,16 +542,25 @@ export const ImpressumWizard: React.FC = () => {
       case 5:
         return (
           <div className="wizard-fields">
+            {(answers.operatingCountry === 'de' || answers.operatingCountry === 'at') && (
+              <div style={{ background: '#fefce8', border: '1px solid #fde68a', borderRadius: '6px', padding: '0.75rem 1rem', marginBottom: '0.75rem', fontSize: '0.875rem', color: '#92400e' }}>
+                <strong>Mandatory (EU Regulation 524/2013):</strong> The EU ODR link is legally required for all online sellers operating in Germany and Austria. It will always be included regardless of the toggle below.
+              </div>
+            )}
             <div className="wizard-checkboxes">
               <label className="wizard-checkbox-item">
                 <input
                   type="checkbox"
-                  checked={answers.euODR}
+                  checked={answers.euODR || answers.operatingCountry === 'de' || answers.operatingCountry === 'at'}
+                  disabled={answers.operatingCountry === 'de' || answers.operatingCountry === 'at'}
                   onChange={e => set('euODR', e.target.checked)}
                 />
                 <span>
                   Link to EU Online Dispute Resolution (ODR) platform{' '}
-                  <span style={{ color: '#6b7280' }}>— required for B2C online shops selling to EU consumers</span>
+                  {(answers.operatingCountry === 'de' || answers.operatingCountry === 'at')
+                    ? <strong style={{ color: '#b45309' }}> — mandatory under EU Regulation 524/2013</strong>
+                    : <span style={{ color: '#6b7280' }}>— required for B2C online shops selling to EU consumers</span>
+                  }
                 </span>
               </label>
               <label className="wizard-checkbox-item">

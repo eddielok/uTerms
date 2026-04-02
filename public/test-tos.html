@@ -49,7 +49,7 @@
         const tosContainer = document.getElementById("uterms-tos");
         tosContainer.innerHTML = `<p>Loading Terms of Service for user: <code>${userId}</code>...</p>`;
 
-        fetch(`http://localhost:3001/api/tos/${encodeURIComponent(userId)}`)
+        fetch(`http://localhost:3001/api/embed/tos/${encodeURIComponent(userId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.error) {

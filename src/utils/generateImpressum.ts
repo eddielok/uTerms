@@ -94,7 +94,7 @@ export const DEFAULT_IMPRESSUM_ANSWERS: ImpressumAnswers = {
   hasInsurance: false,
   insuranceProvider: '',
   insuranceCoverage: '',
-  euODR: false,
+  euODR: true,
   consumerDisputeParticipation: false,
   includeliabilityDisclaimer: true,
   effectiveDate: new Date().toISOString().split('T')[0],
@@ -249,11 +249,11 @@ function buildDE(a: ImpressumAnswers): string {
     }
   }
 
-  // EU ODR
-  if (a.euODR) {
+  // EU ODR — mandatory under EU Regulation 524/2013 for all EU/EEA online sellers (de, at)
+  if (a.euODR || a.operatingCountry === 'de' || a.operatingCountry === 'at') {
     blocks.push(`<p>
   <strong>EU-Streitschlichtung:</strong><br>
-  Die Europäische Kommission stellt eine Plattform zur Online-Streitbeilegung (OS) bereit:<br>
+  Gemäß Verordnung (EU) Nr. 524/2013 sind wir verpflichtet, auf die Plattform der Europäischen Kommission zur Online-Streitbeilegung (OS) hinzuweisen:<br>
   <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr/</a><br>
   Unsere E-Mail-Adresse finden Sie oben im Impressum.
 </p>`);
@@ -378,11 +378,11 @@ function buildEN(a: ImpressumAnswers): string {
     }
   }
 
-  // EU ODR
-  if (a.euODR) {
+  // EU ODR — mandatory under EU Regulation 524/2013 for all EU/EEA online sellers (de, at)
+  if (a.euODR || a.operatingCountry === 'de' || a.operatingCountry === 'at') {
     blocks.push(`<p>
   <strong>EU Online Dispute Resolution:</strong><br>
-  The European Commission provides a platform for online dispute resolution (ODR):<br>
+  Pursuant to EU Regulation No. 524/2013, we are required to provide a link to the European Commission's Online Dispute Resolution (ODR) platform:<br>
   <a href="https://ec.europa.eu/consumers/odr/" target="_blank" rel="noopener noreferrer">https://ec.europa.eu/consumers/odr/</a><br>
   Our email address can be found above in this legal notice.
 </p>`);

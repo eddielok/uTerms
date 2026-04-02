@@ -1,181 +1,361 @@
-import { Activity, AlertCircle, ArrowDownRight, ArrowUpRight, FileText, Settings, ShieldCheck, Users } from 'lucide-react';
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/Card';
-import './Dashboard.css';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useCookieConfig } from "../context/CookieContext";
+import { supabase } from "../lib/supabase";
+import "./Dashboard.css";
+
+const POLICY_DEFS = [
+  { table: "privacy_policies", label: "Privacy Policy", path: "/policy-management" },
+  { table: "cookie_policies", label: "Cookie Policy", path: "/cookie-policy" },
+  { table: "terms_of_service", label: "Terms of Service", path: "/terms-of-service" },
+  { table: "eula", label: "EULA", path: "/eula" },
+  { table: "return_policy", label: "Return Policy", path: "/return-policy" },
+  { table: "disclaimer", label: "Disclaimer", path: "/disclaimer" },
+  { table: "shipping_policy", label: "Shipping Policy", path: "/shipping-policy" },
+  { table: "acceptable_use_policy", label: "Acceptable Use Policy", path: "/acceptable-use-policy" },
+  { table: "impressum", label: "Impressum", path: "/impressum" },
+  { table: "accessibility_statement", label: "Accessibility Statement", path: "/accessibility-statement" },
+];
+
+interface PolicyInfo {
+  table: string;
+  label: string;
+  path: string;
+  id: string | null;
+  title: string | null;
+  updated_at: string | null;
+}
+
+interface ConsentRecord {
+  consent_data: Record<string, boolean>;
+  created_at: string;
+}
+
+function capitalize(s: string) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+
+interface StatCardProps {
+  label: string;
+  value: string;
+  sub: string;
+  color: "blue" | "green" | "purple" | "orange";
+}
+
+function StatCard({ label, value, sub, color }: StatCardProps) {
+  return (
+    <div className={`dash-stat-card dash-stat-${color}`}>
+      <p className="dash-stat-label">{label}</p>
+      <p className="dash-stat-value">{value}</p>
+      <p className="dash-stat-sub" title={sub}>{sub}</p>
+    </div>
+  );
+}
 
 export const Dashboard: React.FC = () => {
+  const { scannedData, bannerConfig, userId } = useCookieConfig();
+  const navigate = useNavigate();
+
+  const [totalConsents, setTotalConsents] = useState<number | null>(null);
+  const [consentRecords, setConsentRecords] = useState<ConsentRecord[]>([]);
+  const [policies, setPolicies] = useState<PolicyInfo[]>([]);
+  const [isLoadingConsents, setIsLoadingConsents] = useState(true);
+  const [isLoadingPolicies, setIsLoadingPolicies] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchConsents = async () => {
+      setIsLoadingConsents(true);
+      const { count } = await supabase
+        .from("visitor_consent")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId);
+      setTotalConsents(count ?? 0);
+
+      const { data } = await supabase
+        .from("visitor_consent")
+        .select("consent_data, created_at")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(500);
+      setConsentRecords(data || []);
+      setIsLoadingConsents(false);
+    };
+    fetchConsents();
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const fetchPolicies = async () => {
+      setIsLoadingPolicies(true);
+      const results = await Promise.all(
+        POLICY_DEFS.map(async (def) => {
+          const { data } = await supabase
+            .from(def.table)
+            .select("id, title, updated_at")
+            .eq("user_id", userId)
+            .eq("status", "published")
+            .order("updated_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return {
+            ...def,
+            id: data?.id ?? null,
+            title: data?.title ?? null,
+            updated_at: data?.updated_at ?? null,
+          };
+        })
+      );
+      setPolicies(results);
+      setIsLoadingPolicies(false);
+    };
+    fetchPolicies();
+  }, [userId]);
+
+  const acceptRate =
+    consentRecords.length > 0
+      ? Math.round(
+          (consentRecords.filter((r) =>
+            Object.values(r.consent_data || {}).every((v) => v === true)
+          ).length /
+            consentRecords.length) *
+            100
+        )
+      : null;
+
+  const categoryStats: Record<string, { accepted: number; total: number }> = {};
+  for (const record of consentRecords) {
+    for (const [cat, accepted] of Object.entries(record.consent_data || {})) {
+      if (!categoryStats[cat]) categoryStats[cat] = { accepted: 0, total: 0 };
+      categoryStats[cat].total++;
+      if (accepted) categoryStats[cat].accepted++;
+    }
+  }
+
+  const publishedCount = policies.filter((p) => p.id !== null).length;
+
   return (
     <div className="dashboard-container container">
       <div className="dashboard-header">
         <div>
           <h1 className="text-2xl font-bold mb-1">Privacy Operations</h1>
-          <p className="text-muted">Monitor and manage your organization's compliance status.</p>
-        </div>
-        <div className="flex gap-4">
-          <button className="flex items-center gap-2 text-sm font-medium text-muted hover:text-primary transition">
-            <Settings size={18} /> Settings
-          </button>
+          <p className="text-muted">
+            Monitor and manage your organization's compliance status.
+          </p>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="dashboard-grid kpis">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-success/10 text-success rounded-lg" style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
-                <ShieldCheck size={24} />
-              </div>
-              <span className="flex items-center text-sm font-medium text-success h-[24px]">
-                <ArrowUpRight size={16} className="mr-1" /> 2.4%
-              </span>
-            </div>
-            <div>
-              <p className="text-muted text-sm font-medium mb-1">Global Consent Rate</p>
-              <h3 className="text-3xl font-bold">92.4%</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-warning/10 text-warning rounded-lg" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-                <Activity size={24} />
-              </div>
-              <span className="flex items-center text-sm font-medium text-error h-[24px]">
-                <ArrowDownRight size={16} className="mr-1" /> 12
-              </span>
-            </div>
-            <div>
-              <p className="text-muted text-sm font-medium mb-1">Unclassified Trackers</p>
-              <h3 className="text-3xl font-bold">8</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-primary/10 text-primary rounded-lg" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)' }}>
-                <Users size={24} />
-              </div>
-              <span className="flex items-center text-sm font-medium text-success h-[24px]">
-                <ArrowUpRight size={16} className="mr-1" /> 4
-              </span>
-            </div>
-            <div>
-              <p className="text-muted text-sm font-medium mb-1">Open DSR Requests</p>
-              <h3 className="text-3xl font-bold">14</h3>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div className="p-3 bg-indigo-100 text-indigo-600 rounded-lg">
-                <FileText size={24} />
-              </div>
-            </div>
-            <div>
-              <p className="text-muted text-sm font-medium mb-1">Active Policies</p>
-              <h3 className="text-3xl font-bold">6</h3>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Stat cards */}
+      <div className="dash-stat-grid">
+        <StatCard
+          label="Total Consents"
+          value={isLoadingConsents ? "—" : (totalConsents ?? 0).toLocaleString()}
+          sub="All-time visitor consents"
+          color="blue"
+        />
+        <StatCard
+          label="Accept Rate"
+          value={
+            isLoadingConsents
+              ? "—"
+              : acceptRate !== null
+              ? `${acceptRate}%`
+              : "N/A"
+          }
+          sub="Visitors who accepted all"
+          color="green"
+        />
+        <StatCard
+          label="Cookies Scanned"
+          value={scannedData ? scannedData.cookiesCount.toString() : "—"}
+          sub={scannedData ? scannedData.url : "No scan yet"}
+          color="purple"
+        />
+        <StatCard
+          label="Published Policies"
+          value={
+            isLoadingPolicies ? "—" : `${publishedCount} / ${POLICY_DEFS.length}`
+          }
+          sub="Active policy documents"
+          color="orange"
+        />
       </div>
 
-      <div className="dashboard-grid main-content">
-        {/* Recent Activity List */}
-        <Card className="col-span-2">
-          <CardHeader>
-            <CardTitle>Needs Attention</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="task-list">
-              <div className="task-item">
-                <div className="task-icon text-warning bg-warning/10" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
-                  <AlertCircle size={20} />
-                </div>
-                <div className="task-info">
-                  <h4 className="font-medium text-sm">Review 8 unclassified cookies detected on marketing site</h4>
-                  <p className="text-xs text-muted mt-1">Detected 2 hours ago • Marketing Team</p>
-                </div>
-                <button className="text-primary text-sm font-medium hover:underline">Review</button>
+      <div className="dash-main-grid">
+        {/* Left column */}
+        <div className="dash-left">
+          {/* Consent by Category */}
+          <section className="dash-card">
+            <h2 className="dash-card-title">Consent by Category</h2>
+            {isLoadingConsents ? (
+              <p className="dash-empty">Loading…</p>
+            ) : Object.keys(categoryStats).length === 0 ? (
+              <p className="dash-empty">No consent data yet.</p>
+            ) : (
+              <div className="dash-category-list">
+                {Object.entries(categoryStats).map(([cat, { accepted, total }]) => {
+                  const pct = Math.round((accepted / total) * 100);
+                  return (
+                    <div key={cat} className="dash-category-item">
+                      <div className="dash-category-header">
+                        <span className="dash-category-name">{capitalize(cat)}</span>
+                        <span className="dash-category-pct">{pct}%</span>
+                      </div>
+                      <div className="dash-progress-track">
+                        <div
+                          className="dash-progress-fill"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="dash-category-sub">
+                        {accepted.toLocaleString()} / {total.toLocaleString()} visitors
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
+            )}
+          </section>
 
-              <div className="task-item">
-                <div className="task-icon text-error bg-error/10" style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' }}>
-                  <Users size={20} />
+          {/* Scanned Cookies */}
+          <section className="dash-card">
+            <h2 className="dash-card-title">Scanned Cookies</h2>
+            {!scannedData ? (
+              <p className="dash-empty">
+                No scan yet.{" "}
+                <button
+                  className="dash-link"
+                  onClick={() => navigate("/consent-management/scanner")}
+                >
+                  Scan a website
+                </button>
+              </p>
+            ) : (
+              <>
+                <p className="dash-scan-meta">
+                  <strong>{scannedData.url}</strong> &mdash;{" "}
+                  {new Date(scannedData.date).toLocaleDateString()}
+                </p>
+                <div className="dash-cookie-bars">
+                  {scannedData.categories.map((cat) => {
+                    const count = cat.providers.reduce(
+                      (acc, p) => acc + p.cookies.length,
+                      0
+                    );
+                    const maxCount = Math.max(
+                      ...scannedData.categories.map((c) =>
+                        c.providers.reduce((a, p) => a + p.cookies.length, 0)
+                      ),
+                      1
+                    );
+                    return (
+                      <div key={cat.id} className="dash-cookie-bar-item">
+                        <div className="dash-cookie-bar-header">
+                          <span className="dash-cookie-bar-name">{cat.name}</span>
+                          <span className="dash-cookie-bar-count">
+                            {count} {count === 1 ? "cookie" : "cookies"}
+                          </span>
+                        </div>
+                        <div className="dash-progress-track">
+                          <div
+                            className="dash-progress-fill dash-progress-cookies"
+                            style={{ width: `${(count / maxCount) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="task-info">
-                  <h4 className="font-medium text-sm">3 DSAR Requests approaching SLA deadline (48h remaining)</h4>
-                  <p className="text-xs text-muted mt-1">European Region • Legal Team</p>
-                </div>
-                <button className="text-primary text-sm font-medium hover:underline">Manage</button>
-              </div>
+              </>
+            )}
+          </section>
+        </div>
 
-              <div className="task-item">
-                <div className="task-icon text-primary bg-primary/10" style={{ backgroundColor: 'rgba(37, 99, 235, 0.1)' }}>
-                  <FileText size={20} />
-                </div>
-                <div className="task-info">
-                  <h4 className="font-medium text-sm">Draft Cookie Policy revision requires approval</h4>
-                  <p className="text-xs text-muted mt-1">Updated yesterday • Compliance Team</p>
-                </div>
-                <button className="text-primary text-sm font-medium hover:underline">Review</button>
+        {/* Right column */}
+        <div className="dash-right">
+          {/* Published Policies */}
+          <section className="dash-card">
+            <h2 className="dash-card-title">Policy Documents</h2>
+            {isLoadingPolicies ? (
+              <p className="dash-empty">Loading…</p>
+            ) : (
+              <div className="dash-policy-list">
+                {policies.map((p) => (
+                  <div key={p.table} className="dash-policy-item">
+                    <div className="dash-policy-left">
+                      <span
+                        className={`dash-policy-badge ${p.id ? "badge-published" : "badge-unset"}`}
+                      >
+                        {p.id ? "Published" : "Not set"}
+                      </span>
+                      <span className="dash-policy-label">{p.label}</span>
+                    </div>
+                    <div className="dash-policy-right">
+                      {p.updated_at && (
+                        <span className="dash-policy-date">
+                          {new Date(p.updated_at).toLocaleDateString()}
+                        </span>
+                      )}
+                      <button
+                        className="dash-link"
+                        onClick={() => navigate(p.path)}
+                      >
+                        {p.id ? "View" : "Create"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </section>
 
-        {/* Traffic map / regions placeholder */}
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Consent by Region</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="region-list">
-              <div className="region-item">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">Europe (GDPR)</span>
-                  <span className="text-sm font-bold">89%</span>
+          {/* Banner Settings */}
+          <section className="dash-card">
+            <h2 className="dash-card-title">Cookie Banner Settings</h2>
+            {!bannerConfig.isConfigured ? (
+              <p className="dash-empty">
+                Banner not configured.{" "}
+                <button
+                  className="dash-link"
+                  onClick={() => navigate("/consent-management/banner-settings")}
+                >
+                  Configure
+                </button>
+              </p>
+            ) : (
+              <div className="dash-banner-settings">
+                <div className="dash-banner-row">
+                  <span className="dash-banner-key">Theme</span>
+                  <span className="dash-banner-val">
+                    <span
+                      className="dash-color-swatch"
+                      style={{ background: bannerConfig.theme }}
+                    />
+                    {bannerConfig.theme}
+                  </span>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '89%' }}></div>
+                <div className="dash-banner-row">
+                  <span className="dash-banner-key">Style</span>
+                  <span className="dash-pill">{bannerConfig.styleMode}</span>
                 </div>
+                <div className="dash-banner-row">
+                  <span className="dash-banner-key">Position</span>
+                  <span className="dash-pill">{bannerConfig.position}</span>
+                </div>
+                <div className="dash-banner-row">
+                  <span className="dash-banner-key">Size</span>
+                  <span className="dash-pill">{bannerConfig.size}</span>
+                </div>
+                <button
+                  className="dash-configure-btn"
+                  onClick={() => navigate("/consent-management/banner-settings")}
+                >
+                  Configure Banner
+                </button>
               </div>
-              <div className="region-item">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">California (CCPA)</span>
-                  <span className="text-sm font-bold">95%</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '95%' }}></div>
-                </div>
-              </div>
-              <div className="region-item">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">Other US</span>
-                  <span className="text-sm font-bold">94%</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{ width: '94%' }}></div>
-                </div>
-              </div>
-              <div className="region-item">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm font-medium">Asia Pacific</span>
-                  <span className="text-sm font-bold">82%</span>
-                </div>
-                <div className="progress-bar">
-                  <div className="progress-fill bg-warning" style={{ width: '82%', backgroundColor: '#f59e0b' }}></div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );

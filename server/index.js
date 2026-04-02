@@ -1,5 +1,6 @@
 const express = require("express");
 const cors = require("cors");
+const rateLimit = require("express-rate-limit");
 const puppeteer = require("puppeteer");
 
 require("dotenv").config({
@@ -11,9 +12,118 @@ const {
   normalizeUrl,
 } = require("./utils");
 
+// ─── Credentials from environment (never hardcoded) ───────────────────────────
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error("[server] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from .env");
+  process.exit(1);
+}
+
+// ─── UUID validation helper ───────────────────────────────────────────────────
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function isValidUUID(id) {
+  return UUID_RE.test(id);
+}
+
+// ─── Supabase fetch helper ────────────────────────────────────────────────────
+async function fetchPublishedPolicy(table, userId) {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,status,generated,updated_at&order=updated_at.desc&limit=1`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const response = await fetch(url, {
+    signal: controller.signal,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+  });
+  clearTimeout(timeoutId);
+  if (!response.ok) {
+    const text = await response.text();
+    const err = new Error(text);
+    err.status = response.status;
+    throw err;
+  }
+  const data = await response.json();
+  return data && data.length > 0 ? data[0] : null;
+}
+
+// ─── API key validation middleware ────────────────────────────────────────────
+async function validateApiKey(req, res, next) {
+  const key = req.headers["x-api-key"];
+  if (!key) {
+    return res.status(401).json({
+      error: "API key required. Add the X-API-Key header to your request.",
+    });
+  }
+  const apiKeyRe = /^utk_[0-9a-f]{32}$/;
+  if (!apiKeyRe.test(key)) {
+    return res.status(401).json({ error: "Invalid API key format." });
+  }
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/api_keys?api_key=eq.${encodeURIComponent(key)}&select=user_id&limit=1`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    const data = await response.json();
+    if (!data || data.length === 0) {
+      return res.status(401).json({ error: "Invalid API key." });
+    }
+    const { userId } = req.params;
+    if (userId && data[0].user_id !== userId) {
+      return res.status(403).json({
+        error: "API key does not belong to this user ID.",
+      });
+    }
+    req.apiKeyUserId = data[0].user_id;
+    next();
+  } catch (err) {
+    console.error("[validateApiKey] Error:", err.message);
+    res.status(500).json({ error: "Could not validate API key." });
+  }
+}
+
+// ─── Rate limiting ─────────────────────────────────────────────────────────────
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later." },
+});
+
+const scanLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Scan rate limit exceeded. Please wait before scanning again." },
+});
+
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use("/api/embed", generalLimiter);
+app.use("/api/consent", generalLimiter);
+app.use("/api/policy", generalLimiter);
+app.use("/api/cookie-policy", generalLimiter);
+app.use("/api/tos", generalLimiter);
+app.use("/api/eula", generalLimiter);
+app.use("/api/return-policy", generalLimiter);
+app.use("/api/disclaimer", generalLimiter);
+app.use("/api/shipping-policy", generalLimiter);
+app.use("/api/aup", generalLimiter);
+app.use("/api/impressum", generalLimiter);
+app.use("/api/accessibility", generalLimiter);
+app.use("/api/scan", scanLimiter);
+app.use("/api/analyze-policy", scanLimiter);
 
 const CATEGORY_TEMPLATES = [
   {
@@ -233,9 +343,6 @@ app.post("/api/scan", async (req, res) => {
 
 app.get("/api/banner/:id", async (req, res) => {
   const { id } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
     const response = await fetch(
@@ -267,15 +374,56 @@ app.get("/api/banner/:id", async (req, res) => {
   }
 });
 
+app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+
+  const limit = Math.min(parseInt(req.query.limit) || 50, 100);
+  const offset = parseInt(req.query.offset) || 0;
+  const from = req.query.from ? `&created_at=gte.${encodeURIComponent(req.query.from)}` : "";
+
+  try {
+    const url =
+      `${SUPABASE_URL}/rest/v1/visitor_consent` +
+      `?user_id=eq.${encodeURIComponent(userId)}` +
+      `&select=id,visitor_id,consent_data,url,created_at` +
+      `&order=created_at.desc` +
+      `&limit=${limit}&offset=${offset}${from}`;
+
+    const response = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        Prefer: "count=exact",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Consent GET] Error:", errorText);
+      return res.status(response.status).json({ error: "Failed to fetch consent records", details: errorText });
+    }
+
+    const data = await response.json();
+    const totalCount = parseInt(response.headers.get("content-range")?.split("/")[1] || "0");
+
+    res.json({
+      records: data,
+      total: totalCount,
+      limit,
+      offset,
+    });
+  } catch (err) {
+    console.error("[Consent GET] Error:", err.message);
+    res.status(500).json({ error: "Failed to fetch consent records", details: err.message });
+  }
+});
+
 app.post("/api/consent", async (req, res) => {
   const { user_id, visitor_id, consent_data, url } = req.body;
   if (!user_id || !visitor_id || !consent_data) {
     return res.status(400).json({ error: "Missing required fields" });
   }
-
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
 
   try {
     const payload = {
@@ -313,11 +461,9 @@ app.post("/api/consent", async (req, res) => {
   }
 });
 
-app.get("/api/policy/:userId", async (req, res) => {
+app.get("/api/policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -570,10 +716,6 @@ app.get("/uterms-policy-embed.js", async (req, res) => {
       .send('console.error("User ID required");');
   }
 
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
-
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(id)}&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
@@ -671,11 +813,9 @@ app.get("/uterms-policy-embed.js", async (req, res) => {
   }
 });
 
-app.get("/api/cookie-policy/:userId", async (req, res) => {
+app.get("/api/cookie-policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/cookie_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -738,11 +878,9 @@ app.get("/uterms-cookie-embed.js", async (req, res) => {
     .sendFile(path.resolve(__dirname, "../public/uterms-cookie-embed.js"));
 });
 
-app.get("/api/tos/:userId", async (req, res) => {
+app.get("/api/tos/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/terms_of_service?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -806,11 +944,9 @@ app.get("/uterms-tos-embed.js", (req, res) => {
     .sendFile(path.resolve(__dirname, "../public/uterms-tos-embed.js"));
 });
 
-app.get("/api/eula/:userId", async (req, res) => {
+app.get("/api/eula/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/eula?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -870,11 +1006,9 @@ app.get("/uterms-eula-embed.js", (req, res) => {
     .sendFile(path.resolve(__dirname, "../public/uterms-eula-embed.js"));
 });
 
-app.get("/api/return-policy/:userId", async (req, res) => {
+app.get("/api/return-policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/return_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -938,11 +1072,9 @@ app.get("/uterms-return-policy-embed.js", (req, res) => {
     );
 });
 
-app.get("/api/disclaimer/:userId", async (req, res) => {
+app.get("/api/disclaimer/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/disclaimer?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1003,11 +1135,9 @@ app.get("/uterms-disclaimer-embed.js", (req, res) => {
     .sendFile(path.resolve(__dirname, "../public/uterms-disclaimer-embed.js"));
 });
 
-app.get("/api/shipping-policy/:userId", async (req, res) => {
+app.get("/api/shipping-policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/shipping_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1068,11 +1198,9 @@ app.get("/uterms-shipping-embed.js", (req, res) => {
     .sendFile(path.resolve(__dirname, "../public/uterms-shipping-embed.js"));
 });
 
-app.get("/api/aup/:userId", async (req, res) => {
+app.get("/api/aup/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/acceptable_use_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1135,11 +1263,9 @@ app.get("/uterms-aup-embed.js", (req, res) => {
     .sendFile(path.resolve(__dirname, "../public/uterms-aup-embed.js"));
 });
 
-app.get("/api/impressum/:userId", async (req, res) => {
+app.get("/api/impressum/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  const SUPABASE_URL = "https://oyfjwneybhlybfmbgiln.supabase.co";
-  const SUPABASE_ANON_KEY =
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im95Zmp3bmV5YmhseWJmbWJnaWxuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQwMzk3NTYsImV4cCI6MjA4OTYxNTc1Nn0.mPTYIf5q3OnWK88elyPqI_tfX4EJ4h91SmEuRN3AK44";
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/impressum?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1189,6 +1315,94 @@ app.get("/uterms-impressum-embed.js", (req, res) => {
   res
     .type("text/javascript")
     .sendFile(path.resolve(__dirname, "../public/uterms-impressum-embed.js"));
+});
+
+app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  console.log("[Accessibility API] Fetching for userId:", userId);
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/accessibility_statement?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&order=updated_at.desc&limit=1&select=id,title,status,generated,updated_at`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+
+    console.log("[Accessibility API] Response status:", response.status);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("[Accessibility API] Error response:", errorText);
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch Accessibility Statement", details: errorText });
+    }
+
+    const data = await response.json();
+    console.log("[Accessibility API] Response data length:", data?.length);
+
+    if (data && data.length > 0) {
+      res.json(data[0]);
+    } else {
+      console.warn("[Accessibility API] No data found for userId:", userId);
+      res.status(404).json({ error: "No published Accessibility Statement found for this user" });
+    }
+  } catch (err) {
+    console.error("Accessibility API Error:", err);
+    res.status(500).json({ error: "Failed to fetch Accessibility Statement", details: err.message });
+  }
+});
+
+app.get("/uterms-accessibility-embed.js", (req, res) => {
+  const { id } = req.query;
+  if (!id) {
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
+  }
+  const path = require("path");
+  res
+    .type("text/javascript")
+    .sendFile(path.resolve(__dirname, "../public/uterms-accessibility-embed.js"));
+});
+
+// ─── Public embed API routes (no auth — used by embed scripts on third-party sites) ──
+const EMBED_POLICY_ROUTES = [
+  { path: "/api/embed/policy/:userId",          table: "privacy_policies" },
+  { path: "/api/embed/cookie-policy/:userId",   table: "cookie_policies" },
+  { path: "/api/embed/tos/:userId",             table: "terms_of_service" },
+  { path: "/api/embed/eula/:userId",            table: "eula" },
+  { path: "/api/embed/return-policy/:userId",   table: "return_policy" },
+  { path: "/api/embed/disclaimer/:userId",      table: "disclaimer" },
+  { path: "/api/embed/shipping-policy/:userId", table: "shipping_policy" },
+  { path: "/api/embed/aup/:userId",             table: "acceptable_use_policy" },
+  { path: "/api/embed/impressum/:userId",       table: "impressum" },
+  { path: "/api/embed/accessibility/:userId",   table: "accessibility_statement" },
+];
+
+EMBED_POLICY_ROUTES.forEach(({ path, table }) => {
+  app.get(path, async (req, res) => {
+    const { userId } = req.params;
+    if (!isValidUUID(userId)) {
+      return res.status(400).json({ error: "Invalid user ID" });
+    }
+    try {
+      const policy = await fetchPublishedPolicy(table, userId);
+      if (!policy) {
+        return res.status(404).json({ error: "No published document found for this user" });
+      }
+      res.json(policy);
+    } catch (err) {
+      console.error(`[embed ${path}] Error:`, err.message);
+      res.status(err.status || 500).json({ error: err.message || "Failed to fetch document" });
+    }
+  });
 });
 
 const PORT = 3001;

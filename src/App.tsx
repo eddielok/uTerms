@@ -39,6 +39,10 @@ import { AUPWizard } from "./pages/AUPWizard";
 import { ImpressumManagement } from "./pages/ImpressumManagement";
 import { ImpressumPreview } from "./pages/ImpressumPreview";
 import { ImpressumWizard } from "./pages/ImpressumWizard";
+import { AccessibilityManagement } from "./pages/AccessibilityManagement";
+import { AccessibilityPreview } from "./pages/AccessibilityPreview";
+import { AccessibilityWizard } from "./pages/AccessibilityWizard";
+import { APIDocumentation } from "./pages/APIDocumentation";
 import { PolicyPreview } from "./pages/PolicyPreview";
 import { PrivacyPolicyWizard } from "./pages/PrivacyPolicyWizard";
 import { Register } from "./pages/Register";
@@ -114,7 +118,12 @@ function App() {
             <Route path="impressum/new" element={<ImpressumWizard />} />
             <Route path="impressum/:id/edit" element={<ImpressumWizard />} />
             <Route path="impressum/:id/preview" element={<ImpressumPreview />} />
+            <Route path="accessibility-statement" element={<AccessibilityManagement />} />
+            <Route path="accessibility-statement/new" element={<AccessibilityWizard />} />
+            <Route path="accessibility-statement/:id/edit" element={<AccessibilityWizard />} />
+            <Route path="accessibility-statement/:id/preview" element={<AccessibilityPreview />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="api-documentation" element={<APIDocumentation />} />
           </Route>
         </Route>
 

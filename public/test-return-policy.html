@@ -49,7 +49,7 @@
         const container = document.getElementById("uterms-return-policy");
         container.innerHTML = `<p>Loading Return Policy for user: <code>${userId}</code>...</p>`;
 
-        fetch(`http://localhost:3001/api/return-policy/${encodeURIComponent(userId)}`)
+        fetch(`http://localhost:3001/api/embed/return-policy/${encodeURIComponent(userId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.error) {

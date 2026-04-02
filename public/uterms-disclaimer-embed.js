@@ -32,7 +32,7 @@
     container.innerHTML =
       '<p style="font-family:sans-serif;color:#9ca3af;text-align:center;padding:2rem 1rem;">Loading Disclaimer\u2026</p>';
 
-    fetch(API_BASE + "/api/disclaimer/" + encodeURIComponent(userId))
+    fetch(API_BASE + "/api/embed/disclaimer/" + encodeURIComponent(userId))
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();

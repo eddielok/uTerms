@@ -49,7 +49,7 @@
         const container = document.getElementById("uterms-shipping-policy");
         container.innerHTML = `<p>Loading Shipping Policy for user: <code>${userId}</code>...</p>`;
 
-        fetch(`http://localhost:3001/api/shipping-policy/${encodeURIComponent(userId)}`)
+        fetch(`http://localhost:3001/api/embed/shipping-policy/${encodeURIComponent(userId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.error) {

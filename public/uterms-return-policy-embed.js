@@ -34,7 +34,7 @@
     container.innerHTML =
       '<p style="font-family:sans-serif;color:#9ca3af;text-align:center;padding:2rem 1rem;">Loading Return Policy\u2026</p>';
 
-    fetch(API_BASE + "/api/return-policy/" + encodeURIComponent(userId))
+    fetch(API_BASE + "/api/embed/return-policy/" + encodeURIComponent(userId))
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.json();

@@ -38,7 +38,7 @@
         const container = document.getElementById("uterms-disclaimer");
         container.innerHTML = `<p>Loading Disclaimer for user: <code>${userId}</code>...</p>`;
 
-        fetch(`http://localhost:3001/api/disclaimer/${encodeURIComponent(userId)}`)
+        fetch(`http://localhost:3001/api/embed/disclaimer/${encodeURIComponent(userId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.error) {
