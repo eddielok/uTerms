@@ -1405,6 +1405,208 @@ EMBED_POLICY_ROUTES.forEach(({ path, table }) => {
   });
 });
 
+// ─── GCM Compliance Scan ─────────────────────────────────────────────────────
+app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "URL is required" });
+
+  const targetUrl = normalizeUrl(url);
+  console.log(`[GCM Scan] Scanning: ${targetUrl}`);
+
+  let browser = null;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    );
+
+    // Track Google Tag network requests
+    const googleTagUrls = [];
+    page.on("request", (request) => {
+      const u = request.url();
+      if (
+        u.includes("googletagmanager.com/gtm.js") ||
+        u.includes("googletagmanager.com/gtag/js") ||
+        u.includes("google-analytics.com/analytics.js") ||
+        u.includes("googletagservices.com")
+      ) {
+        googleTagUrls.push(u);
+      }
+    });
+
+    await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+
+    // Inspect page scripts and dataLayer for GCM signals
+    const gcm = await page.evaluate(() => {
+      const dl = Array.isArray(window.dataLayer) ? window.dataLayer : [];
+      const scripts = Array.from(document.querySelectorAll("script"))
+        .map((s) => s.textContent || "");
+      const allText = scripts.join("\n");
+
+      const hasGtag = typeof window.gtag === "function";
+      const hasDataLayer = dl.length > 0;
+      const hasGtmId = /GTM-[A-Z0-9]+/.test(allText);
+
+      const CONSENT_DEFAULT_PATTERNS = [
+        "gtag('consent','default'",
+        'gtag("consent","default"',
+        "gtag('consent', 'default'",
+        'gtag("consent", "default"',
+      ];
+      const CONSENT_UPDATE_PATTERNS = [
+        "gtag('consent','update'",
+        'gtag("consent","update"',
+        "gtag('consent', 'update'",
+        'gtag("consent", "update"',
+      ];
+
+      const gtagConsentDefault = CONSENT_DEFAULT_PATTERNS.some((p) => allText.includes(p));
+      const gtagConsentUpdate = CONSENT_UPDATE_PATTERNS.some((p) => allText.includes(p));
+
+      const consentDefaultInDL = dl.some((e) => {
+        if (Array.isArray(e)) return e[0] === "consent" && e[1] === "default";
+        return false;
+      });
+
+      // Check ordering: does consent default appear before the GTM script element?
+      const scriptEls = Array.from(document.querySelectorAll("script"));
+      let consentIdx = -1;
+      let gtmIdx = -1;
+      scriptEls.forEach((s, i) => {
+        const src = s.src || "";
+        const text = s.textContent || "";
+        if (
+          (src.includes("googletagmanager.com/gtm.js") ||
+            src.includes("gtag/js")) &&
+          gtmIdx === -1
+        ) {
+          gtmIdx = i;
+        }
+        if (CONSENT_DEFAULT_PATTERNS.some((p) => text.includes(p)) && consentIdx === -1) {
+          consentIdx = i;
+        }
+      });
+
+      return {
+        hasGtag,
+        hasDataLayer,
+        hasGtmId,
+        gtagConsentDefault,
+        gtagConsentUpdate,
+        consentDefaultInDL,
+        adStorage: allText.includes("ad_storage"),
+        analyticsStorage: allText.includes("analytics_storage"),
+        adUserData: allText.includes("ad_user_data"),
+        adPersonalization: allText.includes("ad_personalization"),
+        consentBeforeGtm:
+          consentIdx !== -1 && gtmIdx !== -1
+            ? consentIdx < gtmIdx
+            : null,
+      };
+    });
+
+    const hasGoogleTag =
+      googleTagUrls.length > 0 || gcm.hasGtag || gcm.hasGtmId || gcm.hasDataLayer;
+    const hasConsentDefault = gcm.gtagConsentDefault || gcm.consentDefaultInDL;
+
+    const checks = [
+      {
+        id: "gtm_detected",
+        label: "Google Tag Manager / gtag.js detected",
+        description: "GTM or gtag.js is loaded on the page.",
+        pass: hasGoogleTag,
+        required: true,
+      },
+      {
+        id: "consent_default",
+        label: "Consent default configured",
+        description: "gtag('consent', 'default', {...}) is called on the page.",
+        pass: hasConsentDefault,
+        required: true,
+      },
+      {
+        id: "consent_before_gtm",
+        label: "Consent default fires before GTM",
+        description: "The consent default command must be placed before the GTM/gtag script tag.",
+        pass: gcm.consentBeforeGtm === true
+          ? true
+          : gcm.consentBeforeGtm === false
+          ? false
+          : null,
+        required: true,
+      },
+      {
+        id: "ad_storage",
+        label: "ad_storage parameter set",
+        description: "Required GCM parameter controlling Google Ads cookies.",
+        pass: gcm.adStorage,
+        required: true,
+      },
+      {
+        id: "analytics_storage",
+        label: "analytics_storage parameter set",
+        description: "Required GCM parameter controlling Google Analytics cookies.",
+        pass: gcm.analyticsStorage,
+        required: true,
+      },
+      {
+        id: "ad_user_data",
+        label: "ad_user_data parameter set (GCM v2)",
+        description: "Controls sending user data to Google for advertising. Required by GCM v2.",
+        pass: gcm.adUserData,
+        required: true,
+      },
+      {
+        id: "ad_personalization",
+        label: "ad_personalization parameter set (GCM v2)",
+        description: "Controls personalized advertising. Required by GCM v2.",
+        pass: gcm.adPersonalization,
+        required: true,
+      },
+      {
+        id: "consent_update",
+        label: "Consent update mechanism present",
+        description: "gtag('consent', 'update', {...}) is called when visitors make a consent decision.",
+        pass: gcm.gtagConsentUpdate,
+        required: false,
+      },
+    ];
+
+    const requiredChecks = checks.filter((c) => c.required);
+    const requiredPassed = requiredChecks.filter((c) => c.pass === true).length;
+
+    let status;
+    if (!hasGoogleTag) {
+      status = "not_applicable";
+    } else if (requiredPassed === requiredChecks.length) {
+      status = "compliant";
+    } else if (requiredPassed > 0) {
+      status = "partial";
+    } else {
+      status = "non_compliant";
+    }
+
+    res.json({
+      url: targetUrl,
+      scannedAt: new Date().toISOString(),
+      status,
+      passCount: checks.filter((c) => c.pass === true).length,
+      totalChecks: checks.length,
+      checks,
+    });
+  } catch (err) {
+    console.error("[GCM Scan] Error:", err.message);
+    res.status(500).json({ error: "Failed to scan for GCM compliance", details: err.message });
+  } finally {
+    if (browser) await browser.close();
+  }
+});
+
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Scanner API running on http://localhost:${PORT}`);

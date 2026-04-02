@@ -24,8 +24,10 @@ const SITE_CATEGORIES = [
   },
 ];
 
-// Routes that belong to the authenticated app — banner should not appear there
+// Routes where the banner should not appear (app pages + auth pages)
 const APP_ROUTE_PREFIXES = [
+  '/login',
+  '/register',
   '/dashboard',
   '/consent-management',
   '/policy-management',
@@ -68,7 +70,7 @@ export const CookieBanner: React.FC = () => {
 
   useEffect(() => {
     if (isPreview) return;
-    const consent = localStorage.getItem('uterms_site_consent');
+    const consent = localStorage.getItem('uterms_consent');
     if (!consent) {
       const timer = setTimeout(() => setIsVisible(true), 800);
       return () => clearTimeout(timer);
@@ -79,7 +81,7 @@ export const CookieBanner: React.FC = () => {
     if (isPreview) {
       setIsPreviewVisible(false);
     } else {
-      localStorage.setItem('uterms_site_consent', consentValue);
+      localStorage.setItem('uterms_consent', consentValue);
       setIsVisible(false);
     }
   };
