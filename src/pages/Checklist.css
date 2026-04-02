@@ -2,7 +2,9 @@
   padding: 2rem;
   max-width: 1000px;
   margin: 0 auto;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
 }
 
 .checklist-container {
@@ -123,7 +125,9 @@
   border: 1px solid #e5e7eb;
   border-radius: 4px;
   overflow: hidden;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
 }
 
 .code-snippet-header {
@@ -140,7 +144,8 @@
   font-weight: 600;
   color: #9ca3af;
   letter-spacing: 0.05em;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .code-snippet-copy {
@@ -156,7 +161,8 @@
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .code-snippet-copy:hover {
@@ -175,10 +181,10 @@
 
 /* ── GCM Compliance Scan ── */
 .gcm-input-row {
-  display: flex;
-  gap: 0.6rem;
   margin-top: 0.875rem;
-  align-items: center;
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
 }
 
 .gcm-url-input {
@@ -229,18 +235,30 @@
   font-size: 0.8125rem;
 }
 
-.gcm-check-item.pass  { background: #f0fdf4; }
-.gcm-check-item.fail  { background: #fef2f2; }
-.gcm-check-item.unknown { background: #fefce8; }
+.gcm-check-item.pass {
+  background: #f0fdf4;
+}
+.gcm-check-item.fail {
+  background: #fef2f2;
+}
+.gcm-check-item.unknown {
+  background: #fefce8;
+}
 
 .gcm-check-icon {
   flex-shrink: 0;
   margin-top: 1px;
 }
 
-.gcm-check-item.pass .gcm-check-icon    { color: #16a34a; }
-.gcm-check-item.fail .gcm-check-icon    { color: #dc2626; }
-.gcm-check-item.unknown .gcm-check-icon { color: #d97706; }
+.gcm-check-item.pass .gcm-check-icon {
+  color: #16a34a;
+}
+.gcm-check-item.fail .gcm-check-icon {
+  color: #dc2626;
+}
+.gcm-check-item.unknown .gcm-check-icon {
+  color: #d97706;
+}
 
 .gcm-check-text {
   flex: 1;
@@ -292,14 +310,48 @@
   text-align: center;
 }
 
-.gcm-status-compliant    { color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; }
-.gcm-status-partial      { color: #d97706; background: #fefce8; border: 1px solid #fde68a; }
-.gcm-status-non_compliant { color: #dc2626; background: #fef2f2; border: 1px solid #fecaca; }
-.gcm-status-not_applicable { color: #6b7280; background: #f9fafb; border: 1px solid #e5e7eb; }
-.gcm-status-scanning     { color: #6366f1; background: #eef2ff; border: 1px solid #c7d2fe; }
+.gcm-status-compliant {
+  color: #16a34a;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+.gcm-status-partial {
+  color: #d97706;
+  background: #fefce8;
+  border: 1px solid #fde68a;
+}
+.gcm-status-non_compliant {
+  color: #dc2626;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+}
+.gcm-status-not_applicable {
+  color: #6b7280;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+.gcm-status-scanning {
+  color: #6366f1;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+}
+
+.gcm-action-col {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.gcm-scan-again-btn {
+  font-size: 0.75rem;
+  padding: 0.4rem 0.75rem;
+}
 
 @keyframes gcm-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .gcm-spin {
