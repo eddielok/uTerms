@@ -11,6 +11,7 @@ import {
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCookieConfig } from "../context/CookieContext";
+import { API_URL, APP_URL } from "../lib/config";
 import { supabase } from "../lib/supabase";
 import "./Checklist.css";
 
@@ -141,7 +142,7 @@ export const Checklist: React.FC = () => {
     setGcmScanning(true);
     setGcmError(null);
     try {
-      const response = await fetch("http://localhost:3001/api/gcm-scan", {
+      const response = await fetch(`${API_URL}/api/gcm-scan`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: gcmUrl.trim() }),
@@ -175,7 +176,7 @@ export const Checklist: React.FC = () => {
     } catch (err: any) {
       if (err instanceof TypeError && err.message.includes("fetch")) {
         setGcmError(
-          "Cannot reach backend. Make sure the server is running: node server/index.js",
+          `Cannot reach backend at ${API_URL}. Make sure the server is running: node server/index.js`,
         );
       } else {
         setGcmError(err.message || "Failed to scan");
@@ -186,7 +187,7 @@ export const Checklist: React.FC = () => {
   };
 
   const handleCopy = () => {
-    const scriptText = `<script src="http://localhost:5173/uterms-embed.js?id=${userId || "YOUR_USER_ID"}&autoBlock=on"></script>`;
+    const scriptText = `<script src="${APP_URL}/uterms-embed.js?id=${userId || "YOUR_USER_ID"}&mode=auto&api=${API_URL}"></script>`;
     navigator.clipboard.writeText(scriptText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -201,6 +202,15 @@ export const Checklist: React.FC = () => {
 
   return (
     <div className="checklist-page-container">
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem 0' }}>
+          Cookie Consent Setup
+        </h1>
+        <p style={{ color: '#6b7280', fontSize: '0.95rem', margin: 0, lineHeight: 1.6 }}>
+          Follow these steps to make your website compliant with GDPR, CCPA, and Google Consent Mode v2.
+          Complete each step in order — scanning your website first unlocks the embed snippets below.
+        </p>
+      </div>
       <div className="checklist-container">
         <ChecklistItem
           step={1}
@@ -261,14 +271,56 @@ export const Checklist: React.FC = () => {
           description={
             hasScan ? (
               <>
-                <div className="checklist-code-snippet mt-4">
+                <p style={{ margin: "0 0 0.75rem 0" }}>
+                  Paste this snippet into every page of your website, just before the closing{" "}
+                  <code>&lt;/body&gt;</code> tag. The banner will appear automatically on first visit.
+                </p>
+                <div className="checklist-code-snippet">
                   <div className="code-snippet-header">
                     <span className="code-snippet-title">CODE SNIPPET</span>
                   </div>
                   <div className="code-snippet-content">
-                    {`<script src="http://localhost:5173/uterms-embed.js?id=${userId || "YOUR_USER_ID"}&autoBlock=on"></script>`}
+                    {`<script src="${APP_URL}/uterms-embed.js?id=${userId || "YOUR_USER_ID"}&mode=auto&api=${API_URL}"></script>`}
                   </div>
                 </div>
+                <p style={{ margin: "0.75rem 0 0.25rem 0", fontSize: "0.85rem", color: "#6b7280" }}>
+                  <strong style={{ color: "#374151" }}>mode=auto</strong> — automatically blocks third-party scripts (analytics, marketing) until the visitor gives consent. To opt a script into blocking, replace its{" "}
+                  <code>src</code> with <code>data-src</code> and add a <code>data-category</code>:
+                </p>
+                <div className="checklist-code-snippet">
+                  <div className="code-snippet-header">
+                    <span className="code-snippet-title">EXAMPLE — BLOCKING A SCRIPT</span>
+                  </div>
+                  <div className="code-snippet-content">{`<!-- Before -->\n<script src="https://www.googletagmanager.com/gtag/js"></script>\n\n<!-- After (blocked until visitor consents to analytics) -->\n<script data-src="https://www.googletagmanager.com/gtag/js" data-category="analytics"></script>`}</div>
+                </div>
+
+                <p style={{ margin: "1rem 0 0.25rem 0", fontSize: "0.85rem", color: "#6b7280" }}>
+                  <strong style={{ color: "#374151" }}>Multi-language</strong> — the banner automatically detects each visitor's browser language. To force a specific language, add <code>lang=</code> to the script URL:
+                </p>
+                <div className="checklist-code-snippet">
+                  <div className="code-snippet-header">
+                    <span className="code-snippet-title">EXAMPLE — FORCE A LANGUAGE</span>
+                  </div>
+                  <div className="code-snippet-content">{`<script src="${APP_URL}/uterms-embed.js?id=${userId || "YOUR_USER_ID"}&mode=auto&api=${API_URL}&lang=zh-TW"></script>`}</div>
+                </div>
+                <p style={{ margin: "0.5rem 0 0", fontSize: "0.8rem", color: "#9ca3af", lineHeight: 1.6 }}>
+                  Supported languages:{" "}
+                  {[
+                    ["en", "English"],
+                    ["zh-CN", "简体中文"],
+                    ["zh-TW", "繁體中文"],
+                    ["fr", "Français"],
+                    ["de", "Deutsch"],
+                    ["es", "Español"],
+                    ["pt-BR", "Português (BR)"],
+                    ["ja", "日本語"],
+                    ["ms", "Bahasa Melayu"],
+                  ].map(([code, label], i, arr) => (
+                    <span key={code}>
+                      <code>{code}</code> {label}{i < arr.length - 1 ? " · " : ""}
+                    </span>
+                  ))}
+                </p>
               </>
             ) : (
               "Generate an embedded script to install the consent banner on your website. Please scan your website first."

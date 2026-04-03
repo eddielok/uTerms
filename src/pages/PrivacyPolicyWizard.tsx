@@ -2,6 +2,7 @@ import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles, Wand2 } from "lucide-r
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useCookieConfig } from "../context/CookieContext";
+import { API_URL } from "../lib/config";
 import { supabase } from "../lib/supabase";
 import {
   DEFAULT_ANSWERS,
@@ -176,7 +177,7 @@ export const PrivacyPolicyWizard: React.FC = () => {
     setAiScanError(null);
     setAiScanSuccess(false);
     try {
-      const response = await fetch("http://localhost:3001/api/analyze-policy", {
+      const response = await fetch(`${API_URL}/api/analyze-policy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: urlToScan }),

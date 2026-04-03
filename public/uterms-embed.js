@@ -1,6 +1,207 @@
 (function () {
   const CONSENT_COOKIE_NAME = "uterms_consent";
 
+  // GCM v2 helper — safely calls gtag or pushes to dataLayer
+  function gtagConsent(type, params) {
+    if (typeof window.gtag === "function") {
+      window.gtag("consent", type, params);
+    } else if (Array.isArray(window.dataLayer)) {
+      window.dataLayer.push(["consent", type, params]);
+    }
+  }
+
+  // Set GCM v2 defaults to denied immediately when script loads,
+  // before any GTM tag has a chance to fire.
+  gtagConsent("default", {
+    ad_storage: "denied",
+    analytics_storage: "denied",
+    ad_user_data: "denied",
+    ad_personalization: "denied",
+    functionality_storage: "denied",
+    security_storage: "granted",
+    wait_for_update: 500,
+  });
+
+  // ── Translations ─────────────────────────────────────────────────────────────
+  const TRANSLATIONS = {
+    en: {
+      title: 'We value your privacy',
+      description: 'We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.',
+      customize: 'Customize Preferences',
+      rejectAll: 'Reject All',
+      acceptAll: 'Accept All',
+      modalTitle: 'Consent Preferences',
+      savePreferences: 'Save Preferences',
+      alwaysActive: 'Always Active',
+      categories: {
+        essential:     { name: 'Essential Cookies',  description: 'Required for the website to function normally. Cannot be disabled.' },
+        functional:    { name: 'Functional',          description: 'Enables the website to provide enhanced functionality and personalization.' },
+        analytics:     { name: 'Analytics',           description: 'Helps us understand how visitors interact with the website.' },
+        marketing:     { name: 'Marketing',           description: 'Used to deliver personalized advertisements.' },
+        social:        { name: 'Social',              description: 'Enables integration with social media platforms.' },
+        unclassified:  { name: 'Unclassified',        description: 'Cookies that we are in the process of classifying.' },
+      },
+    },
+    'zh-CN': {
+      title: '我们重视您的隐私',
+      description: '我们使用 Cookie 提升您的浏览体验、提供个性化内容或广告，并分析我们的网站流量。点击"全部接受"即表示您同意我们使用 Cookie。',
+      customize: '自定义偏好设置',
+      rejectAll: '全部拒绝',
+      acceptAll: '全部接受',
+      modalTitle: '同意偏好设置',
+      savePreferences: '保存设置',
+      alwaysActive: '始终启用',
+      categories: {
+        essential:     { name: '必要 Cookie',    description: '网站正常运行所必需，无法禁用。' },
+        functional:    { name: '功能性 Cookie',  description: '使网站能够提供增强的功能和个性化体验。' },
+        analytics:     { name: '分析 Cookie',    description: '帮助我们了解访问者与网站的互动方式。' },
+        marketing:     { name: '营销 Cookie',    description: '用于投放个性化广告。' },
+        social:        { name: '社交 Cookie',    description: '实现与社交媒体平台的集成。' },
+        unclassified:  { name: '未分类 Cookie',  description: '我们正在对这些 Cookie 进行分类。' },
+      },
+    },
+    'zh-TW': {
+      title: '我們重視您的隱私',
+      description: '我們使用 Cookie 提升您的瀏覽體驗、提供個人化內容或廣告，並分析我們的網站流量。點擊「全部接受」即表示您同意我們使用 Cookie。',
+      customize: '自訂偏好設定',
+      rejectAll: '全部拒絕',
+      acceptAll: '全部接受',
+      modalTitle: '同意偏好設定',
+      savePreferences: '儲存設定',
+      alwaysActive: '始終啟用',
+      categories: {
+        essential:     { name: '必要 Cookie',    description: '網站正常運作所必需，無法停用。' },
+        functional:    { name: '功能性 Cookie',  description: '使網站能夠提供增強的功能和個人化體驗。' },
+        analytics:     { name: '分析 Cookie',    description: '幫助我們了解訪客與網站的互動方式。' },
+        marketing:     { name: '行銷 Cookie',    description: '用於投放個人化廣告。' },
+        social:        { name: '社群 Cookie',    description: '實現與社群媒體平台的整合。' },
+        unclassified:  { name: '未分類 Cookie',  description: '我們正在對這些 Cookie 進行分類。' },
+      },
+    },
+    fr: {
+      title: 'Nous respectons votre vie privée',
+      description: 'Nous utilisons des cookies pour améliorer votre expérience de navigation, diffuser des publicités ou du contenu personnalisé et analyser notre trafic. En cliquant sur « Tout accepter », vous consentez à notre utilisation des cookies.',
+      customize: 'Personnaliser les préférences',
+      rejectAll: 'Tout refuser',
+      acceptAll: 'Tout accepter',
+      modalTitle: 'Préférences de consentement',
+      savePreferences: 'Enregistrer les préférences',
+      alwaysActive: 'Toujours actif',
+      categories: {
+        essential:     { name: 'Cookies essentiels',       description: 'Nécessaires au bon fonctionnement du site. Ne peuvent pas être désactivés.' },
+        functional:    { name: 'Cookies fonctionnels',     description: 'Permettent au site de fournir des fonctionnalités améliorées et une personnalisation.' },
+        analytics:     { name: 'Cookies analytiques',     description: 'Nous aident à comprendre comment les visiteurs interagissent avec le site.' },
+        marketing:     { name: 'Cookies marketing',       description: 'Utilisés pour diffuser des publicités personnalisées.' },
+        social:        { name: 'Cookies sociaux',         description: "Permettent l'intégration avec les plateformes de médias sociaux." },
+        unclassified:  { name: 'Cookies non classifiés',  description: 'Cookies en cours de classification.' },
+      },
+    },
+    de: {
+      title: 'Wir respektieren Ihre Privatsphäre',
+      description: 'Wir verwenden Cookies, um Ihre Browsing-Erfahrung zu verbessern, personalisierte Werbung oder Inhalte anzuzeigen und unseren Datenverkehr zu analysieren. Durch Klicken auf „Alle akzeptieren" stimmen Sie der Verwendung von Cookies zu.',
+      customize: 'Einstellungen anpassen',
+      rejectAll: 'Alle ablehnen',
+      acceptAll: 'Alle akzeptieren',
+      modalTitle: 'Einwilligungseinstellungen',
+      savePreferences: 'Einstellungen speichern',
+      alwaysActive: 'Immer aktiv',
+      categories: {
+        essential:     { name: 'Notwendige Cookies',           description: 'Für den ordnungsgemäßen Betrieb der Website erforderlich. Können nicht deaktiviert werden.' },
+        functional:    { name: 'Funktionale Cookies',          description: 'Ermöglichen der Website, erweiterte Funktionen und Personalisierung bereitzustellen.' },
+        analytics:     { name: 'Analyse-Cookies',              description: 'Helfen uns zu verstehen, wie Besucher mit der Website interagieren.' },
+        marketing:     { name: 'Marketing-Cookies',            description: 'Werden verwendet, um personalisierte Werbung zu schalten.' },
+        social:        { name: 'Social-Media-Cookies',         description: 'Ermöglichen die Integration mit sozialen Medien.' },
+        unclassified:  { name: 'Nicht klassifizierte Cookies', description: 'Cookies, die wir gerade klassifizieren.' },
+      },
+    },
+    es: {
+      title: 'Valoramos su privacidad',
+      description: 'Utilizamos cookies para mejorar su experiencia de navegación, mostrar anuncios o contenido personalizado y analizar nuestro tráfico. Al hacer clic en "Aceptar todo", usted consiente el uso de cookies.',
+      customize: 'Personalizar preferencias',
+      rejectAll: 'Rechazar todo',
+      acceptAll: 'Aceptar todo',
+      modalTitle: 'Preferencias de consentimiento',
+      savePreferences: 'Guardar preferencias',
+      alwaysActive: 'Siempre activo',
+      categories: {
+        essential:     { name: 'Cookies esenciales',      description: 'Necesarias para el correcto funcionamiento del sitio. No se pueden desactivar.' },
+        functional:    { name: 'Cookies funcionales',     description: 'Permiten al sitio web ofrecer funcionalidades mejoradas y personalización.' },
+        analytics:     { name: 'Cookies analíticas',      description: 'Nos ayudan a entender cómo los visitantes interactúan con el sitio.' },
+        marketing:     { name: 'Cookies de marketing',    description: 'Se utilizan para mostrar anuncios personalizados.' },
+        social:        { name: 'Cookies sociales',        description: 'Permiten la integración con plataformas de redes sociales.' },
+        unclassified:  { name: 'Cookies no clasificadas', description: 'Cookies que estamos en proceso de clasificar.' },
+      },
+    },
+    'pt-BR': {
+      title: 'Valorizamos sua privacidade',
+      description: 'Usamos cookies para melhorar sua experiência de navegação, exibir anúncios ou conteúdo personalizado e analisar nosso tráfego. Ao clicar em "Aceitar tudo", você consente com o uso de cookies.',
+      customize: 'Personalizar preferências',
+      rejectAll: 'Rejeitar tudo',
+      acceptAll: 'Aceitar tudo',
+      modalTitle: 'Preferências de consentimento',
+      savePreferences: 'Salvar preferências',
+      alwaysActive: 'Sempre ativo',
+      categories: {
+        essential:     { name: 'Cookies essenciais',       description: 'Necessários para o funcionamento correto do site. Não podem ser desativados.' },
+        functional:    { name: 'Cookies funcionais',       description: 'Permitem que o site forneça funcionalidades aprimoradas e personalização.' },
+        analytics:     { name: 'Cookies analíticos',       description: 'Nos ajudam a entender como os visitantes interagem com o site.' },
+        marketing:     { name: 'Cookies de marketing',     description: 'Usados para exibir anúncios personalizados.' },
+        social:        { name: 'Cookies sociais',          description: 'Permitem a integração com plataformas de redes sociais.' },
+        unclassified:  { name: 'Cookies não classificados', description: 'Cookies que estamos em processo de classificação.' },
+      },
+    },
+    ja: {
+      title: 'プライバシーを大切にしています',
+      description: '当サイトでは、閲覧体験の向上、パーソナライズされた広告・コンテンツの配信、アクセス解析のためにCookieを使用しています。「すべて同意する」をクリックすると、Cookieの使用に同意したことになります。',
+      customize: '設定をカスタマイズ',
+      rejectAll: 'すべて拒否',
+      acceptAll: 'すべて同意する',
+      modalTitle: '同意設定',
+      savePreferences: '設定を保存',
+      alwaysActive: '常に有効',
+      categories: {
+        essential:     { name: '必須Cookie',        description: 'ウェブサイトの正常な動作に必要です。無効にすることはできません。' },
+        functional:    { name: '機能性Cookie',      description: 'ウェブサイトが高度な機能やパーソナライゼーションを提供できるようにします。' },
+        analytics:     { name: '分析Cookie',        description: '訪問者がウェブサイトとどのように関わっているかを理解するのに役立ちます。' },
+        marketing:     { name: 'マーケティングCookie', description: 'パーソナライズされた広告を配信するために使用されます。' },
+        social:        { name: 'ソーシャルCookie',  description: 'ソーシャルメディアプラットフォームとの統合を可能にします。' },
+        unclassified:  { name: '未分類Cookie',      description: '現在分類中のCookieです。' },
+      },
+    },
+    ms: {
+      title: 'Kami menghargai privasi anda',
+      description: 'Kami menggunakan kuki untuk meningkatkan pengalaman melayari anda, menyajikan iklan atau kandungan yang diperibadikan, dan menganalisis trafik kami. Dengan mengklik "Terima Semua", anda bersetuju dengan penggunaan kuki kami.',
+      customize: 'Sesuaikan Keutamaan',
+      rejectAll: 'Tolak Semua',
+      acceptAll: 'Terima Semua',
+      modalTitle: 'Keutamaan Persetujuan',
+      savePreferences: 'Simpan Keutamaan',
+      alwaysActive: 'Sentiasa Aktif',
+      categories: {
+        essential:     { name: 'Kuki Penting',              description: 'Diperlukan untuk laman web berfungsi dengan normal. Tidak boleh dinyahdayakan.' },
+        functional:    { name: 'Kuki Fungsional',           description: 'Membolehkan laman web menyediakan fungsi yang dipertingkatkan dan pemperibadian.' },
+        analytics:     { name: 'Kuki Analitik',             description: 'Membantu kami memahami cara pelawat berinteraksi dengan laman web.' },
+        marketing:     { name: 'Kuki Pemasaran',            description: 'Digunakan untuk menyampaikan iklan yang diperibadikan.' },
+        social:        { name: 'Kuki Sosial',               description: 'Membolehkan integrasi dengan platform media sosial.' },
+        unclassified:  { name: 'Kuki Tidak Diklasifikasikan', description: 'Kuki yang sedang dalam proses pengklasifikasian.' },
+      },
+    },
+  };
+
+  function detectLanguage(paramLang) {
+    if (paramLang && TRANSLATIONS[paramLang]) return paramLang;
+    const nav = (navigator.language || 'en').toLowerCase();
+    if (TRANSLATIONS[nav]) return nav;
+    // Chinese variants: zh-TW, zh-HK, zh-MO → Traditional; everything else → Simplified
+    if (nav.startsWith('zh')) return (nav === 'zh-tw' || nav === 'zh-hk' || nav === 'zh-mo') ? 'zh-TW' : 'zh-CN';
+    // Portuguese variants → pt-BR
+    if (nav.startsWith('pt')) return 'pt-BR';
+    // Try base language (e.g. 'fr-CA' → 'fr')
+    const base = nav.split('-')[0];
+    if (TRANSLATIONS[base]) return base;
+    return 'en';
+  }
+
   // Read existing consent
   function getConsent() {
     if (window.location.search.includes("reset=1")) {
@@ -22,18 +223,56 @@
     return null;
   }
 
-  // Find user ID for fetching config
-  let userId = new URLSearchParams(window.location.search).get("id");
-  if (!userId) {
-    try {
-      const scripts = document.getElementsByTagName("script");
-      for (let script of scripts) {
-        if (script.src && script.src.includes("uterms-embed.js")) {
-          userId = new URL(script.src).searchParams.get("id");
-          break;
+  // ── mode=auto: freeze non-essential scripts before consent ───────────────────
+  // Usage: add data-category="analytics|marketing|functional" to script tags
+  // e.g. <script data-src="https://ga.js" data-category="analytics"></script>
+  function blockScripts() {
+    document.querySelectorAll("script[data-category][data-src]").forEach(s => {
+      // Already blocked (data-src present, src absent) — nothing to do
+    });
+    // Intercept any future scripts added before consent by observing DOM
+  }
+
+  function unblockScripts(consent) {
+    document.querySelectorAll("script[data-category][data-src]").forEach(s => {
+      const cat = s.getAttribute("data-category");
+      if (consent[cat]) {
+        const el = document.createElement("script");
+        // Copy all attributes except data-src/data-category
+        for (const attr of s.attributes) {
+          if (attr.name === "data-src") {
+            el.src = attr.value;
+          } else if (attr.name !== "data-category") {
+            el.setAttribute(attr.name, attr.value);
+          }
         }
+        if (s.textContent) el.textContent = s.textContent;
+        s.parentNode.replaceChild(el, s);
       }
-    } catch (e) {}
+    });
+  }
+
+  // Find user ID and API base URL from the script's own src attribute
+  let userId = null;
+  let apiBase = "";
+  let autoBlock = false; // true when mode=auto
+  let langParam = "";
+  try {
+    const scripts = document.getElementsByTagName("script");
+    for (let script of scripts) {
+      if (script.src && script.src.includes("uterms-embed.js")) {
+        const scriptUrl = new URL(script.src);
+        userId = scriptUrl.searchParams.get("id");
+        apiBase = scriptUrl.origin;
+        autoBlock = scriptUrl.searchParams.get("mode") === "auto";
+        langParam = scriptUrl.searchParams.get("lang") || "";
+        apiBase = scriptUrl.searchParams.get("api") || scriptUrl.origin;
+        break;
+      }
+    }
+  } catch (e) {}
+  if (!userId) {
+    userId = new URLSearchParams(window.location.search).get("id");
   }
 
   function generateUUID() {
@@ -111,7 +350,7 @@
     if (userId && userId !== "YOUR_USER_ID") {
       try {
         const response = await fetch(
-          "http://localhost:3001/api/banner/" + userId,
+          apiBase + "/api/banner/" + userId,
         );
         if (response.ok) {
           rawConfig = await response.json();
@@ -131,6 +370,17 @@
       }
     }
 
+    // Resolve active language
+    const t = TRANSLATIONS[detectLanguage(langParam)];
+
+    // Apply translated category names/descriptions
+    if (t.categories) {
+      categories = categories.map(function(cat) {
+        var tc = t.categories[cat.id];
+        return tc ? { id: cat.id, name: tc.name, description: tc.description } : cat;
+      });
+    }
+
     // Determine initial consent state defaults
     let defaultConsentObj = {};
     for (const cat of categories) {
@@ -140,8 +390,20 @@
     function saveConsent(consent) {
       document.cookie = `${CONSENT_COOKIE_NAME}=${encodeURIComponent(JSON.stringify(consent))}; path=/; max-age=31536000; SameSite=Lax`;
 
+      // GCM v2 — update consent signals based on visitor's choices
+      gtagConsent("update", {
+        ad_storage: consent.marketing ? "granted" : "denied",
+        analytics_storage: consent.analytics ? "granted" : "denied",
+        ad_user_data: consent.marketing ? "granted" : "denied",
+        ad_personalization: consent.marketing ? "granted" : "denied",
+        functionality_storage: consent.functional ? "granted" : "denied",
+        security_storage: "granted",
+      });
+
+      if (autoBlock) unblockScripts(consent);
+
       if (userId && userId !== "YOUR_USER_ID") {
-        fetch("http://localhost:3001/api/consent", {
+        fetch(apiBase + "/api/consent", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -396,7 +658,7 @@
       }
       .uterms-preference-row:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
       .uterms-preference-info h3 { margin: 0 0 0.35rem 0; font-size: 15px; color: #1f2937; font-weight: 600; }
-      .uterms-preference-info p { margin: 0; font-size: 13px; color: #6b7280; width: 90%; line-height: 1.5; }
+      .uterms-preference-info p { margin: 0; font-size: 13px; color: #6b7280; line-height: 1.5; }
       .uterms-modal-footer {
         display: flex;
         justify-content: flex-end;
@@ -438,14 +700,14 @@
     banner.style.display = "none";
     banner.innerHTML = `
       <div class="uterms-banner-content">
-        <h3>We value your privacy</h3>
-        <p>We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.</p>
+        <h3>${t.title}</h3>
+        <p>${t.description}</p>
       </div>
       <div class="uterms-banner-actions">
-        <button id="uterms-btn-customize" class="uterms-btn-text">Customize Preferences</button>
+        <button id="uterms-btn-customize" class="uterms-btn-text">${t.customize}</button>
         <div class="uterms-action-buttons">
-          <button id="uterms-btn-reject">Reject All</button>
-          <button id="uterms-btn-accept" class="uterms-primary">Accept All</button>
+          <button id="uterms-btn-reject">${t.rejectAll}</button>
+          <button id="uterms-btn-accept" class="uterms-primary">${t.acceptAll}</button>
         </div>
       </div>
     `;
@@ -465,9 +727,7 @@
               <h3>${cat.name}</h3>
               <p>${cat.description}</p>
             </div>
-            <div>
-              <input type="checkbox" id="uterms-toggle-${cat.id}" checked disabled />
-            </div>
+            <div style="font-size:0.75rem;color:#6b7280;white-space:nowrap">${t.alwaysActive}</div>
           </div>
         `;
       } else {
@@ -488,11 +748,11 @@
     const modal = document.createElement("div");
     modal.id = "uterms-modal";
     modal.innerHTML = `
-      <h2>Consent Preferences</h2>
+      <h2>${t.modalTitle}</h2>
       ${rowsHtml}
       <div class="uterms-modal-footer">
-        <button id="uterms-btn-save">Save Preferences</button>
-        <button id="uterms-btn-accept-all-modal" class="uterms-primary">Accept All</button>
+        <button id="uterms-btn-save">${t.savePreferences}</button>
+        <button id="uterms-btn-accept-all-modal" class="uterms-primary">${t.acceptAll}</button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -569,8 +829,23 @@
     overlay.addEventListener("click", hideModal);
 
     // Initialize
-    if (!getConsent()) {
+    const existingConsent = getConsent();
+    if (!existingConsent) {
       showBanner();
+    } else {
+      // GCM v2 — restore returning visitor's consent signals immediately
+      gtagConsent("update", {
+        ad_storage: existingConsent.marketing ? "granted" : "denied",
+        analytics_storage: existingConsent.analytics ? "granted" : "denied",
+        ad_user_data: existingConsent.marketing ? "granted" : "denied",
+        ad_personalization: existingConsent.marketing ? "granted" : "denied",
+        functionality_storage: existingConsent.functional
+          ? "granted"
+          : "denied",
+        security_storage: "granted",
+      });
+      // Unblock scripts for returning visitors who already consented
+      if (autoBlock) unblockScripts(existingConsent);
     }
 
     document.addEventListener("click", (e) => {

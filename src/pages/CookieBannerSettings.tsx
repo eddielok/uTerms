@@ -1,6 +1,7 @@
 import { Check, ExternalLink, Eye, Grid, Menu } from 'lucide-react';
 import React from 'react';
 import { useCookieConfig } from '../context/CookieContext';
+import { APP_URL } from '../lib/config';
 import './CookieBannerSettings.css';
 
 export const CookieBannerSettings: React.FC = () => {
@@ -148,7 +149,7 @@ export const CookieBannerSettings: React.FC = () => {
           </button>
           
           <a 
-            href={`http://localhost:5173/test-embed.html?reset=1&id=${userId || 'YOUR_USER_ID'}`} 
+            href={`${APP_URL}/test-embed.html?reset=1&id=${userId || 'YOUR_USER_ID'}`}
             target="_blank" 
             rel="noopener noreferrer"
             className="preview-btn flex justify-center items-center gap-1"

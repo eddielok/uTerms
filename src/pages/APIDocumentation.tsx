@@ -14,10 +14,9 @@ import {
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useCookieConfig } from "../context/CookieContext";
+import { API_URL as BASE_URL } from "../lib/config";
 import { supabase } from "../lib/supabase";
 import "./APIDocumentation.css";
-
-const BASE_URL = "http://localhost:3001";
 
 interface Module {
   id: string;

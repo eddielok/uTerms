@@ -15,6 +15,7 @@ const {
 // ─── Credentials from environment (never hardcoded) ───────────────────────────
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error("[server] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from .env");
@@ -1607,7 +1608,7 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
   }
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Scanner API running on http://localhost:${PORT}`);
 });

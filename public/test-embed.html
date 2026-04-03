@@ -6,8 +6,27 @@
   <style>
     body { font-family: sans-serif; padding: 2rem; background: #f9f9f9; }
     .site-content { max-width: 800px; margin: 0 auto; background: #fff; padding: 2rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .debug { margin-top: 1.5rem; padding: 1rem; background: #f1f5f9; border-radius: 6px; font-size: 0.85rem; color: #475569; }
+    .debug code { background: #e2e8f0; padding: 0.1rem 0.3rem; border-radius: 3px; }
   </style>
-  <script src="/uterms-embed.js"></script>
+  <script>
+    // Forward page URL params (id, mode, lang, api) to the embed script src
+    // so the embed script can read them from its own URL as expected.
+    (function () {
+      var p = new URLSearchParams(window.location.search);
+      var id = p.get('id') || 'YOUR_USER_ID';
+      var src = '/uterms-embed.js?id=' + encodeURIComponent(id);
+      if (p.get('mode')) src += '&mode=' + encodeURIComponent(p.get('mode'));
+      if (p.get('lang')) src += '&lang=' + encodeURIComponent(p.get('lang'));
+      // api= lets you point at a different backend (e.g. Railway URL in production)
+      // Defaults to localhost:3001 for local dev
+      var api = p.get('api') || 'http://localhost:3001';
+      src += '&api=' + encodeURIComponent(api);
+      var s = document.createElement('script');
+      s.src = src;
+      document.head.appendChild(s);
+    })();
+  </script>
 </head>
 <body>
   <div class="site-content">
@@ -20,6 +39,18 @@
       <li>Save preferences and observe the banner goes away.</li>
       <li>Click the <a href="#" class="uterms-preferences">Consent Preferences</a> link here to re-open the settings menu!</li>
     </ol>
+    <div class="debug" id="debug-info"></div>
   </div>
+  <script>
+    // Show active params for debugging
+    var p = new URLSearchParams(window.location.search);
+    var info = document.getElementById('debug-info');
+    info.innerHTML =
+      '<strong>Active test params:</strong><br>' +
+      'id: <code>' + (p.get('id') || 'not set') + '</code> &nbsp;|&nbsp; ' +
+      'mode: <code>' + (p.get('mode') || 'not set') + '</code> &nbsp;|&nbsp; ' +
+      'lang: <code>' + (p.get('lang') || 'auto-detect') + '</code> &nbsp;|&nbsp; ' +
+      'api: <code>' + (p.get('api') || 'http://localhost:3001') + '</code>';
+  </script>
 </body>
 </html>
