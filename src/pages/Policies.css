@@ -113,6 +113,51 @@
   color: var(--color-text-main);
 }
 
+/* ── Policy page meta ── */
+.policies-meta {
+  margin-top: 2rem;
+  padding: 1rem;
+  background: var(--color-primary-light);
+  border-radius: var(--radius-md);
+}
+
+/* ── Doc description (subtitle under h2) ── */
+.doc-description {
+  font-size: 0.9375rem;
+  color: var(--color-text-muted);
+  margin: 0.375rem 0 0.5rem;
+  line-height: 1.5;
+}
+
+/* ── CTA block inside policy documents ── */
+.policy-cta {
+  margin-top: 2.5rem;
+  padding: 1.25rem 1.5rem;
+  background: var(--color-primary-light);
+  border: 1px solid var(--color-primary-muted);
+  border-radius: var(--radius-lg);
+}
+
+.policy-cta p {
+  margin: 0 0 0.5rem;
+  color: var(--color-text-main);
+  font-size: 0.9375rem;
+}
+
+.policy-cta-link {
+  display: inline-block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-primary-hover);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color var(--transition-fast);
+}
+
+.policy-cta-link:hover {
+  color: var(--color-primary);
+}
+
 @media (max-width: 992px) {
   .policies-layout {
     grid-template-columns: 1fr;

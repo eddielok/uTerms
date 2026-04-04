@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import { CalendarClock, Check } from "lucide-react";
+import React, { useEffect, useState } from "react";
 import { API_URL } from "../lib/config";
 import { Input } from "../components/Input";
 import type { Column } from "../components/Table";
@@ -31,31 +32,100 @@ const cookieColumns: Column<CookieItem>[] = [
   },
 ];
 
+type ScheduleInterval = 1 | 3 | 6 | 12;
+
+interface Schedule {
+  user_id: string;
+  url: string;
+  interval_months: ScheduleInterval;
+  enabled: boolean;
+  next_scan_at: string;
+  last_scan_at: string | null;
+}
+
+const INTERVAL_OPTIONS: { value: ScheduleInterval; label: string }[] = [
+  { value: 1,  label: "1 Month"  },
+  { value: 3,  label: "3 Months" },
+  { value: 6,  label: "6 Months" },
+  { value: 12, label: "12 Months" },
+];
+
 export const WebsiteCookie: React.FC = () => {
   const [activeTabId, setActiveTabId] = useState("essential");
   const [url, setUrl] = useState("");
   const [isScanning, setIsScanning] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">(
-    "idle",
-  );
+  const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
-  const { scannedData, setScannedData } = useCookieConfig();
+  const { scannedData, setScannedData, userId } = useCookieConfig();
+
+  // ── Scheduler state ──
+  const [schedule, setSchedule] = useState<Schedule | null>(null);
+  const [scheduleEnabled, setScheduleEnabled] = useState(true);
+  const [scheduleInterval, setScheduleInterval] = useState<ScheduleInterval>(3);
+  const [scheduleStatus, setScheduleStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
 
   // Load the DB results to the UI whenever the page loads
   React.useEffect(() => {
-    // Don't re-fetch from DB while a scan is in progress
     if (isScanning) return;
-
-    const fetchInitialData = async () => {
-      // If the global context already supplied the data, sync URL and stop
-      if (scannedData) {
-        if (!url) setUrl(scannedData.url);
-        return;
-      }
-    };
-
-    fetchInitialData();
+    if (scannedData && !url) setUrl(scannedData.url);
   }, [scannedData, setScannedData, isScanning]); // Intentionally excluding `url` to prevent looping.
+
+  // Load existing schedule for the current user
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`${API_URL}/api/scan-schedule/${userId}`)
+      .then((r) => r.json())
+      .then((data: Schedule | null) => {
+        if (data) {
+          setSchedule(data);
+          setScheduleEnabled(data.enabled);
+          setScheduleInterval(data.interval_months as ScheduleInterval);
+        }
+      })
+      .catch(() => {/* no schedule yet — that's fine */});
+  }, [userId]);
+
+  const handleSaveSchedule = async () => {
+    if (!userId || !url) return;
+    setScheduleStatus("saving");
+    setScheduleError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/scan-schedule`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, url, intervalMonths: scheduleInterval, enabled: scheduleEnabled }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to save schedule");
+      }
+      const saved: Schedule = await res.json();
+      setSchedule(saved);
+      setScheduleStatus("saved");
+      setTimeout(() => setScheduleStatus("idle"), 2500);
+    } catch (err: unknown) {
+      setScheduleStatus("error");
+      setScheduleError(err instanceof Error ? err.message : "Unknown error");
+    }
+  };
+
+  const handleRemoveSchedule = async () => {
+    if (!userId || !schedule) return;
+    setScheduleStatus("saving");
+    try {
+      await fetch(`${API_URL}/api/scan-schedule/${userId}`, { method: "DELETE" });
+      setSchedule(null);
+      setScheduleEnabled(true);
+      setScheduleInterval(3);
+      setScheduleStatus("idle");
+    } catch {
+      setScheduleStatus("error");
+    }
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
   const handleScan = async () => {
     if (!url) return;
@@ -226,6 +296,87 @@ export const WebsiteCookie: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* ── Auto-Scan Scheduler ── */}
+      {scannedData && (
+        <div className="scanner-scheduler">
+          <div className="scheduler-header">
+            <div className="scheduler-title">
+              <CalendarClock size={18} />
+              <span>Auto-Scan Schedule</span>
+            </div>
+            <label className="scheduler-toggle">
+              <input
+                type="checkbox"
+                checked={scheduleEnabled}
+                onChange={(e) => setScheduleEnabled(e.target.checked)}
+              />
+              <span className="toggle-track">
+                <span className="toggle-thumb" />
+              </span>
+              <span className="toggle-label">{scheduleEnabled ? "Enabled" : "Disabled"}</span>
+            </label>
+          </div>
+
+          <div className="scheduler-body">
+            <div className="scheduler-interval">
+              <span className="scheduler-label">Scan every</span>
+              <div className="scheduler-pills">
+                {INTERVAL_OPTIONS.map(({ value, label }) => (
+                  <button
+                    key={value}
+                    className={`scheduler-pill ${scheduleInterval === value ? "active" : ""}`}
+                    onClick={() => setScheduleInterval(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {schedule && (
+              <div className="scheduler-meta">
+                <div className="scheduler-meta-item">
+                  <span className="scheduler-meta-label">Next scan</span>
+                  <span className="scheduler-meta-value">{formatDate(schedule.next_scan_at)}</span>
+                </div>
+                <div className="scheduler-meta-item">
+                  <span className="scheduler-meta-label">Last auto-scan</span>
+                  <span className="scheduler-meta-value">
+                    {schedule.last_scan_at ? formatDate(schedule.last_scan_at) : "—"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="scheduler-actions">
+              {scheduleError && <span className="scheduler-error">{scheduleError}</span>}
+              {schedule && (
+                <button
+                  className="scheduler-btn-remove"
+                  onClick={handleRemoveSchedule}
+                  disabled={scheduleStatus === "saving"}
+                >
+                  Remove Schedule
+                </button>
+              )}
+              <button
+                className="scheduler-btn-save"
+                onClick={handleSaveSchedule}
+                disabled={scheduleStatus === "saving" || !url}
+              >
+                {scheduleStatus === "saving" ? (
+                  "Saving..."
+                ) : scheduleStatus === "saved" ? (
+                  <><Check size={14} /> Saved</>
+                ) : (
+                  schedule ? "Update Schedule" : "Save Schedule"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {scannedData && activeCategory && (
         <>

@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const puppeteer = require("puppeteer");
+const cron = require("node-cron");
 
 require("dotenv").config({
   path: require("path").resolve(__dirname, "../.env"),
@@ -15,11 +16,24 @@ const {
 // ─── Credentials from environment (never hardcoded) ───────────────────────────
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '';
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error("[server] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from .env");
   process.exit(1);
+}
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  console.warn("[server] SUPABASE_SERVICE_ROLE_KEY is not set — scheduled scan endpoints will not work.");
+}
+
+// Service-role fetch helper — bypasses RLS, server-side only, never exposed to clients
+function serviceHeaders() {
+  return {
+    apikey: SUPABASE_SERVICE_ROLE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+    "Content-Type": "application/json",
+  };
 }
 
 // ─── UUID validation helper ───────────────────────────────────────────────────
@@ -171,16 +185,10 @@ const CATEGORY_TEMPLATES = [
   },
 ];
 
-app.post("/api/scan", async (req, res) => {
-  const { url } = req.body;
-  if (!url) {
-    return res.status(400).json({ error: "URL is required" });
-  }
-
-  // Basic URL validation
+// ─── Shared scan function (used by /api/scan and the scheduled cron job) ──────
+async function performScan(url) {
   const targetUrl = normalizeUrl(url);
-
-  console.log(`Scanning URL: ${targetUrl}`);
+  console.log(`[scan] Scanning URL: ${targetUrl}`);
 
   let browser = null;
   try {
@@ -325,20 +333,21 @@ app.post("/api/scan", async (req, res) => {
       });
     }
 
-    res.json({
-      url: targetUrl,
-      cookiesCount: cookies.length,
-      categories,
-    });
+    return { url: targetUrl, cookiesCount: cookies.length, categories };
+  } finally {
+    if (browser) await browser.close();
+  }
+}
+
+app.post("/api/scan", async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "URL is required" });
+  try {
+    const result = await performScan(url);
+    res.json(result);
   } catch (err) {
     console.error("Scan Error:", err);
-    res
-      .status(500)
-      .json({ error: "Failed to scan website", details: err.message });
-  } finally {
-    if (browser) {
-      await browser.close();
-    }
+    res.status(500).json({ error: "Failed to scan website", details: err.message });
   }
 });
 
@@ -1605,6 +1614,186 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
     res.status(500).json({ error: "Failed to scan for GCM compliance", details: err.message });
   } finally {
     if (browser) await browser.close();
+  }
+});
+
+// ─── Scan Schedule endpoints ──────────────────────────────────────────────────
+
+// GET /api/scan-schedule/:userId — fetch current schedule for a user
+app.get("/api/scan-schedule/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/scan_schedules?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+      { headers: serviceHeaders() }
+    );
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to fetch schedule" });
+    const data = await response.json();
+    res.json(data && data.length > 0 ? data[0] : null);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch schedule", details: err.message });
+  }
+});
+
+// POST /api/scan-schedule — create or update a schedule
+app.post("/api/scan-schedule", async (req, res) => {
+  const { userId, url, intervalMonths, enabled } = req.body;
+  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!url) return res.status(400).json({ error: "URL is required" });
+  if (![1, 3, 6, 12].includes(Number(intervalMonths))) return res.status(400).json({ error: "intervalMonths must be 1, 3, 6, or 12" });
+
+  const now = new Date();
+  const nextScanAt = new Date(now);
+  nextScanAt.setMonth(nextScanAt.getMonth() + Number(intervalMonths));
+
+  const payload = {
+    user_id: userId,
+    url: normalizeUrl(url),
+    interval_months: Number(intervalMonths),
+    enabled: enabled !== false,
+    next_scan_at: nextScanAt.toISOString(),
+    updated_at: now.toISOString(),
+  };
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/scan_schedules`, {
+      method: "POST",
+      headers: {
+        ...serviceHeaders(),
+        Prefer: "resolution=merge-duplicates,return=representation",
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      return res.status(response.status).json({ error: "Failed to save schedule", details: text });
+    }
+    const data = await response.json();
+    res.json(Array.isArray(data) ? data[0] : data);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to save schedule", details: err.message });
+  }
+});
+
+// DELETE /api/scan-schedule/:userId — remove a schedule
+app.delete("/api/scan-schedule/:userId", async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/scan_schedules?user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "DELETE",
+        headers: serviceHeaders(),
+      }
+    );
+    if (!response.ok) return res.status(response.status).json({ error: "Failed to delete schedule" });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete schedule", details: err.message });
+  }
+});
+
+// ─── Shared cron runner (called by cron and the test endpoint) ────────────────
+async function runDueScans() {
+  const now = new Date().toISOString();
+  const fetchRes = await fetch(
+    `${SUPABASE_URL}/rest/v1/scan_schedules?enabled=eq.true&next_scan_at=lte.${encodeURIComponent(now)}&select=*`,
+    { headers: serviceHeaders() }
+  );
+  if (!fetchRes.ok) throw new Error(await fetchRes.text());
+  const schedules = await fetchRes.json();
+
+  const results = [];
+  for (const schedule of schedules) {
+    try {
+      console.log(`[cron] Scanning ${schedule.url} for user ${schedule.user_id}`);
+      const result = await performScan(schedule.url);
+      const scannedData = {
+        url: result.url,
+        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        pages: Math.floor(Math.random() * 50) + 10,
+        cookiesCount: result.cookiesCount,
+        categories: result.categories,
+      };
+      await fetch(`${SUPABASE_URL}/rest/v1/user_cookie_settings`, {
+        method: "POST",
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "resolution=merge-duplicates",
+        },
+        body: JSON.stringify({ user_id: schedule.user_id, scanned_data: scannedData }),
+      });
+      const nextScanAt = new Date();
+      nextScanAt.setMonth(nextScanAt.getMonth() + schedule.interval_months);
+      await fetch(
+        `${SUPABASE_URL}/rest/v1/scan_schedules?user_id=eq.${encodeURIComponent(schedule.user_id)}`,
+        {
+          method: "PATCH",
+          headers: serviceHeaders(),
+          body: JSON.stringify({
+            last_scan_at: new Date().toISOString(),
+            next_scan_at: nextScanAt.toISOString(),
+            updated_at: new Date().toISOString(),
+          }),
+        }
+      );
+      results.push({ userId: schedule.user_id, url: schedule.url, status: "ok", cookiesCount: result.cookiesCount, nextScanAt: nextScanAt.toISOString() });
+    } catch (err) {
+      console.error(`[cron] Failed for user ${schedule.user_id}:`, err.message);
+      results.push({ userId: schedule.user_id, url: schedule.url, status: "error", error: err.message });
+    }
+  }
+  return results;
+}
+
+// POST /api/scan-schedule/trigger — manually run all due scans (for testing)
+app.post("/api/scan-schedule/trigger", async (req, res) => {
+  console.log("[trigger] Manual scan trigger called");
+  try {
+    const results = await runDueScans();
+    res.json({ triggered: results.length, results });
+  } catch (err) {
+    res.status(500).json({ error: "Trigger failed", details: err.message });
+  }
+});
+
+// POST /api/scan-schedule/:userId/run-now — force-run scan for one user immediately
+app.post("/api/scan-schedule/:userId/run-now", async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+
+  // Temporarily set next_scan_at to now so runDueScans picks it up
+  await fetch(
+    `${SUPABASE_URL}/rest/v1/scan_schedules?user_id=eq.${encodeURIComponent(userId)}`,
+    {
+      method: "PATCH",
+      headers: serviceHeaders(),
+      body: JSON.stringify({ next_scan_at: new Date().toISOString() }),
+    }
+  );
+
+  try {
+    const results = await runDueScans();
+    res.json(results.find(r => r.userId === userId) || { status: "no schedule found" });
+  } catch (err) {
+    res.status(500).json({ error: "Run-now failed", details: err.message });
+  }
+});
+
+// ─── Daily cron job — runs due scheduled scans at 2 AM ────────────────────────
+cron.schedule("0 2 * * *", async () => {
+  console.log("[cron] Checking for due scheduled scans...");
+  try {
+    const results = await runDueScans();
+    console.log(`[cron] Completed ${results.length} scan(s)`);
+  } catch (err) {
+    console.error("[cron] Unexpected error:", err.message);
   }
 });
 
