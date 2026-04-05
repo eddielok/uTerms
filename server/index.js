@@ -130,7 +130,14 @@ const scanLimiter = rateLimit({
 });
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://uterms.io',
+    'https://www.uterms.io',
+    /\.uterms\.io$/,
+  ],
+  credentials: true,
+}));
 app.use(express.json());
 app.use("/api/embed", generalLimiter);
 app.use("/api/consent", generalLimiter);
