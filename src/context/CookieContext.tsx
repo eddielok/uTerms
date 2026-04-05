@@ -38,6 +38,7 @@ export interface BannerConfig {
   position: "top" | "bottom";
   size: "standard" | "compact";
   isConfigured?: boolean;
+  ccpaMode?: boolean;
 }
 
 interface CookieContextType {

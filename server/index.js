@@ -3,6 +3,7 @@ const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const puppeteer = require("puppeteer");
 const cron = require("node-cron");
+const crypto = require("crypto");
 
 require("dotenv").config({
   path: require("path").resolve(__dirname, "../.env"),
@@ -18,6 +19,7 @@ const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || "";
+const IP_SALT = process.env.IP_SALT || "uterms-default-salt-change-me";
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   console.error(
@@ -38,6 +40,15 @@ function serviceHeaders() {
     Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
     "Content-Type": "application/json",
   };
+}
+
+// ─── IP anonymization helper ─────────────────────────────────────────────────
+function anonymizeIp(ip) {
+  if (!ip) return null;
+  const clean = ip.replace(/^::ffff:/i, "");
+  const ipv4Match = clean.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+  if (ipv4Match) return `${ipv4Match[1]}.${ipv4Match[2]}.x.x`;
+  return crypto.createHash("sha256").update(clean + IP_SALT).digest("hex").slice(0, 16);
 }
 
 // ─── UUID validation helper ───────────────────────────────────────────────────
@@ -480,7 +491,7 @@ app.post("/api/consent", async (req, res) => {
       visitor_id,
       consent_data,
       url: url || req.headers.referer || req.get("origin") || "",
-      ip_address: req.ip,
+      ip_address: anonymizeIp(req.ip),
       user_agent: req.get("user-agent"),
     };
 
@@ -507,6 +518,30 @@ app.post("/api/consent", async (req, res) => {
   } catch (err) {
     console.error("Consent API Error:", err);
     res.status(500).json({ error: "Failed to record consent" });
+  }
+});
+
+app.delete("/api/consent/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/visitor_consent?user_id=eq.${encodeURIComponent(userId)}`,
+      {
+        method: "DELETE",
+        headers: { ...serviceHeaders(), Prefer: "return=minimal" },
+      },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[Consent DELETE] Error:", text);
+      return res.status(response.status).json({ error: "Failed to delete consent records" });
+    }
+    res.json({ success: true, message: "All consent records deleted." });
+  } catch (err) {
+    console.error("[Consent DELETE] Error:", err.message);
+    res.status(500).json({ error: "Failed to delete consent records" });
   }
 });
 
@@ -1938,6 +1973,31 @@ cron.schedule("0 2 * * *", async () => {
     console.log(`[cron] Completed ${results.length} scan(s)`);
   } catch (err) {
     console.error("[cron] Unexpected error:", err.message);
+  }
+});
+
+// ─── Daily cron job — purge visitor_consent records older than 180 days ───────
+cron.schedule("30 2 * * *", async () => {
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 180);
+  const cutoffIso = cutoff.toISOString();
+  console.log(`[cron] Purging consent records older than ${cutoffIso}...`);
+  try {
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/visitor_consent?created_at=lt.${encodeURIComponent(cutoffIso)}`,
+      {
+        method: "DELETE",
+        headers: { ...serviceHeaders(), Prefer: "return=minimal" },
+      },
+    );
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("[cron] Consent purge failed:", text);
+    } else {
+      console.log("[cron] Consent purge complete.");
+    }
+  } catch (err) {
+    console.error("[cron] Consent purge error:", err.message);
   }
 });
 

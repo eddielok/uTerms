@@ -6,9 +6,9 @@ import './CookieBannerSettings.css';
 
 export const CookieBannerSettings: React.FC = () => {
   const { bannerConfig, setBannerConfig, setIsPreviewVisible, userId } = useCookieConfig();
-  const { theme, styleMode, position, size } = bannerConfig;
+  const { theme, styleMode, position, size, ccpaMode } = bannerConfig;
 
-  const updateConfig = (key: keyof typeof bannerConfig, value: string) => {
+  const updateConfig = (key: keyof typeof bannerConfig, value: string | boolean) => {
     setBannerConfig(prev => ({ ...prev, [key]: value, isConfigured: true }));
   };
 
@@ -110,6 +110,23 @@ export const CookieBannerSettings: React.FC = () => {
                 Compact
               </button>
             </div>
+          </div>
+
+          <div style={{ borderTop: '1px dashed #e5e7eb', margin: '0.5rem 0' }}></div>
+
+          <div className="control-group">
+            <div className="control-group-title">Compliance Mode</div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!ccpaMode}
+                onChange={(e) => updateConfig('ccpaMode', e.target.checked)}
+                style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                Enable CCPA Mode — adds a "Do Not Sell My Personal Information" link for California visitors
+              </span>
+            </label>
           </div>
 
         </div>

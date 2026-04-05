@@ -1,5 +1,6 @@
 (function () {
   const CONSENT_COOKIE_NAME = "uterms_consent";
+  const MANAGE_BTN_KEY = "uterms_manage_visible";
 
   // GCM v2 helper — safely calls gtag or pushes to dataLayer
   function gtagConsent(type, params) {
@@ -33,6 +34,9 @@
       modalTitle: 'Consent Preferences',
       savePreferences: 'Save Preferences',
       alwaysActive: 'Always Active',
+      managePreferences: 'Manage Preferences',
+      doNotSell: 'Do Not Sell My Personal Information',
+      doNotSellSaved: 'Preference saved.',
       categories: {
         essential:     { name: 'Essential Cookies',  description: 'Required for the website to function normally. Cannot be disabled.' },
         functional:    { name: 'Functional',          description: 'Enables the website to provide enhanced functionality and personalization.' },
@@ -51,6 +55,9 @@
       modalTitle: '同意偏好设置',
       savePreferences: '保存设置',
       alwaysActive: '始终启用',
+      managePreferences: '管理偏好设置',
+      doNotSell: '请勿出售我的个人信息',
+      doNotSellSaved: '偏好已保存。',
       categories: {
         essential:     { name: '必要 Cookie',    description: '网站正常运行所必需，无法禁用。' },
         functional:    { name: '功能性 Cookie',  description: '使网站能够提供增强的功能和个性化体验。' },
@@ -69,6 +76,9 @@
       modalTitle: '同意偏好設定',
       savePreferences: '儲存設定',
       alwaysActive: '始終啟用',
+      managePreferences: '管理偏好設定',
+      doNotSell: '請勿出售我的個人資訊',
+      doNotSellSaved: '偏好已儲存。',
       categories: {
         essential:     { name: '必要 Cookie',    description: '網站正常運作所必需，無法停用。' },
         functional:    { name: '功能性 Cookie',  description: '使網站能夠提供增強的功能和個人化體驗。' },
@@ -87,6 +97,9 @@
       modalTitle: 'Préférences de consentement',
       savePreferences: 'Enregistrer les préférences',
       alwaysActive: 'Toujours actif',
+      managePreferences: 'Gérer les préférences',
+      doNotSell: 'Ne pas vendre mes informations personnelles',
+      doNotSellSaved: 'Préférence enregistrée.',
       categories: {
         essential:     { name: 'Cookies essentiels',       description: 'Nécessaires au bon fonctionnement du site. Ne peuvent pas être désactivés.' },
         functional:    { name: 'Cookies fonctionnels',     description: 'Permettent au site de fournir des fonctionnalités améliorées et une personnalisation.' },
@@ -105,6 +118,9 @@
       modalTitle: 'Einwilligungseinstellungen',
       savePreferences: 'Einstellungen speichern',
       alwaysActive: 'Immer aktiv',
+      managePreferences: 'Einstellungen verwalten',
+      doNotSell: 'Meine persönlichen Daten nicht verkaufen',
+      doNotSellSaved: 'Einstellung gespeichert.',
       categories: {
         essential:     { name: 'Notwendige Cookies',           description: 'Für den ordnungsgemäßen Betrieb der Website erforderlich. Können nicht deaktiviert werden.' },
         functional:    { name: 'Funktionale Cookies',          description: 'Ermöglichen der Website, erweiterte Funktionen und Personalisierung bereitzustellen.' },
@@ -123,6 +139,9 @@
       modalTitle: 'Preferencias de consentimiento',
       savePreferences: 'Guardar preferencias',
       alwaysActive: 'Siempre activo',
+      managePreferences: 'Gestionar preferencias',
+      doNotSell: 'No vender mi información personal',
+      doNotSellSaved: 'Preferencia guardada.',
       categories: {
         essential:     { name: 'Cookies esenciales',      description: 'Necesarias para el correcto funcionamiento del sitio. No se pueden desactivar.' },
         functional:    { name: 'Cookies funcionales',     description: 'Permiten al sitio web ofrecer funcionalidades mejoradas y personalización.' },
@@ -141,6 +160,9 @@
       modalTitle: 'Preferências de consentimento',
       savePreferences: 'Salvar preferências',
       alwaysActive: 'Sempre ativo',
+      managePreferences: 'Gerenciar preferências',
+      doNotSell: 'Não vender minhas informações pessoais',
+      doNotSellSaved: 'Preferência salva.',
       categories: {
         essential:     { name: 'Cookies essenciais',       description: 'Necessários para o funcionamento correto do site. Não podem ser desativados.' },
         functional:    { name: 'Cookies funcionais',       description: 'Permitem que o site forneça funcionalidades aprimoradas e personalização.' },
@@ -159,6 +181,9 @@
       modalTitle: '同意設定',
       savePreferences: '設定を保存',
       alwaysActive: '常に有効',
+      managePreferences: '設定を管理',
+      doNotSell: '個人情報を売らないでください',
+      doNotSellSaved: '設定が保存されました。',
       categories: {
         essential:     { name: '必須Cookie',        description: 'ウェブサイトの正常な動作に必要です。無効にすることはできません。' },
         functional:    { name: '機能性Cookie',      description: 'ウェブサイトが高度な機能やパーソナライゼーションを提供できるようにします。' },
@@ -177,6 +202,9 @@
       modalTitle: 'Keutamaan Persetujuan',
       savePreferences: 'Simpan Keutamaan',
       alwaysActive: 'Sentiasa Aktif',
+      managePreferences: 'Urus Keutamaan',
+      doNotSell: 'Jangan Jual Maklumat Peribadi Saya',
+      doNotSellSaved: 'Keutamaan disimpan.',
       categories: {
         essential:     { name: 'Kuki Penting',              description: 'Diperlukan untuk laman web berfungsi dengan normal. Tidak boleh dinyahdayakan.' },
         functional:    { name: 'Kuki Fungsional',           description: 'Membolehkan laman web menyediakan fungsi yang dipertingkatkan dan pemperibadian.' },
@@ -369,6 +397,9 @@
       }
     }
 
+    // CCPA mode flag
+    const ccpaMode = !!(bannerConfig.ccpaMode);
+
     // Resolve active language
     const t = TRANSLATIONS[detectLanguage(langParam)];
 
@@ -416,6 +447,7 @@
 
       hideBanner();
       hideModal();
+      showManageBtn();
     }
 
     let positioningCss = ``;
@@ -690,6 +722,54 @@
         .uterms-action-buttons button { width: 100%; }
         #uterms-banner button.uterms-btn-text { text-align: center; width: 100%; justify-content: center; }
       }
+      #uterms-manage-btn {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        z-index: 2147483646;
+        background: ${primaryBg};
+        color: ${primaryColor};
+        border: none;
+        border-radius: 9999px;
+        padding: 0.5rem 1rem;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        cursor: pointer;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+        font-family: system-ui, -apple-system, sans-serif;
+        display: none;
+        transition: opacity 0.2s;
+      }
+      #uterms-manage-btn:hover { opacity: 0.9; }
+      #uterms-dns-bar {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #f9fafb;
+        border-top: 1px solid #e5e7eb;
+        padding: 0.4rem 1rem;
+        font-size: 0.75rem;
+        text-align: center;
+        z-index: 2147483645;
+        display: none;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      #uterms-dns-bar a { color: #374151; text-decoration: underline; cursor: pointer; }
+      #uterms-dns-toast {
+        position: fixed;
+        bottom: 2.5rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #111827;
+        color: #fff;
+        padding: 0.4rem 1rem;
+        border-radius: 0.375rem;
+        font-size: 0.8125rem;
+        z-index: 2147483647;
+        display: none;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
     `;
     document.head.appendChild(style);
 
@@ -755,6 +835,46 @@
       </div>
     `;
     document.body.appendChild(modal);
+
+    // Manage Preferences button (shown after consent is given)
+    const manageBtn = document.createElement("button");
+    manageBtn.id = "uterms-manage-btn";
+    manageBtn.textContent = t.managePreferences;
+    document.body.appendChild(manageBtn);
+
+    // CCPA Do Not Sell bar
+    const dnsBar = document.createElement("div");
+    dnsBar.id = "uterms-dns-bar";
+    const dnsLink = document.createElement("a");
+    dnsLink.textContent = t.doNotSell;
+    dnsBar.appendChild(dnsLink);
+    document.body.appendChild(dnsBar);
+
+    const dnsToast = document.createElement("div");
+    dnsToast.id = "uterms-dns-toast";
+    dnsToast.textContent = t.doNotSellSaved;
+    document.body.appendChild(dnsToast);
+
+    function showManageBtn() {
+      try { localStorage.setItem(MANAGE_BTN_KEY, "1"); } catch(e) {}
+      manageBtn.style.display = "block";
+      if (ccpaMode) dnsBar.style.display = "block";
+    }
+
+    manageBtn.addEventListener("click", function() {
+      showModal();
+    });
+
+    dnsLink.addEventListener("click", function(e) {
+      e.preventDefault();
+      var currentConsent = getConsent() || {};
+      var next = !currentConsent.do_not_sell;
+      var updated = Object.assign({}, currentConsent, { do_not_sell: next });
+      saveConsent(updated);
+      dnsLink.textContent = (next ? "✓ " : "") + t.doNotSell;
+      dnsToast.style.display = "block";
+      setTimeout(function() { dnsToast.style.display = "none"; }, 2500);
+    });
 
     function showBanner() {
       banner.style.display = "flex";
@@ -845,6 +965,7 @@
       });
       // Unblock scripts for returning visitors who already consented
       if (autoBlock) unblockScripts(existingConsent);
+      showManageBtn();
     }
 
     document.addEventListener("click", (e) => {
