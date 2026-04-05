@@ -16,15 +16,19 @@ const {
 // ─── Credentials from environment (never hardcoded) ───────────────────────────
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || '';
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const ZHIPU_API_KEY = process.env.ZHIPU_API_KEY || "";
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error("[server] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from .env");
+  console.error(
+    "[server] VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing from .env",
+  );
   process.exit(1);
 }
 if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn("[server] SUPABASE_SERVICE_ROLE_KEY is not set — scheduled scan endpoints will not work.");
+  console.warn(
+    "[server] SUPABASE_SERVICE_ROLE_KEY is not set — scheduled scan endpoints will not work.",
+  );
 }
 
 // Service-role fetch helper — bypasses RLS, server-side only, never exposed to clients
@@ -37,7 +41,8 @@ function serviceHeaders() {
 }
 
 // ─── UUID validation helper ───────────────────────────────────────────────────
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function isValidUUID(id) {
   return UUID_RE.test(id);
 }
@@ -85,7 +90,7 @@ async function validateApiKey(req, res, next) {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-      }
+      },
     );
     const data = await response.json();
     if (!data || data.length === 0) {
@@ -119,7 +124,9 @@ const scanLimiter = rateLimit({
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Scan rate limit exceeded. Please wait before scanning again." },
+  message: {
+    error: "Scan rate limit exceeded. Please wait before scanning again.",
+  },
 });
 
 const app = express();
@@ -347,12 +354,21 @@ app.post("/api/scan", async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error("Scan Error:", err);
-    res.status(500).json({ error: "Failed to scan website", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to scan website", details: err.message });
   }
 });
 
 app.get("/api/banner/:id", async (req, res) => {
   const { id } = req.params;
+
+  if (!isValidUUID(id)) {
+    return res.status(400).json({
+      error:
+        "Invalid user ID. Use a UUID, e.g. /api/banner/123e4567-e89b-12d3-a456-426614174000",
+    });
+  }
 
   try {
     const response = await fetch(
@@ -386,11 +402,14 @@ app.get("/api/banner/:id", async (req, res) => {
 
 app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   const limit = Math.min(parseInt(req.query.limit) || 50, 100);
   const offset = parseInt(req.query.offset) || 0;
-  const from = req.query.from ? `&created_at=gte.${encodeURIComponent(req.query.from)}` : "";
+  const from = req.query.from
+    ? `&created_at=gte.${encodeURIComponent(req.query.from)}`
+    : "";
 
   try {
     const url =
@@ -411,11 +430,15 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[Consent GET] Error:", errorText);
-      return res.status(response.status).json({ error: "Failed to fetch consent records", details: errorText });
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch consent records", details: errorText });
     }
 
     const data = await response.json();
-    const totalCount = parseInt(response.headers.get("content-range")?.split("/")[1] || "0");
+    const totalCount = parseInt(
+      response.headers.get("content-range")?.split("/")[1] || "0",
+    );
 
     res.json({
       records: data,
@@ -425,7 +448,9 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
     });
   } catch (err) {
     console.error("[Consent GET] Error:", err.message);
-    res.status(500).json({ error: "Failed to fetch consent records", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch consent records", details: err.message });
   }
 });
 
@@ -473,7 +498,8 @@ app.post("/api/consent", async (req, res) => {
 
 app.get("/api/policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -825,7 +851,8 @@ app.get("/uterms-policy-embed.js", async (req, res) => {
 
 app.get("/api/cookie-policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/cookie_policies?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -890,7 +917,8 @@ app.get("/uterms-cookie-embed.js", async (req, res) => {
 
 app.get("/api/tos/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/terms_of_service?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -956,7 +984,8 @@ app.get("/uterms-tos-embed.js", (req, res) => {
 
 app.get("/api/eula/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/eula?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1018,7 +1047,8 @@ app.get("/uterms-eula-embed.js", (req, res) => {
 
 app.get("/api/return-policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/return_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1084,7 +1114,8 @@ app.get("/uterms-return-policy-embed.js", (req, res) => {
 
 app.get("/api/disclaimer/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/disclaimer?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1147,7 +1178,8 @@ app.get("/uterms-disclaimer-embed.js", (req, res) => {
 
 app.get("/api/shipping-policy/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/shipping_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1210,7 +1242,8 @@ app.get("/uterms-shipping-embed.js", (req, res) => {
 
 app.get("/api/aup/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/acceptable_use_policy?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1275,7 +1308,8 @@ app.get("/uterms-aup-embed.js", (req, res) => {
 
 app.get("/api/impressum/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const url = `${SUPABASE_URL}/rest/v1/impressum?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`;
@@ -1305,11 +1339,15 @@ app.get("/api/impressum/:userId", validateApiKey, async (req, res) => {
       res.json(data[0]);
     } else {
       console.warn("[Impressum API] No data found for userId:", userId);
-      res.status(404).json({ error: "No published Impressum found for this user" });
+      res
+        .status(404)
+        .json({ error: "No published Impressum found for this user" });
     }
   } catch (err) {
     console.error("Impressum API Error:", err);
-    res.status(500).json({ error: "Failed to fetch Impressum", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch Impressum", details: err.message });
   }
 });
 
@@ -1329,7 +1367,8 @@ app.get("/uterms-impressum-embed.js", (req, res) => {
 
 app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   console.log("[Accessibility API] Fetching for userId:", userId);
 
   try {
@@ -1340,7 +1379,7 @@ app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         },
-      }
+      },
     );
 
     console.log("[Accessibility API] Response status:", response.status);
@@ -1348,9 +1387,10 @@ app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[Accessibility API] Error response:", errorText);
-      return res
-        .status(response.status)
-        .json({ error: "Failed to fetch Accessibility Statement", details: errorText });
+      return res.status(response.status).json({
+        error: "Failed to fetch Accessibility Statement",
+        details: errorText,
+      });
     }
 
     const data = await response.json();
@@ -1360,11 +1400,16 @@ app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
       res.json(data[0]);
     } else {
       console.warn("[Accessibility API] No data found for userId:", userId);
-      res.status(404).json({ error: "No published Accessibility Statement found for this user" });
+      res.status(404).json({
+        error: "No published Accessibility Statement found for this user",
+      });
     }
   } catch (err) {
     console.error("Accessibility API Error:", err);
-    res.status(500).json({ error: "Failed to fetch Accessibility Statement", details: err.message });
+    res.status(500).json({
+      error: "Failed to fetch Accessibility Statement",
+      details: err.message,
+    });
   }
 });
 
@@ -1379,21 +1424,26 @@ app.get("/uterms-accessibility-embed.js", (req, res) => {
   const path = require("path");
   res
     .type("text/javascript")
-    .sendFile(path.resolve(__dirname, "../public/uterms-accessibility-embed.js"));
+    .sendFile(
+      path.resolve(__dirname, "../public/uterms-accessibility-embed.js"),
+    );
 });
 
 // ─── Public embed API routes (no auth — used by embed scripts on third-party sites) ──
 const EMBED_POLICY_ROUTES = [
-  { path: "/api/embed/policy/:userId",          table: "privacy_policies" },
-  { path: "/api/embed/cookie-policy/:userId",   table: "cookie_policies" },
-  { path: "/api/embed/tos/:userId",             table: "terms_of_service" },
-  { path: "/api/embed/eula/:userId",            table: "eula" },
-  { path: "/api/embed/return-policy/:userId",   table: "return_policy" },
-  { path: "/api/embed/disclaimer/:userId",      table: "disclaimer" },
+  { path: "/api/embed/policy/:userId", table: "privacy_policies" },
+  { path: "/api/embed/cookie-policy/:userId", table: "cookie_policies" },
+  { path: "/api/embed/tos/:userId", table: "terms_of_service" },
+  { path: "/api/embed/eula/:userId", table: "eula" },
+  { path: "/api/embed/return-policy/:userId", table: "return_policy" },
+  { path: "/api/embed/disclaimer/:userId", table: "disclaimer" },
   { path: "/api/embed/shipping-policy/:userId", table: "shipping_policy" },
-  { path: "/api/embed/aup/:userId",             table: "acceptable_use_policy" },
-  { path: "/api/embed/impressum/:userId",       table: "impressum" },
-  { path: "/api/embed/accessibility/:userId",   table: "accessibility_statement" },
+  { path: "/api/embed/aup/:userId", table: "acceptable_use_policy" },
+  { path: "/api/embed/impressum/:userId", table: "impressum" },
+  {
+    path: "/api/embed/accessibility/:userId",
+    table: "accessibility_statement",
+  },
 ];
 
 EMBED_POLICY_ROUTES.forEach(({ path, table }) => {
@@ -1405,12 +1455,16 @@ EMBED_POLICY_ROUTES.forEach(({ path, table }) => {
     try {
       const policy = await fetchPublishedPolicy(table, userId);
       if (!policy) {
-        return res.status(404).json({ error: "No published document found for this user" });
+        return res
+          .status(404)
+          .json({ error: "No published document found for this user" });
       }
       res.json(policy);
     } catch (err) {
       console.error(`[embed ${path}] Error:`, err.message);
-      res.status(err.status || 500).json({ error: err.message || "Failed to fetch document" });
+      res
+        .status(err.status || 500)
+        .json({ error: err.message || "Failed to fetch document" });
     }
   });
 });
@@ -1432,7 +1486,7 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
 
     const page = await browser.newPage();
     await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     );
 
     // Track Google Tag network requests
@@ -1454,8 +1508,9 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
     // Inspect page scripts and dataLayer for GCM signals
     const gcm = await page.evaluate(() => {
       const dl = Array.isArray(window.dataLayer) ? window.dataLayer : [];
-      const scripts = Array.from(document.querySelectorAll("script"))
-        .map((s) => s.textContent || "");
+      const scripts = Array.from(document.querySelectorAll("script")).map(
+        (s) => s.textContent || "",
+      );
       const allText = scripts.join("\n");
 
       const hasGtag = typeof window.gtag === "function";
@@ -1475,8 +1530,12 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
         'gtag("consent", "update"',
       ];
 
-      const gtagConsentDefault = CONSENT_DEFAULT_PATTERNS.some((p) => allText.includes(p));
-      const gtagConsentUpdate = CONSENT_UPDATE_PATTERNS.some((p) => allText.includes(p));
+      const gtagConsentDefault = CONSENT_DEFAULT_PATTERNS.some((p) =>
+        allText.includes(p),
+      );
+      const gtagConsentUpdate = CONSENT_UPDATE_PATTERNS.some((p) =>
+        allText.includes(p),
+      );
 
       const consentDefaultInDL = dl.some((e) => {
         if (Array.isArray(e)) return e[0] === "consent" && e[1] === "default";
@@ -1497,7 +1556,10 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
         ) {
           gtmIdx = i;
         }
-        if (CONSENT_DEFAULT_PATTERNS.some((p) => text.includes(p)) && consentIdx === -1) {
+        if (
+          CONSENT_DEFAULT_PATTERNS.some((p) => text.includes(p)) &&
+          consentIdx === -1
+        ) {
           consentIdx = i;
         }
       });
@@ -1514,14 +1576,15 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
         adUserData: allText.includes("ad_user_data"),
         adPersonalization: allText.includes("ad_personalization"),
         consentBeforeGtm:
-          consentIdx !== -1 && gtmIdx !== -1
-            ? consentIdx < gtmIdx
-            : null,
+          consentIdx !== -1 && gtmIdx !== -1 ? consentIdx < gtmIdx : null,
       };
     });
 
     const hasGoogleTag =
-      googleTagUrls.length > 0 || gcm.hasGtag || gcm.hasGtmId || gcm.hasDataLayer;
+      googleTagUrls.length > 0 ||
+      gcm.hasGtag ||
+      gcm.hasGtmId ||
+      gcm.hasDataLayer;
     const hasConsentDefault = gcm.gtagConsentDefault || gcm.consentDefaultInDL;
 
     const checks = [
@@ -1542,12 +1605,14 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
       {
         id: "consent_before_gtm",
         label: "Consent default fires before GTM",
-        description: "The consent default command must be placed before the GTM/gtag script tag.",
-        pass: gcm.consentBeforeGtm === true
-          ? true
-          : gcm.consentBeforeGtm === false
-          ? false
-          : null,
+        description:
+          "The consent default command must be placed before the GTM/gtag script tag.",
+        pass:
+          gcm.consentBeforeGtm === true
+            ? true
+            : gcm.consentBeforeGtm === false
+              ? false
+              : null,
         required: true,
       },
       {
@@ -1560,14 +1625,16 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
       {
         id: "analytics_storage",
         label: "analytics_storage parameter set",
-        description: "Required GCM parameter controlling Google Analytics cookies.",
+        description:
+          "Required GCM parameter controlling Google Analytics cookies.",
         pass: gcm.analyticsStorage,
         required: true,
       },
       {
         id: "ad_user_data",
         label: "ad_user_data parameter set (GCM v2)",
-        description: "Controls sending user data to Google for advertising. Required by GCM v2.",
+        description:
+          "Controls sending user data to Google for advertising. Required by GCM v2.",
         pass: gcm.adUserData,
         required: true,
       },
@@ -1581,7 +1648,8 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
       {
         id: "consent_update",
         label: "Consent update mechanism present",
-        description: "gtag('consent', 'update', {...}) is called when visitors make a consent decision.",
+        description:
+          "gtag('consent', 'update', {...}) is called when visitors make a consent decision.",
         pass: gcm.gtagConsentUpdate,
         required: false,
       },
@@ -1611,7 +1679,10 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
     });
   } catch (err) {
     console.error("[GCM Scan] Error:", err.message);
-    res.status(500).json({ error: "Failed to scan for GCM compliance", details: err.message });
+    res.status(500).json({
+      error: "Failed to scan for GCM compliance",
+      details: err.message,
+    });
   } finally {
     if (browser) await browser.close();
   }
@@ -1622,27 +1693,37 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
 // GET /api/scan-schedule/:userId — fetch current schedule for a user
 app.get("/api/scan-schedule/:userId", async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const response = await fetch(
       `${SUPABASE_URL}/rest/v1/scan_schedules?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
-      { headers: serviceHeaders() }
+      { headers: serviceHeaders() },
     );
-    if (!response.ok) return res.status(response.status).json({ error: "Failed to fetch schedule" });
+    if (!response.ok)
+      return res
+        .status(response.status)
+        .json({ error: "Failed to fetch schedule" });
     const data = await response.json();
     res.json(data && data.length > 0 ? data[0] : null);
   } catch (err) {
-    res.status(500).json({ error: "Failed to fetch schedule", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to fetch schedule", details: err.message });
   }
 });
 
 // POST /api/scan-schedule — create or update a schedule
 app.post("/api/scan-schedule", async (req, res) => {
   const { userId, url, intervalMonths, enabled } = req.body;
-  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!userId || !isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   if (!url) return res.status(400).json({ error: "URL is required" });
-  if (![1, 3, 6, 12].includes(Number(intervalMonths))) return res.status(400).json({ error: "intervalMonths must be 1, 3, 6, or 12" });
+  if (![1, 3, 6, 12].includes(Number(intervalMonths)))
+    return res
+      .status(400)
+      .json({ error: "intervalMonths must be 1, 3, 6, or 12" });
 
   const now = new Date();
   const nextScanAt = new Date(now);
@@ -1668,19 +1749,24 @@ app.post("/api/scan-schedule", async (req, res) => {
     });
     if (!response.ok) {
       const text = await response.text();
-      return res.status(response.status).json({ error: "Failed to save schedule", details: text });
+      return res
+        .status(response.status)
+        .json({ error: "Failed to save schedule", details: text });
     }
     const data = await response.json();
     res.json(Array.isArray(data) ? data[0] : data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to save schedule", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to save schedule", details: err.message });
   }
 });
 
 // DELETE /api/scan-schedule/:userId — remove a schedule
 app.delete("/api/scan-schedule/:userId", async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   try {
     const response = await fetch(
@@ -1688,12 +1774,17 @@ app.delete("/api/scan-schedule/:userId", async (req, res) => {
       {
         method: "DELETE",
         headers: serviceHeaders(),
-      }
+      },
     );
-    if (!response.ok) return res.status(response.status).json({ error: "Failed to delete schedule" });
+    if (!response.ok)
+      return res
+        .status(response.status)
+        .json({ error: "Failed to delete schedule" });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: "Failed to delete schedule", details: err.message });
+    res
+      .status(500)
+      .json({ error: "Failed to delete schedule", details: err.message });
   }
 });
 
@@ -1702,7 +1793,7 @@ async function runDueScans() {
   const now = new Date().toISOString();
   const fetchRes = await fetch(
     `${SUPABASE_URL}/rest/v1/scan_schedules?enabled=eq.true&next_scan_at=lte.${encodeURIComponent(now)}&select=*`,
-    { headers: serviceHeaders() }
+    { headers: serviceHeaders() },
   );
   if (!fetchRes.ok) throw new Error(await fetchRes.text());
   const schedules = await fetchRes.json();
@@ -1710,11 +1801,17 @@ async function runDueScans() {
   const results = [];
   for (const schedule of schedules) {
     try {
-      console.log(`[cron] Scanning ${schedule.url} for user ${schedule.user_id}`);
+      console.log(
+        `[cron] Scanning ${schedule.url} for user ${schedule.user_id}`,
+      );
       const result = await performScan(schedule.url);
       const scannedData = {
         url: result.url,
-        date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+        date: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
         pages: Math.floor(Math.random() * 50) + 10,
         cookiesCount: result.cookiesCount,
         categories: result.categories,
@@ -1727,7 +1824,10 @@ async function runDueScans() {
           "Content-Type": "application/json",
           Prefer: "resolution=merge-duplicates",
         },
-        body: JSON.stringify({ user_id: schedule.user_id, scanned_data: scannedData }),
+        body: JSON.stringify({
+          user_id: schedule.user_id,
+          scanned_data: scannedData,
+        }),
       });
       const nextScanAt = new Date();
       nextScanAt.setMonth(nextScanAt.getMonth() + schedule.interval_months);
@@ -1741,12 +1841,23 @@ async function runDueScans() {
             next_scan_at: nextScanAt.toISOString(),
             updated_at: new Date().toISOString(),
           }),
-        }
+        },
       );
-      results.push({ userId: schedule.user_id, url: schedule.url, status: "ok", cookiesCount: result.cookiesCount, nextScanAt: nextScanAt.toISOString() });
+      results.push({
+        userId: schedule.user_id,
+        url: schedule.url,
+        status: "ok",
+        cookiesCount: result.cookiesCount,
+        nextScanAt: nextScanAt.toISOString(),
+      });
     } catch (err) {
       console.error(`[cron] Failed for user ${schedule.user_id}:`, err.message);
-      results.push({ userId: schedule.user_id, url: schedule.url, status: "error", error: err.message });
+      results.push({
+        userId: schedule.user_id,
+        url: schedule.url,
+        status: "error",
+        error: err.message,
+      });
     }
   }
   return results;
@@ -1766,7 +1877,8 @@ app.post("/api/scan-schedule/trigger", async (req, res) => {
 // POST /api/scan-schedule/:userId/run-now — force-run scan for one user immediately
 app.post("/api/scan-schedule/:userId/run-now", async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
 
   // Temporarily set next_scan_at to now so runDueScans picks it up
   await fetch(
@@ -1775,12 +1887,16 @@ app.post("/api/scan-schedule/:userId/run-now", async (req, res) => {
       method: "PATCH",
       headers: serviceHeaders(),
       body: JSON.stringify({ next_scan_at: new Date().toISOString() }),
-    }
+    },
   );
 
   try {
     const results = await runDueScans();
-    res.json(results.find(r => r.userId === userId) || { status: "no schedule found" });
+    res.json(
+      results.find((r) => r.userId === userId) || {
+        status: "no schedule found",
+      },
+    );
   } catch (err) {
     res.status(500).json({ error: "Run-now failed", details: err.message });
   }

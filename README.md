@@ -27,24 +27,28 @@ uTerms is a comprehensive, enterprise-grade consent management and compliance pl
 ### Installation
 
 1. Clone the repository:
+
    ```sh
    git clone https://github.com/eddielok/uterms.git
    cd uterms
    ```
 
 2. Install dependencies:
+
    ```sh
    npm install
    ```
 
 3. Configure Environment Variables:
    Create a `.env` file in the root directory and add your Supabase credentials:
+
    ```env
    VITE_SUPABASE_URL=your_supabase_url
    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
 4. Start the frontend development server:
+
    ```sh
    npm run dev
    ```
@@ -53,6 +57,21 @@ uTerms is a comprehensive, enterprise-grade consent management and compliance pl
    ```sh
    node server/index.js
    ```
+
+## API Quick Check (curl)
+
+Use a real user UUID when testing the banner endpoint.
+
+```sh
+# Health check
+curl -i http://localhost:3001/
+
+# Banner config check (replace with a real Supabase auth.users UUID)
+curl -i http://localhost:3001/api/banner/<your-user-uuid>
+
+# Example (invalid on purpose) to verify validation message
+curl -i http://localhost:3001/api/banner/test
+```
 
 ## 🧩 Embedding the Cookie Banner
 
