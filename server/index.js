@@ -208,7 +208,14 @@ async function performScan(url) {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-zygote",
+        "--single-process",
+      ],
     });
 
     const page = await browser.newPage();
@@ -220,7 +227,7 @@ async function performScan(url) {
 
     // Go to URL and wait until network is mostly idle, with extended timeout
     try {
-      await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 60000 });
+      await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 20000 });
     } catch (timeoutErr) {
       // If networkidle2 times out, try with a faster condition
       console.warn(
@@ -237,7 +244,7 @@ async function performScan(url) {
       return new Promise((resolve) => {
         let totalHeight = 0;
         const distance = 100;
-        const deadline = Date.now() + 10_000;
+        const deadline = Date.now() + 5_000;
         const timer = setInterval(() => {
           const scrollHeight = document.body.scrollHeight;
           window.scrollBy(0, distance);
@@ -564,7 +571,14 @@ app.post("/api/analyze-policy", async (req, res) => {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-zygote",
+        "--single-process",
+      ],
     });
 
     const page = await browser.newPage();
@@ -1488,7 +1502,14 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
   try {
     browser = await puppeteer.launch({
       headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+        "--no-zygote",
+        "--single-process",
+      ],
     });
 
     const page = await browser.newPage();
