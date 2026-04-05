@@ -1,6 +1,8 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
+import { cloudflare } from "@cloudflare/vite-plugin";
+
 function resourceBlockerPlugin(env: Record<string, string>) {
   return {
     name: 'resource-blocker',
@@ -103,7 +105,7 @@ console.log("[uTerms] Initializing live Cookie Banner for user: ${userId}");
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   return {
-    plugins: [react(), resourceBlockerPlugin(env)],
+    plugins: [react(), resourceBlockerPlugin(env), cloudflare()],
     test: {
       environment: 'node',
       include: ['src/**/*.test.{ts,tsx}'],
