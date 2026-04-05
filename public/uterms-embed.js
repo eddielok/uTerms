@@ -397,8 +397,13 @@
       }
     }
 
-    // CCPA mode flag
-    const ccpaMode = !!(bannerConfig.ccpaMode);
+    // CCPA mode — on if explicitly enabled in config, or if visitor is in California (Pacific timezone)
+    function isCaliforniaVisitor() {
+      try {
+        return Intl.DateTimeFormat().resolvedOptions().timeZone === "America/Los_Angeles";
+      } catch(e) { return false; }
+    }
+    const ccpaMode = !!(bannerConfig.ccpaMode) || isCaliforniaVisitor();
 
     // Resolve active language
     const t = TRANSLATIONS[detectLanguage(langParam)];
@@ -418,6 +423,10 @@
     }
 
     function saveConsent(consent) {
+      // CCPA: Do Not Sell forces marketing and social off
+      if (consent.do_not_sell) {
+        consent = Object.assign({}, consent, { marketing: false, social: false });
+      }
       document.cookie = `${CONSENT_COOKIE_NAME}=${encodeURIComponent(JSON.stringify(consent))}; path=/; max-age=31536000; SameSite=Lax`;
 
       // GCM v2 — update consent signals based on visitor's choices
@@ -858,7 +867,12 @@
     function showManageBtn() {
       try { localStorage.setItem(MANAGE_BTN_KEY, "1"); } catch(e) {}
       manageBtn.style.display = "block";
-      if (ccpaMode) dnsBar.style.display = "block";
+      if (ccpaMode) {
+        dnsBar.style.display = "block";
+        // Reflect current Do Not Sell state
+        var c = getConsent() || {};
+        dnsLink.textContent = (c.do_not_sell ? "✓ " : "") + t.doNotSell;
+      }
     }
 
     manageBtn.addEventListener("click", function() {
@@ -952,19 +966,22 @@
     if (!existingConsent) {
       showBanner();
     } else {
+      // CCPA: enforce Do Not Sell on returning visitors
+      var effectiveConsent = existingConsent;
+      if (existingConsent.do_not_sell) {
+        effectiveConsent = Object.assign({}, existingConsent, { marketing: false, social: false });
+      }
       // GCM v2 — restore returning visitor's consent signals immediately
       gtagConsent("update", {
-        ad_storage: existingConsent.marketing ? "granted" : "denied",
-        analytics_storage: existingConsent.analytics ? "granted" : "denied",
-        ad_user_data: existingConsent.marketing ? "granted" : "denied",
-        ad_personalization: existingConsent.marketing ? "granted" : "denied",
-        functionality_storage: existingConsent.functional
-          ? "granted"
-          : "denied",
+        ad_storage: effectiveConsent.marketing ? "granted" : "denied",
+        analytics_storage: effectiveConsent.analytics ? "granted" : "denied",
+        ad_user_data: effectiveConsent.marketing ? "granted" : "denied",
+        ad_personalization: effectiveConsent.marketing ? "granted" : "denied",
+        functionality_storage: effectiveConsent.functional ? "granted" : "denied",
         security_storage: "granted",
       });
       // Unblock scripts for returning visitors who already consented
-      if (autoBlock) unblockScripts(existingConsent);
+      if (autoBlock) unblockScripts(effectiveConsent);
       showManageBtn();
     }
 
