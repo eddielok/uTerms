@@ -11,6 +11,7 @@ export interface CookieItem {
   name: string;
   description: string;
   domain: string;
+  expiration?: string;
 }
 export interface CookieProvider {
   name: string;

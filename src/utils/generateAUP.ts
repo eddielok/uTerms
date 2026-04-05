@@ -262,7 +262,7 @@ export function generateAUP(a: AUPAnswers): string {
   <h2>${next()}. Prohibited Activities</h2>
   <p>You must not use the Platform in any way that violates applicable law or these rules. The following activities are strictly prohibited:</p>
   <ol>
-    ${selectedActivities.map((act, i) => `<li><strong>${act.label}:</strong> ${act.generated}</li>`).join('\n    ')}
+    ${selectedActivities.map((act) => `<li><strong>${act.label}:</strong> ${act.generated}</li>`).join('\n    ')}
   </ol>
   <p>This list is illustrative, not exhaustive. We reserve the right to determine, in our sole discretion, whether any conduct not listed above violates the spirit of this Policy.</p>
 </section>`);
