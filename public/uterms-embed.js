@@ -263,10 +263,9 @@
       if (script.src && script.src.includes("uterms-embed.js")) {
         const scriptUrl = new URL(script.src);
         userId = scriptUrl.searchParams.get("id");
-        apiBase = scriptUrl.origin;
         autoBlock = scriptUrl.searchParams.get("mode") === "auto";
         langParam = scriptUrl.searchParams.get("lang") || "";
-        apiBase = scriptUrl.searchParams.get("api") || scriptUrl.origin;
+        apiBase = scriptUrl.searchParams.get("api") || "https://api.uterms.io";
         break;
       }
     }
