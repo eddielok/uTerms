@@ -11,6 +11,7 @@ import {
   Truck,
 } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import { Link, useLocation } from "react-router-dom";
 import "./Policies.css";
 
@@ -68,6 +69,11 @@ export const Policies: React.FC = () => {
 
   return (
     <div className="policies-container container">
+      <Helmet>
+        <title>Legal & Policy Centre | uTerms</title>
+        <meta name="description" content="Review uTerms' Privacy Policy, Terms of Service, Cookie Policy, EULA, and more. Full transparency on how we operate." />
+        <link rel="canonical" href="https://uterms.io/policies" />
+      </Helmet>
       <div className="policies-header">
         <h1 className="text-3xl font-bold mb-4">Legal &amp; Policy Centre</h1>
         <p className="text-muted text-lg max-w-2xl">
@@ -161,7 +167,22 @@ export const Policies: React.FC = () => {
                   interests, or comply with a legal obligation.
                 </p>
 
-                <h3>4. Data Security</h3>
+                <h3>4. Data Processors</h3>
+                <p>
+                  We use the following third-party data processors to operate the uTerms platform:
+                </p>
+                <ul>
+                  <li>
+                    <strong>Supabase Inc.</strong> — provides our database and authentication infrastructure.
+                    Supabase stores your account email address, hashed password, and all policy and consent data on your behalf.
+                    Supabase is SOC 2 Type II certified. See <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer">Supabase Privacy Policy</a>.
+                  </li>
+                  <li>
+                    <strong>Cloudflare Inc.</strong> — provides hosting, CDN, and DDoS protection for the uTerms web application.
+                  </li>
+                </ul>
+
+                <h3>5. Data Security</h3>
                 <p>
                   We have appropriate security measures in place to prevent your
                   personal data from being accidentally lost, used, accessed in
@@ -169,7 +190,7 @@ export const Policies: React.FC = () => {
                   to those with a business need to know.
                 </p>
 
-                <h3>5. Your Rights</h3>
+                <h3>6. Your Rights</h3>
                 <p>
                   Under GDPR and applicable data protection laws, you have the
                   right to access, correct, erase, restrict, port, and object to

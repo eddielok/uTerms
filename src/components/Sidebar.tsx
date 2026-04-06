@@ -4,10 +4,11 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Settings,
   ShieldCheck,
 } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import "./Sidebar.css";
 
@@ -279,6 +280,7 @@ export const Sidebar: React.FC = () => {
           <FileText size={20} />
           <span>API Documentation</span>
         </NavLink>
+
       </nav>
 
       <div className="sidebar-footer" ref={dropdownRef}>
@@ -303,6 +305,14 @@ export const Sidebar: React.FC = () => {
 
           {isDropdownOpen && (
             <div className="user-dropdown">
+              <Link
+                to="/settings"
+                className="dropdown-item"
+                onClick={() => setIsDropdownOpen(false)}
+              >
+                <Settings size={16} />
+                Settings
+              </Link>
               <button
                 className="dropdown-item text-red-600"
                 onClick={handleSignOut}

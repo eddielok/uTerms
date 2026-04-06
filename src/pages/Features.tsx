@@ -1,5 +1,6 @@
 import { Accessibility, AlertCircle, Building2, Cookie, FileSignature, FileText, RefreshCcw, ShieldCheck, Truck, UserCheck } from 'lucide-react';
 import React from 'react';
+import { Helmet } from 'react-helmet-async';
 import './Features.css';
 
 const generators = [
@@ -58,6 +59,11 @@ const generators = [
 export const Features: React.FC = () => {
   return (
     <div className="features-page">
+      <Helmet>
+        <title>Features — Cookie Scanning, Policy Generator & GCM v2 | uTerms</title>
+        <meta name="description" content="Explore uTerms features: AI cookie scanning, GDPR/CCPA policy generator, consent banner builder, Google Consent Mode v2, and visitor consent logs." />
+        <link rel="canonical" href="https://uterms.io/features" />
+      </Helmet>
       {/* Hero Section */}
       <section className="features-hero">
         <div className="features-hero-bg-gradient" />

@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/react";
 import React, {
   createContext,
   useContext,
@@ -80,8 +81,14 @@ export const CookieContextProvider: React.FC<{ children: React.ReactNode }> = ({
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id || null);
+      const id = session?.user?.id || null;
+      setUserId(id);
       setIsAuthLoading(false);
+      if (id) {
+        Sentry.setUser({ id });
+      } else {
+        Sentry.setUser(null);
+      }
     });
 
     return () => subscription.unsubscribe();

@@ -110,5 +110,17 @@ export default defineConfig(({ mode }) => {
       environment: 'node',
       include: ['src/**/*.test.{ts,tsx}'],
     },
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+            'vendor-supabase': ['@supabase/supabase-js'],
+            'vendor-sentry': ['@sentry/react'],
+            'vendor-ui': ['lucide-react', 'react-helmet-async', 'dompurify'],
+          },
+        },
+      },
+    },
   };
 });

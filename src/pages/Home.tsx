@@ -7,6 +7,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import React from "react";
+import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Card, CardContent } from "../components/Card";
@@ -15,6 +16,11 @@ import "./Home.css";
 export const Home: React.FC = () => {
   return (
     <div className="home-page">
+      <Helmet>
+        <title>uTerms — Cookie Consent & Privacy Policy Platform</title>
+        <meta name="description" content="Automate cookie consent, generate GDPR-compliant privacy policies, and manage visitor consent globally. The all-in-one privacy compliance platform for your website." />
+        <link rel="canonical" href="https://uterms.io/" />
+      </Helmet>
       {/* Hero Section */}
       <section className="hero-section">
         <div className="hero-bg-gradient"></div>

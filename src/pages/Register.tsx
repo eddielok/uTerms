@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card, CardContent } from '../components/Card';
@@ -58,8 +59,12 @@ export const Register: React.FC = () => {
 
   return (
     <div className="auth-container">
+      <Helmet>
+        <title>Sign Up — Start for Free | uTerms</title>
+        <meta name="description" content="Create a free uTerms account. Generate GDPR-compliant policies, configure a cookie consent banner, and manage visitor consent in minutes." />
+      </Helmet>
       <div className="auth-bg-decor"></div>
-      
+
       <Card className="auth-card">
         <CardContent className="p-8">
           <div className="auth-header">

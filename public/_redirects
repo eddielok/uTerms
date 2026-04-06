@@ -1,0 +1,15 @@
+# Block test HTML files
+/test-embed.html          /  301
+/test-policy.html         /  301
+/test-cookie-policy.html  /  301
+/test-eula.html           /  301
+/test-tos.html            /  301
+/test-return-policy.html  /  301
+/test-disclaimer.html     /  301
+/test-shipping.html       /  301
+/test-aup.html            /  301
+/test-impressum.html      /  301
+/test-accessibility.html  /  301
+
+# SPA routing — must be last
+/*  /index.html  200

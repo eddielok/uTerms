@@ -1,0 +1,20 @@
+User-agent: *
+Allow: /
+Disallow: /dashboard
+Disallow: /consent-management
+Disallow: /policy-management
+Disallow: /cookie-policy
+Disallow: /terms-of-service
+Disallow: /eula
+Disallow: /return-policy
+Disallow: /disclaimer
+Disallow: /shipping-policy
+Disallow: /acceptable-use-policy
+Disallow: /impressum
+Disallow: /accessibility-statement
+Disallow: /settings
+Disallow: /api-documentation
+Disallow: /api/
+Disallow: /test-*.html
+
+Sitemap: https://uterms.io/sitemap.xml

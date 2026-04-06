@@ -1,5 +1,6 @@
 import { Bot, FileText, RefreshCw, ShieldCheck } from "lucide-react";
 import React from "react";
+import { Helmet } from "react-helmet-async";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import "./About.css";
@@ -8,6 +9,11 @@ export const About: React.FC = () => {
   const navigate = useNavigate();
   return (
     <div className="about-page">
+      <Helmet>
+        <title>About — AI-Powered Privacy Management | uTerms</title>
+        <meta name="description" content="uTerms is the first all-in-one AI managed privacy system. Learn how we automate cookie banners, legal terms generation, and continuous compliance." />
+        <link rel="canonical" href="https://uterms.io/about" />
+      </Helmet>
       {/* Hero Section */}
       <section className="about-hero">
         <div className="about-hero-bg-gradient" />

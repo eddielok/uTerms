@@ -1,3 +1,4 @@
+import DOMPurify from 'dompurify';
 import { ArrowLeft, Check, Code, Copy, Download, Eye, Globe, Pencil } from 'lucide-react';
 import React from 'react';
 import { API_URL, APP_URL } from '../lib/config';
@@ -106,7 +107,7 @@ export const PreviewPage: React.FC<PreviewPageProps> = ({
       <div className="preview-doc-wrapper">
         <div
           className="preview-doc"
-          dangerouslySetInnerHTML={{ __html: policy.generated || '<p>No content generated.</p>' }}
+          dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(policy.generated || '<p>No content generated.</p>') }}
         />
       </div>
 

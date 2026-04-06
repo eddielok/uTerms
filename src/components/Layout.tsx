@@ -146,7 +146,7 @@ export const Layout: React.FC = () => {
           <div className="footer-links">
             <h4 className="font-semibold mb-4">Company</h4>
             <Link to="/about">About Us</Link>
-            <a href="mailto:privacy@uterms.com">Contact</a>
+            <a href="mailto:privacy@uterms.io">Contact</a>
           </div>
           <div className="footer-links footer-links-legal">
             <h4 className="font-semibold mb-4">Legal</h4>
@@ -170,7 +170,10 @@ export const Layout: React.FC = () => {
         </div>
         <div className="container footer-bottom">
           <p className="text-muted text-sm">
-            © 2026 uTerms Inc. All rights reserved.
+            © {new Date().getFullYear()} uTerms Inc. All rights reserved.
+          </p>
+          <p className="text-muted text-sm">
+            <Link to="/do-not-sell" className="hover:text-primary transition">Do Not Sell or Share My Personal Information</Link>
           </p>
         </div>
       </footer>
