@@ -60,7 +60,7 @@ export const WebsiteCookie: React.FC = () => {
 
   // ── Scheduler state ──
   const [schedule, setSchedule] = useState<Schedule | null>(null);
-  const [scheduleEnabled, setScheduleEnabled] = useState(true);
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
   const [scheduleInterval, setScheduleInterval] = useState<ScheduleInterval>(3);
   const [scheduleStatus, setScheduleStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [scheduleError, setScheduleError] = useState<string | null>(null);
@@ -75,9 +75,9 @@ export const WebsiteCookie: React.FC = () => {
   useEffect(() => {
     if (!userId) return;
     fetch(`${API_URL}/api/scan-schedule/${userId}`)
-      .then((r) => r.json())
+      .then((r) => (r.ok ? r.json() : null))
       .then((data: Schedule | null) => {
-        if (data) {
+        if (data && data.url) {
           setSchedule(data);
           setScheduleEnabled(data.enabled);
           setScheduleInterval(data.interval_months as ScheduleInterval);
@@ -124,8 +124,11 @@ export const WebsiteCookie: React.FC = () => {
     }
   };
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  const formatDate = (iso: string | null | undefined) => {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
 
   const handleScan = async () => {
     if (!url) return;
