@@ -7,7 +7,6 @@ import {
   EyeOff,
   Globe,
   Key,
-  Lock,
   Play,
   RefreshCw,
   Shield,
@@ -1064,8 +1063,8 @@ export const APIDocumentation: React.FC = () => {
             <strong>Base URL:</strong> <code>{BASE_URL}</code>
             <br />
             All responses are <code>application/json</code>. Only{" "}
-            <code>status = "published"</code> documents are ever returned —
-            only published documents are ever returned.
+            <code>status = "published"</code> documents are ever returned — only
+            published documents are ever returned.
           </p>
         </div>
 
