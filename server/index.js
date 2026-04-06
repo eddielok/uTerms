@@ -6,13 +6,11 @@ const cron = require("node-cron");
 const crypto = require("crypto");
 
 require("dotenv").config({
-  path: require("path").resolve(__dirname, "../.env"),
-});
+  path: require("path").resolve(__dirname, "../.env") });
 const {
   categorizeCookie,
   enrichCookieDescription,
-  normalizeUrl,
-} = require("./utils");
+  normalizeUrl } = require("./utils");
 
 // ─── Credentials from environment (never hardcoded) ───────────────────────────
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
@@ -38,8 +36,7 @@ function serviceHeaders() {
   return {
     apikey: SUPABASE_SERVICE_ROLE_KEY,
     Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-    "Content-Type": "application/json",
-  };
+    "Content-Type": "application/json" };
 }
 
 // ─── IP anonymization helper ─────────────────────────────────────────────────
@@ -49,6 +46,28 @@ function anonymizeIp(ip) {
   const ipv4Match = clean.match(/^(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
   if (ipv4Match) return `${ipv4Match[1]}.${ipv4Match[2]}.x.x`;
   return crypto.createHash("sha256").update(clean + IP_SALT).digest("hex").slice(0, 16);
+}
+
+// ─── URL safety validation (SSRF protection) ─────────────────────────────────
+function validatePublicUrl(rawUrl) {
+  let parsed;
+  try { parsed = new URL(rawUrl); } catch (e) { return "Invalid URL format"; }
+  if (!["http:", "https:"].includes(parsed.protocol))
+    return "Only http and https URLs are allowed";
+  const h = parsed.hostname.toLowerCase();
+  if (h === "localhost" || h === "127.0.0.1" || h === "::1" || h === "0.0.0.0")
+    return "Scanning localhost is not allowed";
+  if (
+    /^10\./.test(h) ||
+    /^172\.(1[6-9]|2[0-9]|3[01])\./.test(h) ||
+    /^192\.168\./.test(h) ||
+    /^169\.254\./.test(h) ||
+    /^fc00:/i.test(h) ||
+    /^fe80:/i.test(h)
+  ) return "Scanning private IP ranges is not allowed";
+  if (h === "169.254.169.254" || h === "metadata.google.internal")
+    return "Scanning metadata endpoints is not allowed";
+  return null;
 }
 
 // ─── UUID validation helper ───────────────────────────────────────────────────
@@ -67,9 +86,7 @@ async function fetchPublishedPolicy(table, userId) {
     signal: controller.signal,
     headers: {
       apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-    },
-  });
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
   clearTimeout(timeoutId);
   if (!response.ok) {
     const text = await response.text();
@@ -86,8 +103,7 @@ async function validateApiKey(req, res, next) {
   const key = req.headers["x-api-key"];
   if (!key) {
     return res.status(401).json({
-      error: "API key required. Add the X-API-Key header to your request.",
-    });
+      error: "API key required. Add the X-API-Key header to your request." });
   }
   const apiKeyRe = /^utk_[0-9a-f]{32}$/;
   if (!apiKeyRe.test(key)) {
@@ -99,9 +115,7 @@ async function validateApiKey(req, res, next) {
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      },
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}` } },
     );
     const data = await response.json();
     if (!data || data.length === 0) {
@@ -110,8 +124,7 @@ async function validateApiKey(req, res, next) {
     const { userId } = req.params;
     if (userId && data[0].user_id !== userId) {
       return res.status(403).json({
-        error: "API key does not belong to this user ID.",
-      });
+        error: "API key does not belong to this user ID." });
     }
     req.apiKeyUserId = data[0].user_id;
     next();
@@ -127,8 +140,7 @@ const generalLimiter = rateLimit({
   max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Too many requests, please try again later." },
-});
+  message: { error: "Too many requests, please try again later." } });
 
 const scanLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
@@ -136,9 +148,7 @@ const scanLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    error: "Scan rate limit exceeded. Please wait before scanning again.",
-  },
-});
+    error: "Scan rate limit exceeded. Please wait before scanning again." } });
 
 const app = express();
 app.use(cors({
@@ -147,8 +157,7 @@ app.use(cors({
     'https://www.uterms.io',
     /\.uterms\.io$/,
   ],
-  credentials: true,
-}));
+  credentials: true }));
 app.use(express.json());
 app.use("/api/embed", generalLimiter);
 app.use("/api/consent", generalLimiter);
@@ -171,43 +180,37 @@ const CATEGORY_TEMPLATES = [
     name: "Essential",
     description:
       "These cookies are strictly necessary for your website to properly function, and therefore cannot be disabled by your users.",
-    providers: [],
-  },
+    providers: [] },
   {
     id: "functional",
     name: "Functional",
     description:
       "These cookies are used to enhance the performance and functionality of our websites but are non-essential to their use. However, without these cookies, certain functionality (like videos) may become unavailable.",
-    providers: [],
-  },
+    providers: [] },
   {
     id: "analytics",
     name: "Analytics",
     description:
       "These cookies allow us to count visits and traffic sources so we can measure and improve the performance of our site. They help us to know which pages are the most and least popular and see how visitors move around the site.",
-    providers: [],
-  },
+    providers: [] },
   {
     id: "marketing",
     name: "Marketing",
     description:
       "These cookies are used to make advertising messages more relevant to you. They perform functions like preventing the same ad from continuously reappearing, ensuring that ads are properly displayed for advertisers, and in some cases selecting advertisements that are based on your interests.",
-    providers: [],
-  },
+    providers: [] },
   {
     id: "social",
     name: "Social",
     description:
       "These cookies are set by a range of social media services that we have added to the site to enable you to share our content with your friends and networks. They are capable of tracking your browser across other sites and building up a profile of your interests.",
-    providers: [],
-  },
+    providers: [] },
   {
     id: "unclassified",
     name: "Unclassified",
     description:
       "Unclassified cookies are cookies that we are in the process of classifying, together with the providers of individual cookies.",
-    providers: [],
-  },
+    providers: [] },
 ];
 
 // ─── Shared scan function (used by /api/scan and the scheduled cron job) ──────
@@ -226,8 +229,7 @@ async function performScan(url) {
         "--disable-dev-shm-usage",
         "--no-zygote",
         "--single-process",
-      ],
-    });
+      ] });
 
     const page = await browser.newPage();
 
@@ -246,8 +248,7 @@ async function performScan(url) {
       );
       await page.goto(targetUrl, {
         waitUntil: "domcontentloaded",
-        timeout: 30000,
-      });
+        timeout: 30000 });
     }
 
     // Auto-scroll to trigger lazy-loaded scripts (cap at 10 s to avoid infinite-scroll hangs)
@@ -322,8 +323,7 @@ async function performScan(url) {
         expires: -1,
         session: true,
         isStorage: true,
-        storageType: item.type,
-      });
+        storageType: item.type });
     }
 
     // Deep clone the templates
@@ -361,8 +361,7 @@ async function performScan(url) {
           ? cookie.storageType
           : cookie.expires > 0
             ? `${Math.round((cookie.expires - Date.now() / 1000) / 86400)} days`
-            : "Session",
-      });
+            : "Session" });
     }
 
     return { url: targetUrl, cookiesCount: cookies.length, categories };
@@ -374,14 +373,15 @@ async function performScan(url) {
 app.post("/api/scan", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
+  const normalised = normalizeUrl(url);
+  const urlError = validatePublicUrl(normalised);
+  if (urlError) return res.status(400).json({ error: urlError });
   try {
-    const result = await performScan(url);
+    const result = await performScan(normalised);
     res.json(result);
   } catch (err) {
     console.error("Scan Error:", err);
-    res
-      .status(500)
-      .json({ error: "Failed to scan website", details: err.message });
+    res.status(500).json({ error: "Failed to scan website" });
   }
 });
 
@@ -391,8 +391,7 @@ app.get("/api/banner/:id", async (req, res) => {
   if (!isValidUUID(id)) {
     return res.status(400).json({
       error:
-        "Invalid user ID. Use a UUID, e.g. /api/banner/123e4567-e89b-12d3-a456-426614174000",
-    });
+        "Invalid user ID. Use a UUID, e.g. /api/banner/123e4567-e89b-12d3-a456-426614174000" });
   }
 
   try {
@@ -402,9 +401,7 @@ app.get("/api/banner/:id", async (req, res) => {
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          "Content-Profile": "public",
-        },
-      },
+          "Content-Profile": "public" } },
     );
 
     if (!response.ok) {
@@ -448,16 +445,14 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
       headers: {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        Prefer: "count=exact",
-      },
-    });
+        Prefer: "count=exact" } });
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("[Consent GET] Error:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch consent records", details: errorText });
+        .json({ error: "Failed to fetch consent records" });
     }
 
     const data = await response.json();
@@ -469,13 +464,12 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
       records: data,
       total: totalCount,
       limit,
-      offset,
-    });
+      offset });
   } catch (err) {
     console.error("[Consent GET] Error:", err.message);
     res
       .status(500)
-      .json({ error: "Failed to fetch consent records", details: err.message });
+      .json({ error: "Failed to fetch consent records" });
   }
 });
 
@@ -492,8 +486,7 @@ app.post("/api/consent", async (req, res) => {
       consent_data,
       url: url || req.headers.referer || req.get("origin") || "",
       ip_address: anonymizeIp(req.ip),
-      user_agent: req.get("user-agent"),
-    };
+      user_agent: req.get("user-agent") };
 
     const response = await fetch(`${SUPABASE_URL}/rest/v1/visitor_consent`, {
       method: "POST",
@@ -501,10 +494,8 @@ app.post("/api/consent", async (req, res) => {
         apikey: SUPABASE_ANON_KEY,
         Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
         "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(payload),
-    });
+        Prefer: "return=representation" },
+      body: JSON.stringify(payload) });
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -530,8 +521,7 @@ app.delete("/api/consent/:userId", validateApiKey, async (req, res) => {
       `${SUPABASE_URL}/rest/v1/visitor_consent?user_id=eq.${encodeURIComponent(userId)}`,
       {
         method: "DELETE",
-        headers: { ...serviceHeaders(), Prefer: "return=minimal" },
-      },
+        headers: { ...serviceHeaders(), Prefer: "return=minimal" } },
     );
     if (!response.ok) {
       const text = await response.text();
@@ -561,9 +551,7 @@ app.get("/api/policy/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[Privacy Policy API] Response status:", response.status);
@@ -573,7 +561,7 @@ app.get("/api/policy/:userId", validateApiKey, async (req, res) => {
       console.error("[Privacy Policy API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch policy", details: errorText });
+        .json({ error: "Failed to fetch policy" });
     }
 
     const data = await response.json();
@@ -591,15 +579,17 @@ app.get("/api/policy/:userId", validateApiKey, async (req, res) => {
     console.error("Policy API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch policy", details: err.message });
+      .json({ error: "Failed to fetch policy" });
   }
 });
 
-app.post("/api/analyze-policy", async (req, res) => {
+app.post("/api/analyze-policy", validateApiKey, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
 
   const targetUrl = normalizeUrl(url);
+  const urlError = validatePublicUrl(targetUrl);
+  if (urlError) return res.status(400).json({ error: urlError });
   console.log(`Analyzing policy for: ${targetUrl}`);
 
   let browser = null;
@@ -613,8 +603,7 @@ app.post("/api/analyze-policy", async (req, res) => {
         "--disable-dev-shm-usage",
         "--no-zygote",
         "--single-process",
-      ],
-    });
+      ] });
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -680,8 +669,7 @@ app.post("/api/analyze-policy", async (req, res) => {
         companyNo,
         registeredAddress,
         vatNo,
-        detectedCountry,
-      };
+        detectedCountry };
     });
 
     // Try to find and visit the privacy policy page
@@ -699,8 +687,7 @@ app.post("/api/analyze-policy", async (req, res) => {
       if (privacyLink) {
         await page.goto(privacyLink, {
           waitUntil: "networkidle2",
-          timeout: 15000,
-        });
+          timeout: 15000 });
         privacyPageContent = await page.evaluate(() =>
           (document.body?.innerText || "").slice(0, 8000),
         );
@@ -784,16 +771,14 @@ app.post("/api/analyze-policy", async (req, res) => {
         // Keep these for debug/display if frontend wants them
         companyNo: homepageContent.companyNo,
         vatNo: homepageContent.vatNo,
-        registeredAddress: homepageContent.registeredAddress,
-      },
-    };
+        registeredAddress: homepageContent.registeredAddress } };
 
     res.json({ success: true, analysis });
   } catch (err) {
     console.error("Analyze Policy Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to analyze website", details: err.message });
+      .json({ error: "Failed to analyze website" });
   } finally {
     if (browser) await browser.close();
   }
@@ -814,9 +799,7 @@ app.get("/uterms-policy-embed.js", async (req, res) => {
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      },
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}` } },
     );
 
     if (!response.ok) {
@@ -838,7 +821,15 @@ app.get("/uterms-policy-embed.js", async (req, res) => {
     console.error('uterms-policy container not found');
     return;
   }
-  container.innerHTML = ${JSON.stringify(policyHtml)};
+  (function(html) {
+    var parser = new DOMParser();
+    var doc = parser.parseFromString(html, 'text/html');
+    doc.querySelectorAll('script,iframe,object,embed').forEach(function(el) { el.remove(); });
+    doc.querySelectorAll('*').forEach(function(el) {
+      Array.from(el.attributes).forEach(function(a) { if (a.name.startsWith('on')) el.removeAttribute(a.name); });
+    });
+    container.innerHTML = doc.body.innerHTML;
+  })(${JSON.stringify(policyHtml)});
   
   // Style the policy
   const style = document.createElement('style');
@@ -921,9 +912,7 @@ app.get("/api/cookie-policy/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[Cookie Policy API] Response status:", response.status);
@@ -933,7 +922,7 @@ app.get("/api/cookie-policy/:userId", validateApiKey, async (req, res) => {
       console.error("[Cookie Policy API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch cookie policy", details: errorText });
+        .json({ error: "Failed to fetch cookie policy" });
     }
 
     const data = await response.json();
@@ -951,7 +940,7 @@ app.get("/api/cookie-policy/:userId", validateApiKey, async (req, res) => {
     console.error("Cookie Policy API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch cookie policy", details: err.message });
+      .json({ error: "Failed to fetch cookie policy" });
   }
 });
 
@@ -987,9 +976,7 @@ app.get("/api/tos/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[Terms of Service API] Response status:", response.status);
@@ -998,8 +985,7 @@ app.get("/api/tos/:userId", validateApiKey, async (req, res) => {
       const errorText = await response.text();
       console.error("[Terms of Service API] Error response:", errorText);
       return res.status(response.status).json({
-        error: "Failed to fetch Terms of Service",
-        details: errorText,
+        error: "Failed to fetch Terms of Service"
       });
     }
 
@@ -1017,8 +1003,7 @@ app.get("/api/tos/:userId", validateApiKey, async (req, res) => {
   } catch (err) {
     console.error("ToS API Error:", err);
     res.status(500).json({
-      error: "Failed to fetch Terms of Service",
-      details: err.message,
+      error: "Failed to fetch Terms of Service"
     });
   }
 });
@@ -1054,9 +1039,7 @@ app.get("/api/eula/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[EULA API] Response status:", response.status);
@@ -1066,7 +1049,7 @@ app.get("/api/eula/:userId", validateApiKey, async (req, res) => {
       console.error("[EULA API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch EULA", details: errorText });
+        .json({ error: "Failed to fetch EULA" });
     }
 
     const data = await response.json();
@@ -1082,7 +1065,7 @@ app.get("/api/eula/:userId", validateApiKey, async (req, res) => {
     console.error("EULA API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch EULA", details: err.message });
+      .json({ error: "Failed to fetch EULA" });
   }
 });
 
@@ -1117,9 +1100,7 @@ app.get("/api/return-policy/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[Return Policy API] Response status:", response.status);
@@ -1129,7 +1110,7 @@ app.get("/api/return-policy/:userId", validateApiKey, async (req, res) => {
       console.error("[Return Policy API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch Return Policy", details: errorText });
+        .json({ error: "Failed to fetch Return Policy" });
     }
 
     const data = await response.json();
@@ -1147,7 +1128,7 @@ app.get("/api/return-policy/:userId", validateApiKey, async (req, res) => {
     console.error("Return Policy API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch Return Policy", details: err.message });
+      .json({ error: "Failed to fetch Return Policy" });
   }
 });
 
@@ -1184,9 +1165,7 @@ app.get("/api/disclaimer/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[Disclaimer API] Response status:", response.status);
@@ -1196,7 +1175,7 @@ app.get("/api/disclaimer/:userId", validateApiKey, async (req, res) => {
       console.error("[Disclaimer API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch Disclaimer", details: errorText });
+        .json({ error: "Failed to fetch Disclaimer" });
     }
 
     const data = await response.json();
@@ -1214,7 +1193,7 @@ app.get("/api/disclaimer/:userId", validateApiKey, async (req, res) => {
     console.error("Disclaimer API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch Disclaimer", details: err.message });
+      .json({ error: "Failed to fetch Disclaimer" });
   }
 });
 
@@ -1248,9 +1227,7 @@ app.get("/api/shipping-policy/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[Shipping Policy API] Response status:", response.status);
@@ -1260,7 +1237,7 @@ app.get("/api/shipping-policy/:userId", validateApiKey, async (req, res) => {
       console.error("[Shipping Policy API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch Shipping Policy", details: errorText });
+        .json({ error: "Failed to fetch Shipping Policy" });
     }
 
     const data = await response.json();
@@ -1278,7 +1255,7 @@ app.get("/api/shipping-policy/:userId", validateApiKey, async (req, res) => {
     console.error("Shipping Policy API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch Shipping Policy", details: err.message });
+      .json({ error: "Failed to fetch Shipping Policy" });
   }
 });
 
@@ -1312,9 +1289,7 @@ app.get("/api/aup/:userId", validateApiKey, async (req, res) => {
       signal: controller.signal,
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
     clearTimeout(timeoutId);
 
     console.log("[AUP API] Response status:", response.status);
@@ -1323,8 +1298,7 @@ app.get("/api/aup/:userId", validateApiKey, async (req, res) => {
       const errorText = await response.text();
       console.error("[AUP API] Error response:", errorText);
       return res.status(response.status).json({
-        error: "Failed to fetch Acceptable Use Policy",
-        details: errorText,
+        error: "Failed to fetch Acceptable Use Policy"
       });
     }
 
@@ -1336,14 +1310,12 @@ app.get("/api/aup/:userId", validateApiKey, async (req, res) => {
     } else {
       console.warn("[AUP API] No data found for userId:", userId);
       res.status(404).json({
-        error: "No published Acceptable Use Policy found for this user",
-      });
+        error: "No published Acceptable Use Policy found for this user" });
     }
   } catch (err) {
     console.error("AUP API Error:", err);
     res.status(500).json({
-      error: "Failed to fetch Acceptable Use Policy",
-      details: err.message,
+      error: "Failed to fetch Acceptable Use Policy"
     });
   }
 });
@@ -1374,9 +1346,7 @@ app.get("/api/impressum/:userId", validateApiKey, async (req, res) => {
     const response = await fetch(url, {
       headers: {
         apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}` } });
 
     console.log("[Impressum API] Response status:", response.status);
 
@@ -1385,7 +1355,7 @@ app.get("/api/impressum/:userId", validateApiKey, async (req, res) => {
       console.error("[Impressum API] Error response:", errorText);
       return res
         .status(response.status)
-        .json({ error: "Failed to fetch Impressum", details: errorText });
+        .json({ error: "Failed to fetch Impressum" });
     }
 
     const data = await response.json();
@@ -1403,7 +1373,7 @@ app.get("/api/impressum/:userId", validateApiKey, async (req, res) => {
     console.error("Impressum API Error:", err);
     res
       .status(500)
-      .json({ error: "Failed to fetch Impressum", details: err.message });
+      .json({ error: "Failed to fetch Impressum" });
   }
 });
 
@@ -1433,9 +1403,7 @@ app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-        },
-      },
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}` } },
     );
 
     console.log("[Accessibility API] Response status:", response.status);
@@ -1444,8 +1412,7 @@ app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
       const errorText = await response.text();
       console.error("[Accessibility API] Error response:", errorText);
       return res.status(response.status).json({
-        error: "Failed to fetch Accessibility Statement",
-        details: errorText,
+        error: "Failed to fetch Accessibility Statement"
       });
     }
 
@@ -1457,14 +1424,12 @@ app.get("/api/accessibility/:userId", validateApiKey, async (req, res) => {
     } else {
       console.warn("[Accessibility API] No data found for userId:", userId);
       res.status(404).json({
-        error: "No published Accessibility Statement found for this user",
-      });
+        error: "No published Accessibility Statement found for this user" });
     }
   } catch (err) {
     console.error("Accessibility API Error:", err);
     res.status(500).json({
-      error: "Failed to fetch Accessibility Statement",
-      details: err.message,
+      error: "Failed to fetch Accessibility Statement"
     });
   }
 });
@@ -1498,8 +1463,7 @@ const EMBED_POLICY_ROUTES = [
   { path: "/api/embed/impressum/:userId", table: "impressum" },
   {
     path: "/api/embed/accessibility/:userId",
-    table: "accessibility_statement",
-  },
+    table: "accessibility_statement" },
 ];
 
 EMBED_POLICY_ROUTES.forEach(({ path, table }) => {
@@ -1526,11 +1490,13 @@ EMBED_POLICY_ROUTES.forEach(({ path, table }) => {
 });
 
 // ─── GCM Compliance Scan ─────────────────────────────────────────────────────
-app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
+app.post("/api/gcm-scan", scanLimiter, validateApiKey, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
 
   const targetUrl = normalizeUrl(url);
+  const urlError = validatePublicUrl(targetUrl);
+  if (urlError) return res.status(400).json({ error: urlError });
   console.log(`[GCM Scan] Scanning: ${targetUrl}`);
 
   let browser = null;
@@ -1544,8 +1510,7 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
         "--disable-dev-shm-usage",
         "--no-zygote",
         "--single-process",
-      ],
-    });
+      ] });
 
     const page = await browser.newPage();
     await page.setUserAgent(
@@ -1639,8 +1604,7 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
         adUserData: allText.includes("ad_user_data"),
         adPersonalization: allText.includes("ad_personalization"),
         consentBeforeGtm:
-          consentIdx !== -1 && gtmIdx !== -1 ? consentIdx < gtmIdx : null,
-      };
+          consentIdx !== -1 && gtmIdx !== -1 ? consentIdx < gtmIdx : null };
     });
 
     const hasGoogleTag =
@@ -1656,15 +1620,13 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
         label: "Google Tag Manager / gtag.js detected",
         description: "GTM or gtag.js is loaded on the page.",
         pass: hasGoogleTag,
-        required: true,
-      },
+        required: true },
       {
         id: "consent_default",
         label: "Consent default configured",
         description: "gtag('consent', 'default', {...}) is called on the page.",
         pass: hasConsentDefault,
-        required: true,
-      },
+        required: true },
       {
         id: "consent_before_gtm",
         label: "Consent default fires before GTM",
@@ -1676,46 +1638,40 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
             : gcm.consentBeforeGtm === false
               ? false
               : null,
-        required: true,
-      },
+        required: true },
       {
         id: "ad_storage",
         label: "ad_storage parameter set",
         description: "Required GCM parameter controlling Google Ads cookies.",
         pass: gcm.adStorage,
-        required: true,
-      },
+        required: true },
       {
         id: "analytics_storage",
         label: "analytics_storage parameter set",
         description:
           "Required GCM parameter controlling Google Analytics cookies.",
         pass: gcm.analyticsStorage,
-        required: true,
-      },
+        required: true },
       {
         id: "ad_user_data",
         label: "ad_user_data parameter set (GCM v2)",
         description:
           "Controls sending user data to Google for advertising. Required by GCM v2.",
         pass: gcm.adUserData,
-        required: true,
-      },
+        required: true },
       {
         id: "ad_personalization",
         label: "ad_personalization parameter set (GCM v2)",
         description: "Controls personalized advertising. Required by GCM v2.",
         pass: gcm.adPersonalization,
-        required: true,
-      },
+        required: true },
       {
         id: "consent_update",
         label: "Consent update mechanism present",
         description:
           "gtag('consent', 'update', {...}) is called when visitors make a consent decision.",
         pass: gcm.gtagConsentUpdate,
-        required: false,
-      },
+        required: false },
     ];
 
     const requiredChecks = checks.filter((c) => c.required);
@@ -1738,13 +1694,11 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
       status,
       passCount: checks.filter((c) => c.pass === true).length,
       totalChecks: checks.length,
-      checks,
-    });
+      checks });
   } catch (err) {
     console.error("[GCM Scan] Error:", err.message);
     res.status(500).json({
-      error: "Failed to scan for GCM compliance",
-      details: err.message,
+      error: "Failed to scan for GCM compliance"
     });
   } finally {
     if (browser) await browser.close();
@@ -1754,7 +1708,7 @@ app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
 // ─── Scan Schedule endpoints ──────────────────────────────────────────────────
 
 // GET /api/scan-schedule/:userId — fetch current schedule for a user
-app.get("/api/scan-schedule/:userId", async (req, res) => {
+app.get("/api/scan-schedule/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
   if (!isValidUUID(userId))
     return res.status(400).json({ error: "Invalid user ID" });
@@ -1773,12 +1727,12 @@ app.get("/api/scan-schedule/:userId", async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ error: "Failed to fetch schedule", details: err.message });
+      .json({ error: "Failed to fetch schedule" });
   }
 });
 
 // POST /api/scan-schedule — create or update a schedule
-app.post("/api/scan-schedule", async (req, res) => {
+app.post("/api/scan-schedule", validateApiKey, async (req, res) => {
   const { userId, url, intervalMonths, enabled } = req.body;
   if (!userId || !isValidUUID(userId))
     return res.status(400).json({ error: "Invalid user ID" });
@@ -1798,35 +1752,32 @@ app.post("/api/scan-schedule", async (req, res) => {
     interval_months: Number(intervalMonths),
     enabled: enabled !== false,
     next_scan_at: nextScanAt.toISOString(),
-    updated_at: now.toISOString(),
-  };
+    updated_at: now.toISOString() };
 
   try {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/scan_schedules`, {
       method: "POST",
       headers: {
         ...serviceHeaders(),
-        Prefer: "resolution=merge-duplicates,return=representation",
-      },
-      body: JSON.stringify(payload),
-    });
+        Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify(payload) });
     if (!response.ok) {
       const text = await response.text();
       return res
         .status(response.status)
-        .json({ error: "Failed to save schedule", details: text });
+        .json({ error: "Failed to save schedule" });
     }
     const data = await response.json();
     res.json(Array.isArray(data) ? data[0] : data);
   } catch (err) {
     res
       .status(500)
-      .json({ error: "Failed to save schedule", details: err.message });
+      .json({ error: "Failed to save schedule" });
   }
 });
 
 // DELETE /api/scan-schedule/:userId — remove a schedule
-app.delete("/api/scan-schedule/:userId", async (req, res) => {
+app.delete("/api/scan-schedule/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
   if (!isValidUUID(userId))
     return res.status(400).json({ error: "Invalid user ID" });
@@ -1836,8 +1787,7 @@ app.delete("/api/scan-schedule/:userId", async (req, res) => {
       `${SUPABASE_URL}/rest/v1/scan_schedules?user_id=eq.${encodeURIComponent(userId)}`,
       {
         method: "DELETE",
-        headers: serviceHeaders(),
-      },
+        headers: serviceHeaders() },
     );
     if (!response.ok)
       return res
@@ -1847,7 +1797,7 @@ app.delete("/api/scan-schedule/:userId", async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ error: "Failed to delete schedule", details: err.message });
+      .json({ error: "Failed to delete schedule" });
   }
 });
 
@@ -1873,25 +1823,20 @@ async function runDueScans() {
         date: new Date().toLocaleDateString("en-US", {
           month: "short",
           day: "numeric",
-          year: "numeric",
-        }),
+          year: "numeric" }),
         pages: Math.floor(Math.random() * 50) + 10,
         cookiesCount: result.cookiesCount,
-        categories: result.categories,
-      };
+        categories: result.categories };
       await fetch(`${SUPABASE_URL}/rest/v1/user_cookie_settings`, {
         method: "POST",
         headers: {
           apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
           "Content-Type": "application/json",
-          Prefer: "resolution=merge-duplicates",
-        },
+          Prefer: "resolution=merge-duplicates" },
         body: JSON.stringify({
           user_id: schedule.user_id,
-          scanned_data: scannedData,
-        }),
-      });
+          scanned_data: scannedData }) });
       const nextScanAt = new Date();
       nextScanAt.setMonth(nextScanAt.getMonth() + schedule.interval_months);
       await fetch(
@@ -1902,43 +1847,39 @@ async function runDueScans() {
           body: JSON.stringify({
             last_scan_at: new Date().toISOString(),
             next_scan_at: nextScanAt.toISOString(),
-            updated_at: new Date().toISOString(),
-          }),
-        },
+            updated_at: new Date().toISOString() }) },
       );
       results.push({
         userId: schedule.user_id,
         url: schedule.url,
         status: "ok",
         cookiesCount: result.cookiesCount,
-        nextScanAt: nextScanAt.toISOString(),
-      });
+        nextScanAt: nextScanAt.toISOString() });
     } catch (err) {
       console.error(`[cron] Failed for user ${schedule.user_id}:`, err.message);
       results.push({
         userId: schedule.user_id,
         url: schedule.url,
         status: "error",
-        error: err.message,
-      });
+        error: err.message });
     }
   }
   return results;
 }
 
 // POST /api/scan-schedule/trigger — manually run all due scans (for testing)
-app.post("/api/scan-schedule/trigger", async (req, res) => {
+app.post("/api/scan-schedule/trigger", validateApiKey, async (req, res) => {
   console.log("[trigger] Manual scan trigger called");
   try {
     const results = await runDueScans();
     res.json({ triggered: results.length, results });
   } catch (err) {
-    res.status(500).json({ error: "Trigger failed", details: err.message });
+    res.status(500).json({ error: "Trigger failed" });
   }
 });
 
 // POST /api/scan-schedule/:userId/run-now — force-run scan for one user immediately
-app.post("/api/scan-schedule/:userId/run-now", async (req, res) => {
+app.post("/api/scan-schedule/:userId/run-now", validateApiKey, async (req, res) => {
   const { userId } = req.params;
   if (!isValidUUID(userId))
     return res.status(400).json({ error: "Invalid user ID" });
@@ -1949,19 +1890,17 @@ app.post("/api/scan-schedule/:userId/run-now", async (req, res) => {
     {
       method: "PATCH",
       headers: serviceHeaders(),
-      body: JSON.stringify({ next_scan_at: new Date().toISOString() }),
-    },
+      body: JSON.stringify({ next_scan_at: new Date().toISOString() }) },
   );
 
   try {
     const results = await runDueScans();
     res.json(
       results.find((r) => r.userId === userId) || {
-        status: "no schedule found",
-      },
+        status: "no schedule found" },
     );
   } catch (err) {
-    res.status(500).json({ error: "Run-now failed", details: err.message });
+    res.status(500).json({ error: "Run-now failed" });
   }
 });
 
@@ -1987,8 +1926,7 @@ cron.schedule("30 2 * * *", async () => {
       `${SUPABASE_URL}/rest/v1/visitor_consent?created_at=lt.${encodeURIComponent(cutoffIso)}`,
       {
         method: "DELETE",
-        headers: { ...serviceHeaders(), Prefer: "return=minimal" },
-      },
+        headers: { ...serviceHeaders(), Prefer: "return=minimal" } },
     );
     if (!response.ok) {
       const text = await response.text();

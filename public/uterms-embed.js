@@ -293,7 +293,15 @@
         userId = scriptUrl.searchParams.get("id");
         autoBlock = scriptUrl.searchParams.get("mode") === "auto";
         langParam = scriptUrl.searchParams.get("lang") || "";
-        apiBase = scriptUrl.searchParams.get("api") || "https://api.uterms.io";
+        var apiParam = scriptUrl.searchParams.get("api");
+        if (apiParam) {
+          try {
+            var apiParsed = new URL(apiParam);
+            apiBase = (apiParsed.protocol === "https:" || apiParsed.protocol === "http:") ? apiParam : "https://api.uterms.io";
+          } catch(e) { apiBase = "https://api.uterms.io"; }
+        } else {
+          apiBase = "https://api.uterms.io";
+        }
         break;
       }
     }
