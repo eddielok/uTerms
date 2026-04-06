@@ -1065,7 +1065,7 @@ export const APIDocumentation: React.FC = () => {
             <br />
             All responses are <code>application/json</code>. Only{" "}
             <code>status = "published"</code> documents are ever returned —
-            enforced by Supabase Row-Level Security.
+            only published documents are ever returned.
           </p>
         </div>
 
@@ -1105,27 +1105,6 @@ export const APIDocumentation: React.FC = () => {
                   All direct JSON API calls require <code>X-API-Key</code>. The
                   key is validated against your account and the{" "}
                   <code>:userId</code> in the path must match.
-                </div>
-              </div>
-            </div>
-            <div className="security-badge">
-              <Shield size={16} className="security-badge-icon" />
-              <div>
-                <div className="security-badge-title">Supabase RLS</div>
-                <div className="security-badge-desc">
-                  Row-Level Security enforces that only{" "}
-                  <code>status = "published"</code> rows are readable. Drafts
-                  are inaccessible regardless of credentials.
-                </div>
-              </div>
-            </div>
-            <div className="security-badge">
-              <Lock size={16} className="security-badge-icon" />
-              <div>
-                <div className="security-badge-title">No hardcoded secrets</div>
-                <div className="security-badge-desc">
-                  Supabase credentials are loaded from environment variables at
-                  server startup — never from source code.
                 </div>
               </div>
             </div>
