@@ -113,7 +113,7 @@ export const ManagementPage: React.FC<ManagementPageProps> = ({
         )}
       </div>
 
-      {policies.length > 0 && (
+      {policies.length > 0 && !policies.some(p => p.status === 'published') && (
         <div style={{ marginTop: '1.5rem' }}>
           <button className="btn-create" onClick={() => navigate(`${basePath}/new`)}>
             <Plus size={16} /> {createLabel}
