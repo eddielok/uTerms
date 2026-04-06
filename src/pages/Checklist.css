@@ -2,19 +2,17 @@
   padding: 2rem;
   max-width: 1000px;
   margin: 0 auto;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: var(--font-family);
 }
 
 .checklist-container {
-  background: white;
-  border-radius: 8px;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  padding: 1rem 2rem; /* Added padding to the container */
+  padding: 1rem 2rem;
   border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm); /* Add subtle shadow to match theme */
+  box-shadow: var(--shadow-sm);
 }
 
 .checklist-item {
@@ -22,7 +20,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 1.5rem 0;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .checklist-item:last-child {
@@ -36,22 +34,22 @@
 }
 
 .checklist-title {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
   font-weight: 600;
-  color: #374151;
+  color: var(--color-text-main);
   margin: 0 0 0.5rem 0;
 }
 
 .checklist-description {
-  color: #6b7280;
-  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
   line-height: 1.5;
   margin-bottom: 0.25rem;
 }
 
 .checklist-metadata {
-  color: #9ca3af;
-  font-size: 0.85rem;
+  color: var(--color-text-subtle);
+  font-size: 0.8125rem;
   margin-top: 0.25rem;
 }
 
@@ -122,12 +120,10 @@
 /* Code Snippet Styles */
 .checklist-code-snippet {
   margin-top: 1rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   overflow: hidden;
-  font-family:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: var(--font-mono);
 }
 
 .code-snippet-header {
@@ -135,45 +131,44 @@
   justify-content: space-between;
   align-items: center;
   padding: 0.5rem 1rem;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background-color: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .code-snippet-title {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   font-weight: 600;
-  color: #9ca3af;
-  letter-spacing: 0.05em;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--color-text-subtle);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-family: var(--font-family);
 }
 
 .code-snippet-copy {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  background-color: #10b981; /* Tailwind emerald-500 */
+  background-color: var(--color-success);
   color: white;
   border: none;
   padding: 0.4rem 0.75rem;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: background-color var(--transition-fast);
+  font-family: var(--font-family);
 }
 
 .code-snippet-copy:hover {
-  background-color: #059669; /* Tailwind emerald-600 */
+  background-color: #059669;
 }
 
 .code-snippet-content {
-  background-color: #f8fafc; /* very light slate/grey */
+  background-color: var(--color-bg-main);
   padding: 1.5rem 1rem;
   font-size: 0.85rem;
-  color: #4b5563;
+  color: var(--color-text-muted);
   overflow-x: auto;
   white-space: pre-wrap;
   word-break: break-all;
@@ -190,23 +185,25 @@
 .gcm-url-input {
   flex: 1;
   padding: 0.5rem 0.875rem;
-  border: 1px solid #d1d5db;
-  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 0.875rem;
-  color: #374151;
-  background: #fff;
+  color: var(--color-text-main);
+  background: var(--color-surface);
   outline: none;
-  transition: border-color 0.15s;
+  font-family: var(--font-family);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
   min-width: 0;
 }
 
 .gcm-url-input:focus {
   border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.15);
 }
 
 .gcm-url-input:disabled {
-  background: #f9fafb;
-  color: #9ca3af;
+  background: var(--color-bg-main);
+  color: var(--color-text-subtle);
 }
 
 .gcm-error {
@@ -268,13 +265,13 @@
 .gcm-check-label {
   display: block;
   font-weight: 500;
-  color: #374151;
+  color: var(--color-text-main);
 }
 
 .gcm-check-desc {
   display: block;
   font-size: 0.75rem;
-  color: #6b7280;
+  color: var(--color-text-muted);
   margin-top: 0.1rem;
 }
 
@@ -283,16 +280,16 @@
   font-size: 0.65rem;
   font-weight: 600;
   padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: #e5e7eb;
-  color: #6b7280;
+  border-radius: var(--radius-full);
+  background: var(--color-border);
+  color: var(--color-text-subtle);
   align-self: flex-start;
   margin-top: 2px;
 }
 
 .gcm-scan-meta {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--color-text-subtle);
   margin: 0;
 }
 
@@ -326,9 +323,9 @@
   border: 1px solid #fecaca;
 }
 .gcm-status-not_applicable {
-  color: #6b7280;
-  background: #f9fafb;
-  border: 1px solid #e5e7eb;
+  color: var(--color-text-subtle);
+  background: var(--color-bg-main);
+  border: 1px solid var(--color-border);
 }
 .gcm-status-scanning {
   color: var(--color-primary-hover);

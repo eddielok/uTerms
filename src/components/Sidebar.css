@@ -1,8 +1,8 @@
 .sidebar {
-  width: 240px;
-  min-width: 240px;
+  width: 256px;
+  min-width: 256px;
   height: 100vh;
-  background-color: #ffffff;
+  background: var(--color-surface);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
@@ -11,32 +11,55 @@
   left: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-width: none;
 }
+.sidebar::-webkit-scrollbar { display: none; }
 
 /* ── Header ── */
 .sidebar-header {
-  padding: 1rem 1.25rem;
+  padding: 1.25rem 1.25rem 1rem;
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
-  height: 56px;
 }
 
 .brand-name {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.0625rem;
+  font-weight: 800;
   color: var(--color-text-main);
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  font-family: var(--font-family);
+}
+
+.sidebar-header svg {
+  color: var(--color-primary) !important;
+}
+
+/* ── Divider ── */
+.sidebar-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 0 1.25rem 0.5rem;
+}
+
+/* ── Section label ── */
+.sidebar-section-label {
+  padding: 0.75rem 1.25rem 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
 }
 
 /* ── Nav container ── */
 .sidebar-nav {
-  padding: 0.5rem 0;
+  padding: 0.25rem 0.75rem;
   flex: 1;
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 
 .sidebar-group {
@@ -44,14 +67,14 @@
   flex-direction: column;
 }
 
-/* ── Base nav item (shared by links and group buttons) ── */
+/* ── Base nav item ── */
 .sidebar-link {
   display: flex;
   align-items: center;
   gap: 0.625rem;
-  padding: 0 1.25rem;
-  height: 36px;
-  color: var(--color-text-muted);
+  padding: 0 0.875rem;
+  height: 38px;
+  color: #475569;
   text-decoration: none;
   font-weight: 500;
   font-size: 0.8125rem;
@@ -63,6 +86,13 @@
   text-align: left;
   cursor: pointer;
   white-space: nowrap;
+  border-radius: var(--radius-md);
+}
+
+.sidebar-link svg {
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
 }
 
 .sidebar-link:hover {
@@ -70,19 +100,23 @@
   color: var(--color-text-main);
 }
 
+.sidebar-link:hover svg {
+  opacity: 1;
+}
+
 /* Active direct link */
 .sidebar-link.active {
-  background-color: var(--color-primary-light);
+  background: rgba(249, 115, 22, 0.08);
   color: var(--color-primary-hover);
   font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--color-primary);
 }
 
 .sidebar-link.active svg {
   color: var(--color-primary);
+  opacity: 1;
 }
 
-/* Active group (parent of active child) */
+/* Active group */
 button.sidebar-link.active-group {
   background-color: var(--color-surface-raised);
   color: var(--color-text-main);
@@ -91,30 +125,31 @@ button.sidebar-link.active-group {
 
 button.sidebar-link.active-group svg {
   color: var(--color-primary);
+  opacity: 1;
 }
 
 /* ── Sub-menu ── */
 .sidebar-sub-menu {
   display: flex;
   flex-direction: column;
-  background-color: var(--color-bg-main);
-  border-bottom: 1px solid var(--color-border);
-  padding: 0.25rem 0;
+  padding: 0.125rem 0 0.25rem;
+  gap: 1px;
 }
 
 .sidebar-sub-link {
-  display: block;
-  padding: 0 1.25rem 0 3rem;
+  display: flex;
+  align-items: center;
+  padding: 0 0.875rem 0 2.75rem;
   height: 32px;
-  line-height: 32px;
   color: var(--color-text-muted);
   text-decoration: none;
-  font-size: 0.8125rem;
+  font-size: 0.8rem;
   font-weight: 400;
   transition: background-color var(--transition-fast), color var(--transition-fast);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  border-radius: var(--radius-md);
 }
 
 .sidebar-sub-link:hover {
@@ -123,10 +158,9 @@ button.sidebar-link.active-group svg {
 }
 
 .sidebar-sub-link.active {
-  background-color: var(--color-primary-light);
+  background: rgba(249, 115, 22, 0.08);
   color: var(--color-primary-hover);
-  font-weight: 600;
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  font-weight: 500;
 }
 
 /* ── Footer / User section ── */
@@ -161,16 +195,16 @@ button.sidebar-link.active-group svg {
 }
 
 .avatar {
-  width: 28px;
-  height: 28px;
-  background-color: var(--color-primary);
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
   color: white;
-  border-radius: 50%;
+  border-radius: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   letter-spacing: 0.025em;
   flex-shrink: 0;
 }
@@ -206,10 +240,10 @@ button.sidebar-link.active-group svg {
   bottom: calc(100% + 0.25rem);
   left: 0;
   width: 100%;
-  background-color: var(--color-surface);
+  background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
   padding: 0.25rem;
   z-index: 10;
 }
@@ -219,7 +253,7 @@ button.sidebar-link.active-group svg {
   align-items: center;
   gap: 0.5rem;
   width: 100%;
-  padding: 0.4375rem 0.625rem;
+  padding: 0.5rem 0.75rem;
   border: none;
   background: none;
   border-radius: var(--radius-sm);
