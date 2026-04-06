@@ -254,7 +254,6 @@ const bannerLimiter = rateLimit({
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
-app.use(Sentry.Handlers.requestHandler());
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -295,7 +294,7 @@ app.use("/api/impressum", generalLimiter);
 app.use("/api/accessibility", generalLimiter);
 app.use("/api/scan", scanLimiter);
 app.use("/api/analyze-policy", scanLimiter);
-app.use(Sentry.Handlers.errorHandler());
+Sentry.setupExpressErrorHandler(app);
 // ─── Cookie category templates ────────────────────────────────────────────────
 const CATEGORY_TEMPLATES = [
   {
