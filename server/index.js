@@ -157,11 +157,11 @@ const generalLimiter = rateLimit({
 });
 
 const scanLimiter = rateLimit({
-  windowMs: 60 * 1000,
+  windowMs: 60 * 60 * 1000, // 1 hour
   max: 5,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Scan rate limit exceeded. Please wait before scanning again." },
+  message: { error: "Scan limit reached. You can perform up to 5 scans per hour." },
 });
 
 const bannerLimiter = rateLimit({
