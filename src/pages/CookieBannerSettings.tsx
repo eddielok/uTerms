@@ -1,5 +1,5 @@
 import { Check, ExternalLink, Eye, Grid, Menu } from 'lucide-react';
-import React from 'react';
+import React, { useRef } from 'react';
 import { useCookieConfig } from '../context/CookieContext';
 import { APP_URL } from '../lib/config';
 import './CookieBannerSettings.css';
@@ -12,6 +12,8 @@ export const CookieBannerSettings: React.FC = () => {
     setBannerConfig(prev => ({ ...prev, [key]: value, isConfigured: true }));
   };
 
+  const colorInputRef = useRef<HTMLInputElement>(null);
+
   const themes = [
     { id: 'blue', color: '#3b82f6' },
     { id: 'emerald', color: '#10b981' },
@@ -20,6 +22,8 @@ export const CookieBannerSettings: React.FC = () => {
     { id: 'black', color: '#000000' },
     { id: 'white', color: '#ffffff' },
   ];
+
+  const isCustomTheme = !themes.some(t => t.color === theme);
 
   return (
     <div className="banner-settings-container">
@@ -54,7 +58,22 @@ export const CookieBannerSettings: React.FC = () => {
                 <div className="theme-divider"></div>
                 <div>
                   <div className="control-group-title">Custom Theme</div>
-                  <div className="theme-circle theme-circle-custom"></div>
+                  <div
+                    className={`theme-circle theme-circle-custom ${isCustomTheme ? 'active' : ''}`}
+                    style={isCustomTheme ? { backgroundColor: theme } : undefined}
+                    onClick={() => colorInputRef.current?.click()}
+                    title="Pick a custom colour"
+                  >
+                    {isCustomTheme && <Check size={16} color="#fff" style={{ filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.5))' }} />}
+                    <input
+                      ref={colorInputRef}
+                      type="color"
+                      value={isCustomTheme ? theme : '#7c3aed'}
+                      onChange={(e) => updateConfig('theme', e.target.value)}
+                      style={{ position: 'absolute', width: 0, height: 0, opacity: 0, pointerEvents: 'none' }}
+                      tabIndex={-1}
+                    />
+                  </div>
                 </div>
               </div>
             </div>

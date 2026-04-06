@@ -57,10 +57,15 @@
   border: 1px solid #e5e7eb;
 }
 
-/* Rainbow Circle */
+/* Rainbow / Custom Colour Circle */
 .theme-circle-custom {
   background: conic-gradient(from 90deg, #ea4335, #fbbc04, #34a853, #4285f4, #ea4335);
   cursor: pointer;
+  position: relative;
+}
+/* When a custom colour is active, backgroundColor is set inline — remove the gradient */
+.theme-circle-custom.active {
+  background-image: none;
 }
 .theme-circle-custom:hover {
   transform: scale(1.05);
