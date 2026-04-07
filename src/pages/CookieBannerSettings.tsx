@@ -185,7 +185,7 @@ export const CookieBannerSettings: React.FC = () => {
           </button>
           
           <a 
-            href={`${API_URL}/test-embed.html?reset=1&id=${userId || 'YOUR_USER_ID'}`}
+            href={`${API_URL}/test-embed.html?reset=1&id=${userId || 'YOUR_USER_ID'}&api=${API_URL}`}
             target="_blank" 
             rel="noopener noreferrer"
             className="preview-btn flex justify-center items-center gap-1"

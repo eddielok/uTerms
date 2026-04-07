@@ -714,6 +714,7 @@ TEST_HTML_FILES.forEach((file) => {
 
 // ─── Policy embed JS file routes ──────────────────────────────────────────────
 const EMBED_FILE_ROUTES = [
+  { route: "/uterms-embed.js", file: "uterms-embed.js" },
   { route: "/uterms-policy-embed.js", file: "uterms-policy-embed.js" },
   { route: "/uterms-cookie-embed.js", file: "uterms-cookie-embed.js" },
   { route: "/uterms-tos-embed.js", file: "uterms-tos-embed.js" },
