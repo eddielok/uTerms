@@ -63,6 +63,14 @@ export const Features: React.FC = () => {
         <title>Features — Cookie Scanning, Policy Generator & GCM v2 | uTerms</title>
         <meta name="description" content="Explore uTerms features: AI cookie scanning, GDPR/CCPA policy generator, consent banner builder, Google Consent Mode v2, and visitor consent logs." />
         <link rel="canonical" href="https://uterms.io/features" />
+        <meta property="og:title" content="Features — Cookie Scanning, Policy Generator & GCM v2 | uTerms" />
+        <meta property="og:description" content="Explore uTerms features: AI cookie scanning, GDPR/CCPA policy generator, consent banner builder, Google Consent Mode v2, and visitor consent logs." />
+        <meta property="og:url" content="https://uterms.io/features" />
+        <meta property="og:image" content="https://uterms.io/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Features — Cookie Scanning, Policy Generator & GCM v2 | uTerms" />
+        <meta name="twitter:description" content="Explore uTerms features: AI cookie scanning, GDPR/CCPA policy generator, consent banner builder, Google Consent Mode v2, and visitor consent logs." />
+        <meta name="twitter:image" content="https://uterms.io/og-image.png" />
       </Helmet>
       {/* Hero Section */}
       <section className="features-hero">

@@ -20,6 +20,37 @@ export const Home: React.FC = () => {
         <title>uTerms — Cookie Consent & Privacy Policy Platform</title>
         <meta name="description" content="Automate cookie consent, generate GDPR-compliant privacy policies, and manage visitor consent globally. The all-in-one privacy compliance platform for your website." />
         <link rel="canonical" href="https://uterms.io/" />
+        <script type="application/ld+json">{JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is uTerms?",
+              "acceptedAnswer": { "@type": "Answer", "text": "uTerms is an all-in-one privacy compliance platform that automates cookie consent banners, generates GDPR and CCPA-compliant legal policies, and logs visitor consent decisions." }
+            },
+            {
+              "@type": "Question",
+              "name": "Is uTerms GDPR compliant?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. uTerms scans your site for cookies, categorises them, and provides a consent banner that collects and logs visitor consent in accordance with GDPR and CCPA requirements." }
+            },
+            {
+              "@type": "Question",
+              "name": "Does uTerms support Google Consent Mode v2?",
+              "acceptedAnswer": { "@type": "Answer", "text": "Yes. uTerms fully supports Google Consent Mode v2 (GCM v2), automatically setting consent signals for ad_storage, analytics_storage, ad_user_data, and ad_personalization based on visitor choices." }
+            },
+            {
+              "@type": "Question",
+              "name": "What types of legal policies can uTerms generate?",
+              "acceptedAnswer": { "@type": "Answer", "text": "uTerms can generate Privacy Policies, Cookie Policies, Terms of Service, EULAs, Disclaimers, Return Policies, Shipping Policies, Acceptable Use Policies, Impressums, and Accessibility Statements." }
+            },
+            {
+              "@type": "Question",
+              "name": "Is uTerms free to use?",
+              "acceptedAnswer": { "@type": "Answer", "text": "uTerms offers a free plan. Sign up at uterms.io to get started with cookie scanning and policy generation at no cost." }
+            }
+          ]
+        })}</script>
       </Helmet>
       {/* Hero Section */}
       <section className="hero-section">

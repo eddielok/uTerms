@@ -13,6 +13,14 @@ export const About: React.FC = () => {
         <title>About — AI-Powered Privacy Management | uTerms</title>
         <meta name="description" content="uTerms is the first all-in-one AI managed privacy system. Learn how we automate cookie banners, legal terms generation, and continuous compliance." />
         <link rel="canonical" href="https://uterms.io/about" />
+        <meta property="og:title" content="About — AI-Powered Privacy Management | uTerms" />
+        <meta property="og:description" content="uTerms is the first all-in-one AI managed privacy system. Learn how we automate cookie banners, legal terms generation, and continuous compliance." />
+        <meta property="og:url" content="https://uterms.io/about" />
+        <meta property="og:image" content="https://uterms.io/og-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="About — AI-Powered Privacy Management | uTerms" />
+        <meta name="twitter:description" content="uTerms is the first all-in-one AI managed privacy system. Learn how we automate cookie banners, legal terms generation, and continuous compliance." />
+        <meta name="twitter:image" content="https://uterms.io/og-image.png" />
       </Helmet>
       {/* Hero Section */}
       <section className="about-hero">
