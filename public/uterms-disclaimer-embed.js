@@ -1,5 +1,5 @@
 (function () {
-  var API_BASE = "http://localhost:3001";
+  var API_BASE = "https://api.uterms.io";
 
   var userId = null;
   try {
