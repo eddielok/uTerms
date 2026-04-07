@@ -48,7 +48,7 @@
                 </div>`;
             } else {
               const script = document.createElement("script");
-              script.src = `${apiUrl}/uterms-eula-embed.js?id=${encodeURIComponent(userId)}`;
+              script.src = `/uterms-eula-embed.js?id=${encodeURIComponent(userId)}`;
               script.onerror = () => {
                 eulaContainer.innerHTML = `
                   <div style="color:#d32f2f;background-color:#ffebee;padding:15px;border-radius:4px;border:1px solid #f44336;">
