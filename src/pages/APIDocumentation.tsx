@@ -247,7 +247,7 @@ function ModuleSection({
 
   const curlSnippet = `curl -X GET "${BASE_URL}${resolvedEndpoint}" \\\n  -H "X-API-Key: ${displayKey}"`;
 
-  const jsSnippet = `fetch("${BASE_URL}${resolvedEndpoint}", {\n  headers: { "X-API-Key": "${displayKey}" }\n})\n  .then(res => res.json())\n  .then(data => {\n    document.getElementById("${mod.divId}").innerHTML = data.generated;\n  });`;
+  const jsSnippet = `fetch("${BASE_URL}${resolvedEndpoint}", {\n  headers: { "X-API-Key": "${displayKey}" }\n})\n  .then(res => res.json())\n  .then(data => {\n    // Use DOMPurify to prevent XSS before inserting HTML\n    document.getElementById("${mod.divId}").innerHTML = DOMPurify.sanitize(data.generated);\n  });`;
 
   const embedSnippet = `<!-- No API key needed for embed scripts -->\n<div id="${mod.divId}"></div>\n<script src="${BASE_URL}/${mod.embedScript}?id=${userId || "YOUR_USER_ID"}"></script>`;
 

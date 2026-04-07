@@ -31,9 +31,10 @@ function dbg(...args) {
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-const IP_SALT = process.env.IP_SALT || "uterms-default-salt-change-me";
-if (!process.env.IP_SALT) {
-  console.warn("[server] IP_SALT is not set — IP anonymisation uses a weak default. Set IP_SALT in .env for production.");
+const IP_SALT = process.env.IP_SALT;
+if (!IP_SALT) {
+  console.error("[server] FATAL: IP_SALT is not set. Set a random 32+ character value in .env to ensure IP anonymisation is secure.");
+  process.exit(1);
 }
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -252,6 +253,14 @@ const bannerLimiter = rateLimit({
   message: { error: "Too many requests." },
 });
 
+const consentLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many consent submissions. Please try again later." },
+});
+
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
 
@@ -272,7 +281,7 @@ app.use(helmet({
 app.use(compression());
 app.use(
   cors({
-    origin: ["https://uterms.io", "https://www.uterms.io", /\.uterms\.io$/],
+    origin: ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io"],
     credentials: true,
   }),
 );
@@ -281,7 +290,7 @@ app.use(express.json());
 // Rate limit groups
 app.use("/api/banner", bannerLimiter);
 app.use("/api/embed", generalLimiter);
-app.use("/api/consent", generalLimiter);
+app.use("/api/consent", consentLimiter);
 app.use("/api/policy", generalLimiter);
 app.use("/api/cookie-policy", generalLimiter);
 app.use("/api/tos", generalLimiter);
@@ -561,10 +570,24 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
 });
 
 // ─── POST /api/consent ────────────────────────────────────────────────────────
+const VALID_CONSENT_KEYS = new Set(["essential", "functional", "analytics", "marketing", "social", "unclassified", "do_not_sell"]);
+
 app.post("/api/consent", async (req, res) => {
   const { user_id, visitor_id, consent_data, url } = req.body;
   if (!user_id || !visitor_id || !consent_data)
     return res.status(400).json({ error: "Missing required fields" });
+  if (!isValidUUID(user_id) || !isValidUUID(visitor_id))
+    return res.status(400).json({ error: "Invalid user_id or visitor_id" });
+  if (typeof consent_data !== "object" || Array.isArray(consent_data))
+    return res.status(400).json({ error: "consent_data must be an object" });
+  for (const [key, val] of Object.entries(consent_data)) {
+    if (!VALID_CONSENT_KEYS.has(key))
+      return res.status(400).json({ error: `Unknown consent category: ${key}` });
+    if (typeof val !== "boolean")
+      return res.status(400).json({ error: `Consent value for ${key} must be boolean` });
+  }
+  if (consent_data.essential === false)
+    return res.status(400).json({ error: "Essential cookies cannot be rejected" });
 
   try {
     const payload = {
@@ -615,6 +638,8 @@ app.delete("/api/consent/:userId", validateApiKey, async (req, res) => {
         .status(response.status)
         .json({ error: "Failed to delete consent records" });
     }
+    console.info(`[Audit] Consent records deleted for user_id=${userId} by IP=${anonymizeIp(req.ip)} at ${new Date().toISOString()}`);
+    Sentry.captureMessage(`Consent records deleted`, { level: "info", extra: { user_id: userId, ip: anonymizeIp(req.ip) } });
     res.json({ success: true, message: "All consent records deleted." });
   } catch (err) {
     console.error("[Consent DELETE] Error:", err.message);

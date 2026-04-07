@@ -37,6 +37,7 @@
       managePreferences: 'Manage Preferences',
       doNotSell: 'Do Not Sell My Personal Information',
       doNotSellSaved: 'Preference saved.',
+      learnMore: 'Learn more',
       categories: {
         essential:     { name: 'Essential Cookies',  description: 'Required for the website to function normally. Cannot be disabled.' },
         functional:    { name: 'Functional',          description: 'Enables the website to provide enhanced functionality and personalization.' },
@@ -297,7 +298,8 @@
         if (apiParam) {
           try {
             var apiParsed = new URL(apiParam);
-            apiBase = (apiParsed.protocol === "https:" || apiParsed.protocol === "http:") ? apiParam : "https://api.uterms.io";
+            // Only allow the official API domain to prevent consent data exfiltration
+            apiBase = apiParsed.hostname === "api.uterms.io" ? apiParam : "https://api.uterms.io";
           } catch(e) { apiBase = "https://api.uterms.io"; }
         } else {
           apiBase = "https://api.uterms.io";
@@ -311,26 +313,29 @@
   }
 
   function generateUUID() {
-    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(
-      /[xy]/g,
-      function (c) {
-        var r = (Math.random() * 16) | 0,
-          v = c === "x" ? r : (r & 0x3) | 0x8;
-        return v.toString(16);
-      },
-    );
+    // Use crypto.getRandomValues as a secure fallback when crypto.randomUUID is unavailable
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      var buf = new Uint8Array(16);
+      crypto.getRandomValues(buf);
+      buf[6] = (buf[6] & 0x0f) | 0x40; // version 4
+      buf[8] = (buf[8] & 0x3f) | 0x80; // variant
+      var hex = Array.from(buf).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+      return hex.slice(0,8)+'-'+hex.slice(8,12)+'-'+hex.slice(12,16)+'-'+hex.slice(16,20)+'-'+hex.slice(20);
+    }
+    // Last resort — should never be reached in modern browsers
+    return "00000000-0000-4000-8000-000000000000";
   }
+
+  var VID_EXPIRY_MS = 365 * 24 * 60 * 60 * 1000; // 1 year
 
   function getVisitorId() {
     try {
-      let vid = localStorage.getItem("uterms_vid");
-      // Force regeneration if the existing vid is not an RFC standard 36-char UUID.
-      if (!vid || vid.length !== 36) {
-        vid =
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : generateUUID();
+      var vid = localStorage.getItem("uterms_vid");
+      var exp = parseInt(localStorage.getItem("uterms_vid_exp") || "0", 10);
+      if (!vid || vid.length !== 36 || Date.now() > exp) {
+        vid = (typeof crypto !== "undefined" && crypto.randomUUID) ? crypto.randomUUID() : generateUUID();
         localStorage.setItem("uterms_vid", vid);
+        localStorage.setItem("uterms_vid_exp", String(Date.now() + VID_EXPIRY_MS));
       }
       return vid;
     } catch (e) {
@@ -405,13 +410,10 @@
       }
     }
 
-    // CCPA mode — on if explicitly enabled in config, or if visitor is in California (Pacific timezone)
-    function isCaliforniaVisitor() {
-      try {
-        return Intl.DateTimeFormat().resolvedOptions().timeZone === "America/Los_Angeles";
-      } catch(e) { return false; }
-    }
-    const ccpaMode = !!(bannerConfig.ccpaMode) || isCaliforniaVisitor();
+    // CCPA mode — enabled only when explicitly configured by the site owner.
+    // Timezone-based auto-detection is unreliable and privacy-invasive; use server-side
+    // IP geolocation or explicit configuration instead.
+    const ccpaMode = !!(bannerConfig.ccpaMode);
 
     // Resolve active language
     const t = TRANSLATIONS[detectLanguage(langParam)];
@@ -648,20 +650,31 @@
         box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
       }
       
+      #uterms-banner button.uterms-secondary, .uterms-modal-footer button.uterms-secondary {
+        background-color: #ffffff;
+        color: #374151;
+        border-color: #374151;
+        font-weight: 600;
+      }
+
+      #uterms-banner button.uterms-secondary:hover, .uterms-modal-footer button.uterms-secondary:hover {
+        background-color: #f3f4f6;
+      }
+
       #uterms-banner button.uterms-btn-text {
-        border: none; 
-        background: transparent; 
-        padding: 0; 
-        color: #6b7280; 
-        text-decoration: underline; 
+        border: none;
+        background: transparent;
+        padding: 0;
+        color: #6b7280;
+        text-decoration: underline;
         text-underline-offset: 2px;
         font-size: 0.75rem;
         margin-right: auto;
       }
-      
-      #uterms-banner button.uterms-btn-text:hover { 
-        color: #111827; 
-        background: transparent; 
+
+      #uterms-banner button.uterms-btn-text:hover {
+        color: #111827;
+        background: transparent;
       }
       
       #uterms-modal-overlay {
@@ -797,12 +810,12 @@
     banner.innerHTML = `
       <div class="uterms-banner-content">
         <h3>${t.title}</h3>
-        <p>${t.description}</p>
+        <p>${t.description}${bannerConfig.privacyPolicyUrl ? ` <a href="${bannerConfig.privacyPolicyUrl}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">${t.learnMore || 'Learn more'}</a>` : ''}</p>
       </div>
       <div class="uterms-banner-actions">
         <button id="uterms-btn-customize" class="uterms-btn-text">${t.customize}</button>
         <div class="uterms-action-buttons">
-          <button id="uterms-btn-reject">${t.rejectAll}</button>
+          <button id="uterms-btn-reject" class="uterms-secondary">${t.rejectAll}</button>
           <button id="uterms-btn-accept" class="uterms-primary">${t.acceptAll}</button>
         </div>
       </div>

@@ -7,11 +7,22 @@ function resourceBlockerPlugin(env: Record<string, string>) {
   return {
     name: 'resource-blocker',
     configureServer(server: any) {
-      server.middlewares.use((req: any, res: any, next: any) => {
+      server.middlewares.use(async (req: any, res: any, next: any) => {
         if (req.url && req.url.startsWith('/resource-blocker/')) {
           const splitUrl = req.url.split('?')[0].split('/');
           const userId = splitUrl[splitUrl.length - 1]; // Support `/resource-blocker/[id]`
-          
+
+          // Fetch banner config server-side — credentials never reach the browser
+          let config = { theme: '#3b82f6', position: 'bottom', styleMode: 'banner' };
+          try {
+            const r = await fetch(
+              `${env.VITE_SUPABASE_URL}/rest/v1/user_cookie_settings?user_id=eq.${encodeURIComponent(userId)}&select=banner_config`,
+              { headers: { apikey: env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${env.VITE_SUPABASE_ANON_KEY}` } }
+            );
+            const data = await r.json();
+            if (data && data[0]?.banner_config) config = { ...config, ...data[0].banner_config };
+          } catch (_) {}
+
           res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
           res.end(`
 console.log("[uTerms] Initializing live Cookie Banner for user: ${userId}");
@@ -19,24 +30,8 @@ console.log("[uTerms] Initializing live Cookie Banner for user: ${userId}");
 (async function() {
   if (localStorage.getItem('uterms_consent')) return; // Already answered
 
-  const SUPABASE_URL = "${env.VITE_SUPABASE_URL}";
-  const SUPABASE_KEY = "${env.VITE_SUPABASE_ANON_KEY}";
-  
   try {
-    const response = await fetch(\`\${SUPABASE_URL}/rest/v1/user_cookie_settings?user_id=eq.\${userId}&select=banner_config\`, {
-      method: 'GET',
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
-    });
-
-    const data = await response.json();
-    let config = { theme: '#3b82f6', position: 'bottom', styleMode: 'banner' };
-    
-    if (data && data.length > 0 && data[0].banner_config) {
-      config = { ...config, ...data[0].banner_config };
-    }
+    let config = ${JSON.stringify(config)};
 
     const bannerId = 'uterms-live-banner-container';
     if (document.getElementById(bannerId)) return;
