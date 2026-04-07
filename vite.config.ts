@@ -19,8 +19,9 @@ function resourceBlockerPlugin(env: Record<string, string>) {
               `${env.VITE_SUPABASE_URL}/rest/v1/user_cookie_settings?user_id=eq.${encodeURIComponent(userId)}&select=banner_config`,
               { headers: { apikey: env.VITE_SUPABASE_ANON_KEY, Authorization: `Bearer ${env.VITE_SUPABASE_ANON_KEY}` } }
             );
-            const data = await r.json();
-            if (data && data[0]?.banner_config) config = { ...config, ...data[0].banner_config };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const data = await r.json() as any[];
+            if (Array.isArray(data) && data[0]?.banner_config) config = { ...config, ...data[0].banner_config };
           } catch (_) {}
 
           res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
