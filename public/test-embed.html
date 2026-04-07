@@ -20,7 +20,7 @@
       if (p.get('lang')) src += '&lang=' + encodeURIComponent(p.get('lang'));
       // api= lets you point at a different backend (e.g. Railway URL in production)
       // Defaults to localhost:3001 for local dev
-      var api = p.get('api') || '${apiUrl}';
+      var api = p.get('api') || 'http://localhost:3001';
       src += '&api=' + encodeURIComponent(api);
       var s = document.createElement('script');
       s.src = src;
@@ -50,7 +50,7 @@
       'id: <code>' + (p.get('id') || 'not set') + '</code> &nbsp;|&nbsp; ' +
       'mode: <code>' + (p.get('mode') || 'not set') + '</code> &nbsp;|&nbsp; ' +
       'lang: <code>' + (p.get('lang') || 'auto-detect') + '</code> &nbsp;|&nbsp; ' +
-      'api: <code>' + (p.get('api') || '${apiUrl}') + '</code>';
+      'api: <code>' + (p.get('api') || 'http://localhost:3001') + '</code>';
   </script>
 </body>
 </html>

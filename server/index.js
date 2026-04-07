@@ -687,6 +687,31 @@ POLICY_ROUTES.forEach(({ route, table, label }) => {
   });
 });
 
+// ─── Test / preview HTML pages ───────────────────────────────────────────────
+const TEST_HTML_FILES = [
+  "test-embed.html",
+  "test-policy.html",
+  "test-cookie-policy.html",
+  "test-tos.html",
+  "test-eula.html",
+  "test-return-policy.html",
+  "test-disclaimer.html",
+  "test-shipping.html",
+  "test-aup.html",
+  "test-impressum.html",
+  "test-accessibility.html",
+];
+
+TEST_HTML_FILES.forEach((file) => {
+  app.get(`/${file}`, (req, res) => {
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src *; img-src *",
+    );
+    res.sendFile(path.resolve(__dirname, "../public", file));
+  });
+});
+
 // ─── Policy embed JS file routes ──────────────────────────────────────────────
 const EMBED_FILE_ROUTES = [
   { route: "/uterms-policy-embed.js", file: "uterms-policy-embed.js" },

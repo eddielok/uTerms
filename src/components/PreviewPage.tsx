@@ -1,7 +1,7 @@
 import DOMPurify from 'dompurify';
 import { ArrowLeft, Check, Code, Copy, Download, Eye, Globe, Pencil } from 'lucide-react';
 import React from 'react';
-import { API_URL, APP_URL } from '../lib/config';
+import { API_URL } from '../lib/config';
 import { usePreviewPolicy } from '../hooks/usePreviewPolicy';
 import '../pages/PolicyPreview.css';
 
@@ -138,7 +138,7 @@ export const PreviewPage: React.FC<PreviewPageProps> = ({
             <div style={{ display: 'flex' }}>
               <button
                 className="embed-preview-btn"
-                onClick={() => window.open(`${APP_URL}/${testPage}?id=${userId}&api=${API_URL}`, '_blank')}
+                onClick={() => window.open(`${API_URL}/${testPage}?id=${userId}&api=${API_URL}`, '_blank')}
               >
                 <Eye size={15} /> Preview embed
               </button>
