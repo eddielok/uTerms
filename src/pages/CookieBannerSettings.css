@@ -254,7 +254,7 @@
   cursor: default;
 }
 
-.preview-btn {
+.banner-settings-preview-btn {
   width: 100%;
   padding: 0.875rem;
   border: 1px solid var(--color-primary);

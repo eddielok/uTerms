@@ -180,7 +180,7 @@ export const CookieBannerSettings: React.FC = () => {
             </div>
           </div>
 
-          <button className="preview-btn" onClick={() => setIsPreviewVisible(true)}>
+          <button className="banner-settings-preview-btn" onClick={() => setIsPreviewVisible(true)}>
             <Eye size={18} /> PREVIEW
           </button>
           
@@ -188,7 +188,7 @@ export const CookieBannerSettings: React.FC = () => {
             href={`${API_URL}/test-embed.html?reset=1&id=${userId || 'YOUR_USER_ID'}&api=${API_URL}`}
             target="_blank" 
             rel="noopener noreferrer"
-            className="preview-btn flex justify-center items-center gap-1"
+            className="banner-settings-preview-btn flex justify-center items-center gap-1"
             style={{ textDecoration: 'none', marginTop: '1rem' }}
           >
             <ExternalLink size={18} /> LIVE PREVIEW
