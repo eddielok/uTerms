@@ -138,7 +138,7 @@ export const PreviewPage: React.FC<PreviewPageProps> = ({
             <div style={{ display: 'flex' }}>
               <button
                 className="embed-preview-btn"
-                onClick={() => window.open(`${APP_URL}/${testPage}?id=${userId}`, '_blank')}
+                onClick={() => window.open(`${APP_URL}/${testPage}?id=${userId}&api=${API_URL}`, '_blank')}
               >
                 <Eye size={15} /> Preview embed
               </button>

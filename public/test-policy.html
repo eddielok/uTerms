@@ -47,6 +47,7 @@
         // Get the user ID from query string
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get("id") || "";
+        const apiUrl = urlParams.get("api") || "http://localhost:3001";
 
         // Display the ID being used
         const policyContainer = document.getElementById("uterms-policy");
@@ -54,7 +55,7 @@
 
         // First, check if the policy exists via the API
         fetch(
-          `http://localhost:3001/api/embed/policy/${encodeURIComponent(userId)}`,
+          `${apiUrl}/api/embed/policy/${encodeURIComponent(userId)}`,
         )
           .then((r) => r.json())
           .then((data) => {
@@ -71,13 +72,13 @@
             } else {
               // Policy exists, load the embed script
               const script = document.createElement("script");
-              script.src = `http://localhost:3001/uterms-policy-embed.js?id=${encodeURIComponent(userId)}`;
+              script.src = `${apiUrl}/uterms-policy-embed.js?id=${encodeURIComponent(userId)}`;
               script.onerror = () => {
                 policyContainer.innerHTML = `
                   <div style="color: #d32f2f; background-color: #ffebee; padding: 15px; border-radius: 4px; border: 1px solid #f44336;">
                     <strong>Error:</strong> Failed to load privacy policy script
                     <p style="margin: 10px 0 0 0; font-size: 0.9em;">
-                      Please check that the backend server is running on http://localhost:3001
+                      Please check that the backend server is running on ${apiUrl}
                     </p>
                   </div>
                 `;

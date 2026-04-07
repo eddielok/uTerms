@@ -46,11 +46,12 @@
       <script>
         const urlParams = new URLSearchParams(window.location.search);
         const userId = urlParams.get("id") || "";
+        const apiUrl = urlParams.get("api") || "http://localhost:3001";
 
         const policyContainer = document.getElementById("uterms-cookie-policy");
         policyContainer.innerHTML = `<p>Loading cookie policy for user: <code>${userId}</code>...</p>`;
 
-        fetch(`http://localhost:3001/api/embed/cookie-policy/${encodeURIComponent(userId)}`)
+        fetch(`${apiUrl}/api/embed/cookie-policy/${encodeURIComponent(userId)}`)
           .then((r) => r.json())
           .then((data) => {
             if (data.error) {
@@ -65,13 +66,13 @@
               `;
             } else {
               const script = document.createElement("script");
-              script.src = `http://localhost:3001/uterms-cookie-embed.js?id=${encodeURIComponent(userId)}`;
+              script.src = `${apiUrl}/uterms-cookie-embed.js?id=${encodeURIComponent(userId)}`;
               script.onerror = () => {
                 policyContainer.innerHTML = `
                   <div style="color: #d32f2f; background-color: #ffebee; padding: 15px; border-radius: 4px; border: 1px solid #f44336;">
                     <strong>Error:</strong> Failed to load cookie policy script
                     <p style="margin: 10px 0 0 0; font-size: 0.9em;">
-                      Please check that the backend server is running on http://localhost:3001
+                      Please check that the backend server is running on ${apiUrl}
                     </p>
                   </div>
                 `;
