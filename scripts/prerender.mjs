@@ -4,7 +4,17 @@
  * Run after `vite build`:  node scripts/prerender.mjs
  * The script starts `vite preview`, visits each public route via Puppeteer,
  * and writes the fully-rendered HTML back into dist/.
+ *
+ * Skipped automatically in Cloudflare Pages / CI environments where
+ * a headless browser is not available.
  */
+
+// Cloudflare Pages sets CF_PAGES=1. Skip prerender there — it runs locally
+// as part of `npm run deploy` instead.
+if (process.env.CF_PAGES === '1' || process.env.CI === 'true') {
+  console.log('[prerender] CI/Cloudflare environment detected — skipping prerender.');
+  process.exit(0);
+}
 
 import { spawn } from 'child_process';
 import { mkdir, writeFile } from 'fs/promises';
