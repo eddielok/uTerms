@@ -31,7 +31,7 @@ export const CookieLog: React.FC = () => {
 
       const { data, error } = await supabase
         .from('visitor_consent')
-        .select('*')
+        .select('id, visitor_id, consent_data, url, ip_address, user_agent, created_at')
         .eq('user_id', userId)
         .gte('created_at', start)
         .lte('created_at', endIso)

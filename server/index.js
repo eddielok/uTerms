@@ -130,8 +130,8 @@ function isValidUUID(id) {
 }
 
 // ─── Generic published-policy fetcher (used by embed routes) ──────────────────
-async function fetchPublishedPolicy(table, userId) {
-  const url = `${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=id,title,status,generated,updated_at&order=updated_at.desc&limit=1`;
+async function fetchPublishedPolicy(table, userId, fields = 'id,title,status,generated,updated_at') {
+  const url = `${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=${fields}&order=updated_at.desc&limit=1`;
   const response = await supabaseFetch(url, { headers: anonHeaders() });
   if (!response.ok) {
     const err = new Error(await response.text());
@@ -285,9 +285,7 @@ app.use(
     credentials: true,
   }),
 );
-app.use(express.json());
-
-// Rate limit groups
+// Rate limit groups — before body parsing so rejected requests never pay JSON parse cost
 app.use("/api/banner", bannerLimiter);
 app.use("/api/embed", generalLimiter);
 app.use("/api/consent", consentLimiter);
@@ -303,6 +301,8 @@ app.use("/api/impressum", generalLimiter);
 app.use("/api/accessibility", generalLimiter);
 app.use("/api/scan", scanLimiter);
 app.use("/api/analyze-policy", scanLimiter);
+
+app.use(express.json());
 Sentry.setupExpressErrorHandler(app);
 // ─── Cookie category templates ────────────────────────────────────────────────
 const CATEGORY_TEMPLATES = [
@@ -737,38 +737,116 @@ TEST_HTML_FILES.forEach((file) => {
   });
 });
 
-// ─── Policy embed JS file routes ──────────────────────────────────────────────
-const EMBED_FILE_ROUTES = [
-  { route: "/uterms-embed.js", file: "uterms-embed.js" },
-  { route: "/uterms-policy-embed.js", file: "uterms-policy-embed.js" },
-  { route: "/uterms-cookie-embed.js", file: "uterms-cookie-embed.js" },
-  { route: "/uterms-tos-embed.js", file: "uterms-tos-embed.js" },
-  { route: "/uterms-eula-embed.js", file: "uterms-eula-embed.js" },
-  {
-    route: "/uterms-return-policy-embed.js",
-    file: "uterms-return-policy-embed.js",
-  },
-  { route: "/uterms-disclaimer-embed.js", file: "uterms-disclaimer-embed.js" },
-  { route: "/uterms-shipping-embed.js", file: "uterms-shipping-embed.js" },
-  { route: "/uterms-aup-embed.js", file: "uterms-aup-embed.js" },
-  { route: "/uterms-impressum-embed.js", file: "uterms-impressum-embed.js" },
-  {
-    route: "/uterms-accessibility-embed.js",
-    file: "uterms-accessibility-embed.js",
-  },
+// ─── Embed JS file routes ──────────────────────────────────────────────────────
+
+// Cookie banner — large standalone script, served as static file
+app.get("/uterms-embed.js", (req, res) => {
+  if (!req.query.id)
+    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+  res
+    .type("text/javascript")
+    .set("Cache-Control", "public, max-age=300")
+    .set("Cross-Origin-Resource-Policy", "cross-origin")
+    .set("Access-Control-Allow-Origin", "*")
+    .sendFile(path.resolve(__dirname, "../public", "uterms-embed.js"));
+});
+
+// Policy document embeds — generated from a single shared template.
+// Each entry differs only in container ID, API path, label, and optional styling.
+const POLICY_EMBED_SCRIPTS = [
+  { route: "/uterms-policy-embed.js",        containerId: "uterms-policy",          className: "uterms-policy-doc",          apiPath: "/api/embed/policy/",          label: "privacy policy",             errorText: "Privacy policy could not be loaded." },
+  { route: "/uterms-cookie-embed.js",         containerId: "uterms-cookie-policy",   className: "uterms-cookie-policy-doc",   apiPath: "/api/embed/cookie-policy/",   label: "cookie policy",              errorText: "Cookie policy could not be loaded." },
+  { route: "/uterms-tos-embed.js",            containerId: "uterms-tos",             className: "uterms-tos-doc",             apiPath: "/api/embed/tos/",             label: "Terms of Service",           errorText: "Terms of Service could not be loaded." },
+  { route: "/uterms-eula-embed.js",           containerId: "uterms-eula",            className: "uterms-eula-doc",            apiPath: "/api/embed/eula/",            label: "End User License Agreement", errorText: "EULA could not be loaded." },
+  { route: "/uterms-return-policy-embed.js",  containerId: "uterms-return-policy",   className: "uterms-return-policy-doc",   apiPath: "/api/embed/return-policy/",   label: "Return Policy",              errorText: "Return Policy could not be loaded." },
+  { route: "/uterms-disclaimer-embed.js",     containerId: "uterms-disclaimer",      className: "uterms-disclaimer-doc",      apiPath: "/api/embed/disclaimer/",      label: "Disclaimer",                 errorText: "Disclaimer could not be loaded." },
+  { route: "/uterms-shipping-embed.js",       containerId: "uterms-shipping-policy", className: "uterms-shipping-policy-doc", apiPath: "/api/embed/shipping-policy/", label: "Shipping Policy",            errorText: "Shipping Policy could not be loaded." },
+  { route: "/uterms-aup-embed.js",            containerId: "uterms-aup",             className: "uterms-aup-doc",             apiPath: "/api/embed/aup/",             label: "Acceptable Use Policy",      errorText: "Acceptable Use Policy could not be loaded." },
+  { route: "/uterms-impressum-embed.js",      containerId: "uterms-impressum",       className: "uterms-impressum-doc",       apiPath: "/api/embed/impressum/",       label: "Impressum",                  errorText: "Impressum could not be loaded.",       fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", maxWidth: "720px", lineHeight: "1.7" },
+  { route: "/uterms-accessibility-embed.js",  containerId: "uterms-accessibility",   className: "uterms-accessibility-doc",   apiPath: "/api/embed/accessibility/",   label: "Accessibility Statement",    errorText: "Accessibility Statement could not be loaded." },
 ];
 
-EMBED_FILE_ROUTES.forEach(({ route, file }) => {
-  app.get(route, (req, res) => {
+function buildPolicyEmbedScript(cfg) {
+  const scriptFile = cfg.route.slice(1);
+  const fontFamily = cfg.fontFamily || "Georgia,'Times New Roman',serif";
+  const maxWidth = cfg.maxWidth || "800px";
+  const lineHeight = cfg.lineHeight || "1.75";
+  const cssText = `font-family:${fontFamily};font-size:0.9375rem;line-height:${lineHeight};color:#1f2937;max-width:${maxWidth};margin:0 auto;padding:2rem 1rem`;
+  return `(function () {
+  var API_BASE = "https://api.uterms.io";
+
+  var userId = null;
+  try {
+    var scripts = document.getElementsByTagName("script");
+    for (var i = 0; i < scripts.length; i++) {
+      if (scripts[i].src && scripts[i].src.indexOf(${JSON.stringify(scriptFile)}) !== -1) {
+        userId = new URL(scripts[i].src).searchParams.get("id");
+        break;
+      }
+    }
+  } catch (e) {}
+
+  if (!userId) {
+    console.warn("[uTerms] ${scriptFile}: no ?id= parameter found in script src.");
+    return;
+  }
+
+  function getContainer() {
+    var el = document.getElementById(${JSON.stringify(cfg.containerId)});
+    if (!el) {
+      el = document.createElement("div");
+      el.id = ${JSON.stringify(cfg.containerId)};
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function render() {
+    var container = getContainer();
+    container.innerHTML =
+      '<p style="font-family:sans-serif;color:#9ca3af;text-align:center;padding:2rem 1rem;">Loading ${cfg.label}\u2026</p>';
+
+    fetch(API_BASE + ${JSON.stringify(cfg.apiPath)} + encodeURIComponent(userId))
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then(function (policy) {
+        if (!policy.generated) throw new Error("empty");
+
+        var wrapper = document.createElement("div");
+        wrapper.className = ${JSON.stringify(cfg.className)};
+        wrapper.style.cssText = ${JSON.stringify(cssText)};
+        wrapper.innerHTML = policy.generated;
+
+        container.innerHTML = "";
+        container.appendChild(wrapper);
+      })
+      .catch(function (err) {
+        console.error("[uTerms] Failed to load ${cfg.label}:", err);
+        getContainer().innerHTML =
+          '<p style="font-family:sans-serif;color:#ef4444;text-align:center;padding:2rem 1rem;">${cfg.errorText}</p>';
+      });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", render);
+  } else {
+    render();
+  }
+})();`;
+}
+
+POLICY_EMBED_SCRIPTS.forEach((cfg) => {
+  app.get(cfg.route, (req, res) => {
     if (!req.query.id)
-      return res
-        .status(400)
-        .type("text/javascript")
-        .send('console.error("User ID required");');
+      return res.status(400).type("text/javascript").send('console.error("User ID required");');
     res
       .type("text/javascript")
-      .set("Cache-Control", "public, max-age=300") // 5 minutes
-      .sendFile(path.resolve(__dirname, "../public", file));
+      .set("Cache-Control", "public, max-age=300")
+      .set("Cross-Origin-Resource-Policy", "cross-origin")
+      .set("Access-Control-Allow-Origin", "*")
+      .send(buildPolicyEmbedScript(cfg));
   });
 });
 
@@ -795,11 +873,12 @@ EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
     if (!isValidUUID(userId))
       return res.status(400).json({ error: "Invalid user ID" });
     try {
-      const policy = await fetchPublishedPolicy(table, userId);
+      const policy = await fetchPublishedPolicy(table, userId, 'generated');
       if (!policy)
         return res
           .status(404)
           .json({ error: "No published document found for this user" });
+      res.set("Cache-Control", "public, max-age=300");
       res.json(policy);
     } catch (err) {
       console.error(`[embed ${routePath}] Error:`, err.message);
