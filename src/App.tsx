@@ -1,6 +1,7 @@
 import React, { Suspense } from "react";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { CookieBanner } from "./components/CookieBanner";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { Layout } from "./components/Layout";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { PublicOnlyRoute } from "./components/PublicOnlyRoute";
@@ -83,6 +84,7 @@ const APIDocumentation = React.lazy(() => import("./pages/APIDocumentation").the
 function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<Layout />}>
@@ -157,6 +159,7 @@ function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
+      </ErrorBoundary>
       <CookieBanner />
     </BrowserRouter>
   );

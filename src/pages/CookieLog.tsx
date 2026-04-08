@@ -35,7 +35,8 @@ export const CookieLog: React.FC = () => {
         .eq('user_id', userId)
         .gte('created_at', start)
         .lte('created_at', endIso)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(500);
 
       if (error && error.code !== '42P01') { 
         console.error('Failed to fetch logs from DB:', error);
@@ -113,6 +114,12 @@ export const CookieLog: React.FC = () => {
         {isLoading ? (
           <div className="cookie-log-empty">Loading logs...</div>
         ) : logs.length > 0 ? (
+          <>
+          {logs.length === 500 && (
+            <p className="cookie-log-limit-notice">
+              Showing the 500 most recent records in this date range. Narrow the date range to see all results.
+            </p>
+          )}
           <table className="cookie-log-table">
             <thead>
               <tr>
@@ -141,6 +148,7 @@ export const CookieLog: React.FC = () => {
               ))}
             </tbody>
           </table>
+          </>
         ) : (
           <div className="cookie-log-empty">
             <FileText size={48} className="text-gray-300 mb-4" />

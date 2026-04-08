@@ -143,27 +143,25 @@ export const CookieContextProvider: React.FC<{ children: React.ReactNode }> = ({
       return;
     }
 
-    if (!isLoaded || !userId || scannedData === null) return;
+    if (!isLoaded || !userId) return;
 
     const timeoutId = setTimeout(async () => {
       try {
-        console.log("Auto-saving cookie settings for user:", userId);
-        const { error } = await supabase.from("user_cookie_settings").upsert(
-          {
-            user_id: userId,
-            scanned_data: scannedData,
-            banner_config: bannerConfig,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "user_id" },
-        );
+        // Always save bannerConfig; only include scanned_data when it exists
+        // to avoid overwriting a previous scan with null.
+        const payload: Record<string, unknown> = {
+          user_id: userId,
+          banner_config: bannerConfig,
+          updated_at: new Date().toISOString(),
+        };
+        if (scannedData !== null) payload.scanned_data = scannedData;
+
+        const { error } = await supabase
+          .from("user_cookie_settings")
+          .upsert(payload, { onConflict: "user_id" });
 
         if (error) {
-          console.error("Error saving cookie settings:", error);
-          console.error("Error code:", error.code);
-          console.error("Error details:", error.details);
-        } else {
-          console.log("Cookie settings saved successfully");
+          console.error("Error saving cookie settings:", error.code, error.details);
         }
       } catch (err) {
         console.error("Failed to save cookie settings", err);

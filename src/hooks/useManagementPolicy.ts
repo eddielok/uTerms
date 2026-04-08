@@ -32,8 +32,9 @@ export function useManagementPolicy(table: string) {
 
   const handleDelete = async (id: string, confirmText: string) => {
     if (!confirm(confirmText)) return;
+    if (!userId) return;
     setDeletingId(id);
-    await supabase.from(table).delete().eq('id', id);
+    await supabase.from(table).delete().eq('id', id).eq('user_id', userId);
     setPolicies(prev => prev.filter(p => p.id !== id));
     setDeletingId(null);
   };
