@@ -1054,7 +1054,7 @@ app.post("/api/analyze-policy", validateApiKey, async (req, res) => {
 });
 
 // ─── POST /api/gcm-scan ───────────────────────────────────────────────────────
-app.post("/api/gcm-scan", scanLimiter, validateApiKey, async (req, res) => {
+app.post("/api/gcm-scan", scanLimiter, async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
   const targetUrl = normalizeUrl(url);
