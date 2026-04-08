@@ -767,7 +767,7 @@ EMBED_FILE_ROUTES.forEach(({ route, file }) => {
         .send('console.error("User ID required");');
     res
       .type("text/javascript")
-      .set("Cache-Control", "public, max-age=3600") // 1 hour — embed scripts rarely change
+      .set("Cache-Control", "public, max-age=300") // 5 minutes
       .sendFile(path.resolve(__dirname, "../public", file));
   });
 });
