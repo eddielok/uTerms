@@ -154,7 +154,7 @@ async function validateApiKey(req, res, next) {
   try {
     const response = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/api_keys?api_key=eq.${encodeURIComponent(key)}&select=user_id&limit=1`,
-      { headers: anonHeaders() },
+      { headers: serviceHeaders() },
       5000,
     );
     const data = await response.json();
@@ -550,7 +550,7 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
   try {
     const response = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/visitor_consent?user_id=eq.${encodeURIComponent(userId)}&select=id,visitor_id,consent_data,url,created_at&order=created_at.desc&limit=${limit}&offset=${offset}${from}`,
-      { headers: { ...anonHeaders(), Prefer: "count=exact" } },
+      { headers: { ...serviceHeaders(), Prefer: "count=exact" } },
     );
     if (!response.ok) {
       console.error("[Consent GET] Error:", await response.text());
@@ -1366,7 +1366,7 @@ async function runDueScans() {
       };
       await supabaseFetch(`${SUPABASE_URL}/rest/v1/user_cookie_settings`, {
         method: "POST",
-        headers: { ...anonHeaders(), Prefer: "resolution=merge-duplicates" },
+        headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
         body: JSON.stringify({
           user_id: schedule.user_id,
           scanned_data: scannedData,

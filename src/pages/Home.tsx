@@ -11,9 +11,11 @@ import { Helmet } from "react-helmet-async";
 import { Link } from "react-router-dom";
 import { Button } from "../components/Button";
 import { Card, CardContent } from "../components/Card";
+import { useCookieConfig } from "../context/CookieContext";
 import "./Home.css";
 
 export const Home: React.FC = () => {
+  const { userId } = useCookieConfig();
   return (
     <div className="home-page">
       <Helmet>
@@ -72,9 +74,9 @@ export const Home: React.FC = () => {
               business.
             </p>
             <div className="hero-actions">
-              <Link to="/register">
+              <Link to={userId ? "/dashboard" : "/register"}>
                 <Button size="lg" className="hero-btn">
-                  Sign Up <ArrowRight size={18} className="ml-2" />
+                  {userId ? "Go to Dashboard" : "Sign Up"} <ArrowRight size={18} className="ml-2" />
                 </Button>
               </Link>
               <Link to="/features">
@@ -240,8 +242,8 @@ export const Home: React.FC = () => {
                 </li>
               </ul>
               <div className="mt-8 flex gap-4">
-                <Link to="/register">
-                  <Button size="lg">Get Started Now</Button>
+                <Link to={userId ? "/dashboard" : "/register"}>
+                  <Button size="lg">{userId ? "Go to Dashboard" : "Get Started Now"}</Button>
                 </Link>
                 <Link to="/contact">
                   <Button variant="outline" size="lg">
