@@ -81,6 +81,9 @@ const AccessibilityPreview = React.lazy(() => import("./pages/AccessibilityPrevi
 const Settings = React.lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
 const APIDocumentation = React.lazy(() => import("./pages/APIDocumentation").then(m => ({ default: m.APIDocumentation })));
 
+// ── Auth callback ─────────────────────────────────────────────────────────────
+const AuthCallback = React.lazy(() => import("./pages/AuthCallback").then(m => ({ default: m.AuthCallback })));
+
 function App() {
   return (
     <BrowserRouter>
@@ -156,6 +159,7 @@ function App() {
             </Route>
           </Route>
 
+          <Route path="auth/callback" element={<AuthCallback />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>

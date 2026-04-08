@@ -43,7 +43,10 @@ export const Settings: React.FC = () => {
     e.preventDefault();
     setEmailLoading(true);
     setEmailMsg('');
-    const { error } = await supabase.auth.updateUser({ email });
+    const { error } = await supabase.auth.updateUser(
+      { email },
+      { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    );
     setEmailLoading(false);
     if (error) {
       setEmailMsg(`Error: ${error.message}`);
