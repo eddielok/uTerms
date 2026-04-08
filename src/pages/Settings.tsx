@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useCookieConfig } from '../context/CookieContext';
 import { API_URL } from '../lib/config';
@@ -21,9 +21,17 @@ export const Settings: React.FC = () => {
   const { userId } = useCookieConfig();
 
   // Email
+  const [isOAuthUser, setIsOAuthUser] = useState(false);
   const [email, setEmail] = useState('');
   const [emailMsg, setEmailMsg] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      const identities = user?.identities ?? [];
+      setIsOAuthUser(identities.some(i => i.provider !== 'email'));
+    });
+  }, []);
 
   // Password
   const [newPassword, setNewPassword] = useState('');
@@ -153,68 +161,80 @@ export const Settings: React.FC = () => {
       {/* Change Email */}
       <section className="settings-section">
         <h2 className="settings-section-title">Change Email</h2>
-        <form onSubmit={handleEmailChange} className="settings-form">
-          <div className="settings-field">
-            <label htmlFor="new-email">New Email Address</label>
-            <input
-              id="new-email"
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              placeholder="new@example.com"
-              className="settings-input"
-            />
-          </div>
-          {emailMsg && (
-            <p className={`settings-msg ${emailMsg.startsWith('Error') ? 'settings-msg-error' : 'settings-msg-success'}`}>
-              {emailMsg}
-            </p>
-          )}
-          <button type="submit" className="settings-btn" disabled={emailLoading}>
-            {emailLoading ? 'Sending…' : 'Update Email'}
-          </button>
-        </form>
+        {isOAuthUser ? (
+          <p className="settings-msg settings-msg-error">
+            Your account is linked to Google. To change your email, update it in your Google account settings.
+          </p>
+        ) : (
+          <form onSubmit={handleEmailChange} className="settings-form">
+            <div className="settings-field">
+              <label htmlFor="new-email">New Email Address</label>
+              <input
+                id="new-email"
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                placeholder="new@example.com"
+                className="settings-input"
+              />
+            </div>
+            {emailMsg && (
+              <p className={`settings-msg ${emailMsg.startsWith('Error') ? 'settings-msg-error' : 'settings-msg-success'}`}>
+                {emailMsg}
+              </p>
+            )}
+            <button type="submit" className="settings-btn" disabled={emailLoading}>
+              {emailLoading ? 'Sending…' : 'Update Email'}
+            </button>
+          </form>
+        )}
       </section>
 
       {/* Change Password */}
       <section className="settings-section">
         <h2 className="settings-section-title">Change Password</h2>
-        <form onSubmit={handlePasswordChange} className="settings-form">
-          <div className="settings-field">
-            <label htmlFor="new-password">New Password</label>
-            <input
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={e => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              placeholder="Min. 8 characters"
-              className="settings-input"
-            />
-          </div>
-          <div className="settings-field">
-            <label htmlFor="confirm-password">Confirm New Password</label>
-            <input
-              id="confirm-password"
-              type="password"
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-              required
-              placeholder="Repeat password"
-              className="settings-input"
-            />
-          </div>
-          {passwordMsg && (
-            <p className={`settings-msg ${passwordMsg.startsWith('Error') || passwordMsg.includes('match') || passwordMsg.includes('least') ? 'settings-msg-error' : 'settings-msg-success'}`}>
-              {passwordMsg}
-            </p>
-          )}
-          <button type="submit" className="settings-btn" disabled={passwordLoading}>
-            {passwordLoading ? 'Updating…' : 'Update Password'}
-          </button>
-        </form>
+        {isOAuthUser ? (
+          <p className="settings-msg settings-msg-error">
+            Your account is linked to Google. Passwords are managed by Google — you cannot set a separate password here.
+          </p>
+        ) : (
+          <form onSubmit={handlePasswordChange} className="settings-form">
+            <div className="settings-field">
+              <label htmlFor="new-password">New Password</label>
+              <input
+                id="new-password"
+                type="password"
+                value={newPassword}
+                onChange={e => setNewPassword(e.target.value)}
+                required
+                minLength={8}
+                placeholder="Min. 8 characters"
+                className="settings-input"
+              />
+            </div>
+            <div className="settings-field">
+              <label htmlFor="confirm-password">Confirm New Password</label>
+              <input
+                id="confirm-password"
+                type="password"
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+                required
+                placeholder="Repeat password"
+                className="settings-input"
+              />
+            </div>
+            {passwordMsg && (
+              <p className={`settings-msg ${passwordMsg.startsWith('Error') || passwordMsg.includes('match') || passwordMsg.includes('least') ? 'settings-msg-error' : 'settings-msg-success'}`}>
+                {passwordMsg}
+              </p>
+            )}
+            <button type="submit" className="settings-btn" disabled={passwordLoading}>
+              {passwordLoading ? 'Updating…' : 'Update Password'}
+            </button>
+          </form>
+        )}
       </section>
 
       {/* Export Data */}
