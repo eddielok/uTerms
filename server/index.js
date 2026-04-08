@@ -808,56 +808,6 @@ EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
   });
 });
 
-// ─── Inline policy embed (privacy policy HTML injection) ─────────────────────
-app.get("/uterms-policy-embed.js", async (req, res) => {
-  const { id } = req.query;
-  if (!id)
-    return res
-      .status(400)
-      .type("text/javascript")
-      .send('console.error("User ID required");');
-  try {
-    const response = await supabaseFetch(
-      `${SUPABASE_URL}/rest/v1/privacy_policies?user_id=eq.${encodeURIComponent(id)}&select=id,title,generated,updated_at&order=updated_at.desc&limit=1`,
-      { headers: anonHeaders() },
-    );
-    if (!response.ok)
-      return res
-        .type("text/javascript")
-        .send('console.error("Failed to fetch policy");');
-    const data = await response.json();
-    if (!data || data.length === 0)
-      return res
-        .type("text/javascript")
-        .send('console.error("No policy found for this user.");');
-    if (!data[0].generated)
-      return res
-        .type("text/javascript")
-        .send('console.error("Policy not yet generated.");');
-
-    const script = `
-(function() {
-  var container = document.getElementById('uterms-policy');
-  if (!container) { console.error('uterms-policy container not found'); return; }
-  (function(html) {
-    var parser = new DOMParser();
-    var doc = parser.parseFromString(html, 'text/html');
-    doc.querySelectorAll('script,iframe,object,embed').forEach(function(el) { el.remove(); });
-    doc.querySelectorAll('*').forEach(function(el) {
-      Array.from(el.attributes).forEach(function(a) { if (a.name.startsWith('on')) el.removeAttribute(a.name); });
-    });
-    container.innerHTML = doc.body.innerHTML;
-  })(${JSON.stringify(data[0].generated)});
-  var style = document.createElement('style');
-  style.textContent = '#uterms-policy{padding:20px;font-family:system-ui,sans-serif;line-height:1.6;color:#333}#uterms-policy h1{font-size:2rem;margin-bottom:1rem}#uterms-policy h2{font-size:1.5rem;margin:1.5rem 0 1rem}#uterms-policy section{margin-bottom:2rem}#uterms-policy table{width:100%;border-collapse:collapse}#uterms-policy th,#uterms-policy td{border:1px solid #ddd;padding:8px;text-align:left}#uterms-policy th{background:#f5f5f5;font-weight:bold}#uterms-policy ul{margin-left:20px}#uterms-policy li{margin-bottom:.5rem}';
-  document.head.appendChild(style);
-})();`;
-    res.type("text/javascript").send(script);
-  } catch (err) {
-    console.error("Policy Embed Error:", err);
-    res.type("text/javascript").send('console.error("Failed to load policy");');
-  }
-});
 
 // ─── POST /api/analyze-policy ─────────────────────────────────────────────────
 app.post("/api/analyze-policy", validateApiKey, async (req, res) => {
