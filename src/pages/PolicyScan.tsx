@@ -1,6 +1,7 @@
 import { CheckCircle2, ExternalLink, Loader2, ScanLine, XCircle } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useCookieConfig } from '../context/CookieContext';
 import { API_URL } from '../lib/config';
 import './PolicyScan.css';
 
@@ -136,21 +137,43 @@ function FieldRow({ label, value, type }: { label: string; value: unknown; type:
 
 export const PolicyScan: React.FC = () => {
   const navigate = useNavigate();
+  const { userId } = useCookieConfig();
   const [url, setUrl] = useState('');
   const [status, setStatus] = useState<ScanStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [analyses, setAnalyses] = useState<Record<string, Record<string, unknown>>>({});
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  // Load saved results on mount
+  useEffect(() => {
+    if (!userId) return;
+    fetch(`${API_URL}/api/policy-scan/${userId}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.found) {
+          setUrl(data.url);
+          setAnalyses(data.analyses);
+          setSavedAt(data.created_at);
+          setStatus('done');
+          for (const pt of POLICY_TYPES) {
+            if (data.analyses[pt.key]) localStorage.setItem(PREFILL_KEY(pt.key), JSON.stringify(data.analyses[pt.key]));
+          }
+        }
+      })
+      .catch(() => {});
+  }, [userId]);
 
   const handleScan = async () => {
     if (!url.trim()) return;
     setStatus('scanning');
     setError(null);
     setAnalyses({});
+    setSavedAt(null);
     try {
       const response = await fetch(`${API_URL}/api/analyze-all-policies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: url.trim() }),
+        body: JSON.stringify({ url: url.trim(), userId }),
       });
       if (!response.ok) {
         const err = await response.json();
@@ -161,6 +184,7 @@ export const PolicyScan: React.FC = () => {
         if (data[pt.key]) localStorage.setItem(PREFILL_KEY(pt.key), JSON.stringify(data[pt.key]));
       }
       setAnalyses(data);
+      setSavedAt(new Date().toISOString());
       setStatus('done');
     } catch (err: any) {
       setError(err.message || 'Scan failed. Please try again.');
@@ -173,6 +197,7 @@ export const PolicyScan: React.FC = () => {
     setAnalyses({});
     setStatus('idle');
     setUrl('');
+    setSavedAt(null);
   };
 
   return (
@@ -220,7 +245,15 @@ export const PolicyScan: React.FC = () => {
       {status === 'done' && Object.keys(analyses).length > 0 && (
         <>
           <div className="policy-scan-success-bar">
-            <CheckCircle2 size={16} /> All 10 policies prefilled — click any card to open the wizard with pre-populated fields.
+            <CheckCircle2 size={16} />
+            <span>
+              All 10 policies prefilled — click any card to open the wizard with pre-populated fields.
+              {savedAt && (
+                <span style={{ marginLeft: '0.5rem', opacity: 0.75, fontSize: '0.8rem' }}>
+                  Last scanned: {new Date(savedAt).toLocaleString()}
+                </span>
+              )}
+            </span>
           </div>
 
           <div className="policy-scan-grid">

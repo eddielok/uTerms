@@ -1248,8 +1248,30 @@ app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
 
 // ─── POST /api/analyze-all-policies ──────────────────────────────────────────
 // Scrapes URL once, calls DeepSeek once with all 10 policy schemas combined.
+// ─── GET /api/policy-scan/:userId ────────────────────────────────────────────
+// Returns saved policy scan results for a user.
+app.get("/api/policy-scan/:userId", generalLimiter, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const response = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/policy_scan_results?user_id=eq.${encodeURIComponent(userId)}&select=url,analyses,created_at&limit=1`,
+      { headers: serviceHeaders() },
+    );
+    if (!response.ok) return res.status(500).json({ error: "Failed to fetch scan results" });
+    const rows = await response.json();
+    if (!rows.length) return res.json({ found: false });
+    return res.json({ found: true, ...rows[0] });
+  } catch (err) {
+    console.error("[policy-scan GET] error:", err);
+    res.status(500).json({ error: "Failed to fetch scan results" });
+  }
+});
+
+// ─── POST /api/analyze-all-policies ──────────────────────────────────────────
+// Scrapes URL once, calls DeepSeek once with all 10 policy schemas combined.
 app.post("/api/analyze-all-policies", async (req, res) => {
-  const { url } = req.body;
+  const { url, userId } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
   const targetUrl = normalizeUrl(url);
   const urlError = validatePublicUrl(targetUrl);
@@ -1363,6 +1385,22 @@ ${scrapedContext}`;
         // Re-apply companyName in case aiResult spread overwrote it
         companyName: companyName || aiResult?.[key]?.companyName || "",
       };
+    }
+
+    // Save results to DB if userId provided
+    if (userId && isValidUUID(userId)) {
+      try {
+        await supabaseFetch(
+          `${SUPABASE_URL}/rest/v1/policy_scan_results`,
+          {
+            method: "POST",
+            headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
+            body: JSON.stringify({ user_id: userId, url: targetUrl, analyses }),
+          },
+        );
+      } catch (saveErr) {
+        console.warn("[analyze-all-policies] failed to save results:", saveErr.message);
+      }
     }
 
     res.json({ success: true, analyses });
