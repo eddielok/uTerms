@@ -1122,8 +1122,8 @@ export const APIDocumentation: React.FC = () => {
               <div>
                 <div className="security-badge-title">Rate limiting</div>
                 <div className="security-badge-desc">
-                  100 req / 15 min per IP on all policy endpoints. 5 req / min
-                  on scan endpoints.
+                  100 req / 15 min per IP on all policy endpoints. 5 req / hour
+                  on scan endpoints. 2 req / 24 hours on Policy Scan (AI).
                 </div>
               </div>
             </div>
@@ -1172,14 +1172,21 @@ export const APIDocumentation: React.FC = () => {
                   <code>POST /api/scan</code>
                 </td>
                 <td>5 requests</td>
-                <td>1 minute</td>
+                <td>1 hour</td>
               </tr>
               <tr>
                 <td>
                   <code>POST /api/analyze-policy</code>
                 </td>
                 <td>5 requests</td>
-                <td>1 minute</td>
+                <td>1 hour</td>
+              </tr>
+              <tr>
+                <td>
+                  <code>POST /api/analyze-all-policies</code>
+                </td>
+                <td>2 requests</td>
+                <td>24 hours</td>
               </tr>
             </tbody>
           </table>

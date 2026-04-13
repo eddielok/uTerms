@@ -254,6 +254,14 @@ const bannerLimiter = rateLimit({
   message: { error: "Too many requests." },
 });
 
+const policyScanLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  max: 2,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Policy Scan limit reached. You can scan up to 2 times per 24 hours." },
+});
+
 const consentLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -302,6 +310,7 @@ app.use("/api/impressum", generalLimiter);
 app.use("/api/accessibility", generalLimiter);
 app.use("/api/scan", scanLimiter);
 app.use("/api/analyze-policy", scanLimiter);
+app.use("/api/analyze-all-policies", policyScanLimiter);
 
 app.use(express.json());
 Sentry.setupExpressErrorHandler(app);
@@ -1239,7 +1248,7 @@ app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
 
 // ─── POST /api/analyze-all-policies ──────────────────────────────────────────
 // Scrapes URL once, calls DeepSeek once with all 10 policy schemas combined.
-app.post("/api/analyze-all-policies", scanLimiter, async (req, res) => {
+app.post("/api/analyze-all-policies", async (req, res) => {
   const { url } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
   const targetUrl = normalizeUrl(url);
