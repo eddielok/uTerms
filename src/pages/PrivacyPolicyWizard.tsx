@@ -1,8 +1,8 @@
-import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles, Wand2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { AiPrefillButton } from "../components/AiPrefillButton";
 import { useCookieConfig } from "../context/CookieContext";
-import { API_URL } from "../lib/config";
 import { supabase } from "../lib/supabase";
 import {
   DEFAULT_ANSWERS,
@@ -67,6 +67,15 @@ export const PrivacyPolicyWizard: React.FC = () => {
   const { userId, scannedData } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
+  // Apply localStorage prefill from Policy Scan (new policies only)
+  useEffect(() => {
+    if (!isEditing) {
+      try {
+        const stored = localStorage.getItem('uterms_prefill_privacy_policy');
+        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
+      } catch {}
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<WizardAnswers>(DEFAULT_ANSWERS);
@@ -74,9 +83,6 @@ export const PrivacyPolicyWizard: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isCookieListExpanded, setIsCookieListExpanded] = useState(false);
-  const [isAiScanning, setIsAiScanning] = useState(false);
-  const [aiScanError, setAiScanError] = useState<string | null>(null);
-  const [aiScanSuccess, setAiScanSuccess] = useState(false);
 
   // Load existing policy when editing
   useEffect(() => {
@@ -170,41 +176,6 @@ export const PrivacyPolicyWizard: React.FC = () => {
     }));
   };
 
-  const handleAiScan = async () => {
-    const urlToScan = answers.websiteUrl.trim();
-    if (!urlToScan) return;
-    setIsAiScanning(true);
-    setAiScanError(null);
-    setAiScanSuccess(false);
-    try {
-      const response = await fetch(`${API_URL}/api/analyze-policy`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: urlToScan }),
-      });
-      if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || "Analysis failed");
-      }
-      const { analysis } = await response.json();
-      setAnswers((prev) => ({
-        ...prev,
-        ...analysis,
-        // Preserve scanned cookies and manual overrides the user may have set
-        scannedCookies: prev.scannedCookies,
-        cookieTypes:
-          analysis.cookieTypes?.length > 0
-            ? analysis.cookieTypes
-            : prev.cookieTypes,
-      }));
-      setAiScanSuccess(true);
-    } catch (err: any) {
-      setAiScanError(err.message || "Failed to analyse website");
-    } finally {
-      setIsAiScanning(false);
-    }
-  };
-
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
@@ -286,52 +257,19 @@ export const PrivacyPolicyWizard: React.FC = () => {
           {/* Step 1: Business Info */}
           {step === 0 && (
             <div className="wizard-fields">
-              {/* AI Auto-fill Banner */}
-              <div className="ai-scan-banner">
-                <div className="ai-scan-banner-header">
-                  <Wand2 size={16} />
-                  <span>AI Auto-fill</span>
-                </div>
-                <p className="ai-scan-banner-desc">
-                  Enter your website URL below and click <strong>Scan &amp; Auto-fill</strong> — AI will analyse your site and pre-populate all wizard steps for you to review.
-                </p>
-                <div className="ai-scan-row">
-                  <input
-                    type="url"
-                    className="ai-scan-input"
-                    value={answers.websiteUrl}
-                    onChange={(e) => set("websiteUrl", e.target.value)}
-                    placeholder="https://www.example.com"
-                    disabled={isAiScanning}
-                  />
-                  <button
-                    type="button"
-                    className="ai-scan-btn"
-                    onClick={handleAiScan}
-                    disabled={isAiScanning || !answers.websiteUrl.trim()}
-                  >
-                    {isAiScanning ? (
-                      <>
-                        <Loader2 size={14} className="ai-scan-spinner" />
-                        Scanning…
-                      </>
-                    ) : (
-                      <>
-                        <Wand2 size={14} />
-                        Scan &amp; Auto-fill
-                      </>
-                    )}
-                  </button>
-                </div>
-                {aiScanError && (
-                  <p className="ai-scan-error">{aiScanError}</p>
-                )}
-                {aiScanSuccess && (
-                  <p className="ai-scan-success">
-                    <Check size={13} /> Wizard fields pre-filled — please review and adjust each step.
-                  </p>
-                )}
-              </div>
+              <AiPrefillButton
+                policyType="privacy_policy"
+                websiteUrl={answers.websiteUrl}
+                onUrlChange={(url) => set("websiteUrl", url)}
+                onResult={(analysis) => setAnswers((prev) => ({
+                  ...prev,
+                  ...analysis,
+                  scannedCookies: prev.scannedCookies,
+                  cookieTypes: (analysis.cookieTypes as string[])?.length > 0
+                    ? analysis.cookieTypes as string[]
+                    : prev.cookieTypes,
+                }))}
+              />
 
               {step === 0 && (
                 <div className="wizard-field">

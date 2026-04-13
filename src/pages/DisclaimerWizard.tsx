@@ -1,6 +1,7 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { AiPrefillButton } from '../components/AiPrefillButton';
 import { useCookieConfig } from '../context/CookieContext';
 import { supabase } from '../lib/supabase';
 import {
@@ -52,6 +53,15 @@ export const DisclaimerWizard: React.FC = () => {
   const { userId } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
+  // Apply localStorage prefill from Policy Scan (new policies only)
+  useEffect(() => {
+    if (!isEditing) {
+      try {
+        const stored = localStorage.getItem('uterms_prefill_disclaimer');
+        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
+      } catch {}
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<DisclaimerAnswers>(DEFAULT_DISCLAIMER_ANSWERS);
@@ -123,6 +133,12 @@ export const DisclaimerWizard: React.FC = () => {
       case 0:
         return (
           <div className="wizard-fields">
+            <AiPrefillButton
+              policyType="disclaimer"
+              websiteUrl={answers.websiteUrl}
+              onUrlChange={(url) => set('websiteUrl', url)}
+              onResult={(analysis) => setAnswers((prev) => ({ ...prev, ...analysis }))}
+            />
             <div className="wizard-field">
               <label>Company / Website Name <span className="req">*</span></label>
               <input

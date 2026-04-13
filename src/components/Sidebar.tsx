@@ -19,7 +19,8 @@ export const Sidebar: React.FC = () => {
     location.pathname.startsWith("/consent-management"),
   );
   const [isPolicyOpen, setIsPolicyOpen] = useState(
-    location.pathname.startsWith("/policy-management") ||
+    location.pathname.startsWith("/policy-scan") ||
+      location.pathname.startsWith("/policy-management") ||
       location.pathname.startsWith("/cookie-policy") ||
       location.pathname.startsWith("/terms-of-service") ||
       location.pathname.startsWith("/eula") ||
@@ -177,6 +178,14 @@ export const Sidebar: React.FC = () => {
 
           {isPolicyOpen && (
             <div className="sidebar-sub-menu">
+              <NavLink
+                to="/policy-scan"
+                className={({ isActive }) =>
+                  `sidebar-sub-link ${isActive ? "active" : ""}`
+                }
+              >
+                Policy Scan
+              </NavLink>
               <NavLink
                 to="/policy-management"
                 end

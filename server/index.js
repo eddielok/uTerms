@@ -31,6 +31,7 @@ function dbg(...args) {
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
 const IP_SALT = process.env.IP_SALT;
 if (!IP_SALT) {
   console.error("[server] FATAL: IP_SALT is not set. Set a random 32+ character value in .env to ensure IP anonymisation is secure.");
@@ -281,7 +282,7 @@ app.use(helmet({
 app.use(compression());
 app.use(
   cors({
-    origin: ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io"],
+    origin: ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io", "http://localhost:5173"],
     credentials: true,
   }),
 );
@@ -888,9 +889,203 @@ EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
 });
 
 
+// ─── DeepSeek V3 helper ───────────────────────────────────────────────────────
+async function callDeepSeek(systemPrompt, userPrompt, timeoutMs = 30000) {
+  if (!DEEPSEEK_API_KEY) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        max_tokens: 2000,
+        temperature: 0.1,
+      }),
+      signal: controller.signal,
+    });
+    const data = await resp.json();
+    const raw = data?.choices?.[0]?.message?.content;
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    dbg("[DeepSeek] error:", err.message);
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Per-policy-type DeepSeek field schemas
+const POLICY_SCHEMAS = {
+  privacy_policy: `{
+  "companyName": "string",
+  "country": "one of: United States, United Kingdom, England and Wales, Canada, Australia, Germany, France, Netherlands, Singapore, India, Other",
+  "businessType": "string — e.g. SaaS, E-Commerce, Blog, Agency, Marketplace",
+  "collectsName": "boolean",
+  "collectsEmail": "boolean",
+  "collectsPhone": "boolean",
+  "collectsAddress": "boolean",
+  "collectsPayment": "boolean",
+  "collectsDeviceInfo": "boolean",
+  "collectsUsageData": "boolean",
+  "collectsLocation": "boolean",
+  "purposeServiceDelivery": "boolean",
+  "purposeMarketing": "boolean",
+  "purposeAnalytics": "boolean",
+  "purposeLegal": "boolean",
+  "purposeSecurity": "boolean",
+  "sharesData": "boolean",
+  "sharesWithAdNetworks": "boolean",
+  "sharesWithAnalytics": "boolean",
+  "sharesWithPaymentProcessors": "boolean",
+  "sharesWithSocialMedia": "boolean",
+  "sharesWithCloud": "boolean",
+  "rightToAccess": "boolean",
+  "rightToDeletion": "boolean",
+  "rightToPortability": "boolean",
+  "rightToRestriction": "boolean",
+  "rightToOptOut": "boolean"
+}`,
+  cookie_policy: `{
+  "websiteName": "string",
+  "websiteType": "string — e.g. website, web-app, e-commerce",
+  "country": "string",
+  "usesEssential": "boolean",
+  "usesFunctional": "boolean",
+  "usesAnalytics": "boolean",
+  "usesMarketing": "boolean",
+  "usesSocial": "boolean",
+  "analyticsProviders": "array of strings — e.g. [Google Analytics, Hotjar]",
+  "marketingProviders": "array of strings — e.g. [Google Ads, Facebook Pixel]",
+  "socialProviders": "array of strings — e.g. [Facebook, Twitter, LinkedIn]",
+  "gdprApplies": "boolean — true if EU/UK audience likely",
+  "ccpaApplies": "boolean — true if US/California audience likely",
+  "sellsData": "boolean",
+  "sharesData": "boolean"
+}`,
+  terms_of_service: `{
+  "companyName": "string",
+  "country": "string",
+  "businessType": "one of: saas, ecommerce, marketplace, blog, app, other",
+  "serviceDescription": "string — one sentence describing the service",
+  "requiresAccount": "boolean",
+  "minimumAge": "string — e.g. 13, 16, 18",
+  "isPaid": "boolean",
+  "isSubscription": "boolean",
+  "hasRefundPolicy": "boolean",
+  "allowsUGC": "boolean",
+  "dmcaCompliant": "boolean",
+  "hasThirdPartyIntegrations": "boolean",
+  "limitationOfLiability": "boolean",
+  "disclaimsWarranties": "boolean",
+  "governingLaw": "string — e.g. England and Wales",
+  "disputeResolution": "one of: courts, arbitration, negotiation"
+}`,
+  eula: `{
+  "appName": "string",
+  "companyName": "string",
+  "country": "string",
+  "platforms": "array of strings — e.g. [Web, iOS, Android, Windows, macOS]",
+  "licenseType": "one of: personal, commercial, both",
+  "collectsData": "boolean",
+  "hasInAppPurchases": "boolean",
+  "hasUserGeneratedContent": "boolean",
+  "providesUpdates": "boolean",
+  "governingLaw": "string"
+}`,
+  return_policy: `{
+  "companyName": "string",
+  "country": "string",
+  "productTypes": "array — subset of: physical, digital, services",
+  "returnWindowDays": "string — e.g. 30",
+  "returnWindowStart": "one of: purchase, delivery",
+  "refundToOriginal": "boolean",
+  "refundToStoreCredit": "boolean",
+  "refundAsExchange": "boolean",
+  "returnShippingPaidBy": "one of: customer, seller, depends",
+  "excludeDigitalDownloads": "boolean",
+  "excludeFinalSale": "boolean"
+}`,
+  disclaimer: `{
+  "companyName": "string",
+  "country": "string",
+  "businessType": "string",
+  "generalInfo": "boolean",
+  "professionalAdvice": "boolean",
+  "medicalHealth": "boolean",
+  "financialInvestment": "boolean",
+  "legalAdvice": "boolean",
+  "affiliateLinks": "boolean",
+  "aiContent": "boolean",
+  "noAccuracyGuarantee": "boolean",
+  "externalLinksDisclaimer": "boolean",
+  "noLiabilityForDamages": "boolean"
+}`,
+  shipping_policy: `{
+  "companyName": "string",
+  "country": "string",
+  "businessType": "string",
+  "currency": "string — e.g. GBP, USD, EUR",
+  "shipsInternationally": "boolean",
+  "offersFreeShipping": "boolean",
+  "offersStandard": "boolean",
+  "offersExpress": "boolean",
+  "providesTracking": "boolean"
+}`,
+  aup: `{
+  "companyName": "string",
+  "country": "string",
+  "platformType": "string — e.g. saas, forum, marketplace, social-network",
+  "requiresAccount": "boolean",
+  "minimumAge": "string — e.g. 13, 16, 18",
+  "handlesSensitiveData": "boolean",
+  "allowsUGC": "boolean",
+  "dmcaCompliant": "boolean",
+  "cooperatesWithLawEnforcement": "boolean",
+  "governingLaw": "string",
+  "disputeResolution": "one of: courts, arbitration, negotiation"
+}`,
+  impressum: `{
+  "companyName": "string",
+  "street": "string",
+  "city": "string",
+  "postcode": "string",
+  "country": "string",
+  "registrationNumber": "string — company registration number if found",
+  "vatId": "string — VAT number if found",
+  "email": "string",
+  "phone": "string"
+}`,
+  accessibility: `{
+  "organisationName": "string",
+  "websiteName": "string",
+  "country": "string",
+  "sector": "string — e.g. private, public, charity, education, healthcare",
+  "wcagVersion": "one of: 2.1, 2.2",
+  "conformanceLevel": "one of: A, AA, AAA",
+  "contactName": "string",
+  "contactEmail": "string"
+}`,
+};
+
+const DEEPSEEK_SYSTEM_PROMPT = `You are a legal analyst specialising in privacy and compliance. Analyse the provided website content and return a JSON object prefilling wizard fields. Rules:
+- Only set boolean fields to true if there is clear evidence in the content
+- For string fields, infer reasonable values from the content
+- Return ONLY valid JSON matching the schema provided — no markdown, no explanation
+- Be conservative: when uncertain about booleans, default to false`;
+
 // ─── POST /api/analyze-policy ─────────────────────────────────────────────────
-app.post("/api/analyze-policy", validateApiKey, async (req, res) => {
-  const { url } = req.body;
+app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
+  const { url, policyType = "privacy_policy" } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
   const targetUrl = normalizeUrl(url);
   const urlError = validatePublicUrl(targetUrl);
@@ -1006,50 +1201,167 @@ app.post("/api/analyze-policy", validateApiKey, async (req, res) => {
       uniqueEmails[0] ||
       "";
 
+    // ── DeepSeek V3 analysis ──────────────────────────────────────────────────
+    const schema = POLICY_SCHEMAS[policyType] || POLICY_SCHEMAS.privacy_policy;
+    const scrapedContext = [
+      `Homepage body:\n${homepageContent.bodyText}`,
+      `Footer:\n${homepageContent.footer}`,
+      privacyPageContent ? `Privacy page:\n${privacyPageContent}` : "",
+    ].filter(Boolean).join("\n\n---\n\n").slice(0, 12000);
+
+    const userPrompt = `Website: ${targetUrl}\nCompany name detected: ${companyName}\nContact email detected: ${privacyEmail || "none"}\nCountry detected: ${homepageContent.detectedCountry || "unknown"}\n\nReturn JSON matching this schema:\n${schema}\n\nWebsite content:\n${scrapedContext}`;
+
+    const aiAnalysis = await callDeepSeek(DEEPSEEK_SYSTEM_PROMPT, userPrompt);
+
+    // Merge: spread AI fields first, then overwrite with high-confidence regex extractions
     const analysis = {
-      companyName,
+      ...(aiAnalysis || {}),
       websiteUrl: targetUrl,
-      country: homepageContent.detectedCountry || "United Kingdom",
-      state: "",
-      collectsName: false,
-      collectsEmail: false,
-      collectsPhone: false,
-      collectsAddress: false,
-      collectsPayment: false,
-      collectsDeviceInfo: false,
-      collectsUsageData: false,
-      collectsLocation: false,
-      purposeServiceDelivery: false,
-      purposeMarketing: false,
-      purposeAnalytics: false,
-      purposeLegal: false,
-      purposeSecurity: false,
-      sharesData: false,
-      sharesWithAdNetworks: false,
-      sharesWithAnalytics: false,
-      sharesWithPaymentProcessors: false,
-      sharesWithSocialMedia: false,
-      sharesWithCloud: false,
-      rightToAccess: false,
-      rightToDeletion: false,
-      rightToPortability: false,
-      rightToRestriction: false,
-      rightToOptOut: false,
-      usesCookies: false,
-      cookieTypes: [],
-      privacyEmail,
+      companyName: companyName || aiAnalysis?.companyName || "",
+      country: homepageContent.detectedCountry || aiAnalysis?.country || "United Kingdom",
+      contactEmail: privacyEmail || aiAnalysis?.contactEmail || aiAnalysis?.email || "",
+      email: privacyEmail || aiAnalysis?.email || aiAnalysis?.contactEmail || "",
       scrapedDetails: {
         companyNo: homepageContent.companyNo,
         vatNo: homepageContent.vatNo,
         registeredAddress: homepageContent.registeredAddress,
       },
     };
+
     res.json({ success: true, analysis });
   } catch (err) {
     console.error("Analyze Policy Error:", err);
     res.status(500).json({ error: "Failed to analyze website" });
   } finally {
     await page.close(); // keep shared browser warm
+  }
+});
+
+// ─── POST /api/analyze-all-policies ──────────────────────────────────────────
+// Scrapes URL once, calls DeepSeek once with all 10 policy schemas combined.
+app.post("/api/analyze-all-policies", scanLimiter, async (req, res) => {
+  const { url } = req.body;
+  if (!url) return res.status(400).json({ error: "URL is required" });
+  const targetUrl = normalizeUrl(url);
+  const urlError = validatePublicUrl(targetUrl);
+  if (urlError) return res.status(400).json({ error: urlError });
+
+  const browser = await getSharedBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    );
+    await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+
+    const homepageContent = await page.evaluate(() => {
+      const title = document.title || "";
+      const ogSiteName = document.querySelector('meta[property="og:site_name"]')?.getAttribute("content") || "";
+      const description = document.querySelector('meta[name="description"]')?.getAttribute("content") || "";
+      const footerEl = document.querySelector("footer, .footer, #footer, [class*='footer']");
+      const footer = (footerEl?.innerText || "").slice(0, 2000);
+      const bodyText = (document.body?.innerText || "").slice(0, 6000);
+      const coNoMatch = bodyText.match(/(?:company\s*(?:no|number|reg(?:istration)?)[\s.:#]*|(?:reference|registration)\s+number\s+)([A-Z0-9]{6,12})/i);
+      const vatMatch = bodyText.match(/vat\s*(?:no|number|reg(?:istration)?)[\s.:]*([A-Z]{0,2}[0-9]{9,12})/i);
+      const addrMatch = bodyText.match(/registered\s+offices?\s+(?:address[:\s]+|at\s+)([^.\n]{10,200})/i);
+      const countryMatch = bodyText.match(/registered\s+in\s+(England\s*(?:&|and)\s*Wales|Scotland|United\s+Kingdom|United\s+States|Canada|Australia|Germany|France|Netherlands|Singapore|India)/i);
+      return {
+        title, ogSiteName, description, footer, bodyText,
+        companyNo: coNoMatch?.[1]?.trim() || "",
+        vatNo: vatMatch?.[1]?.trim() || "",
+        registeredAddress: addrMatch?.[1]?.trim() || "",
+        detectedCountry: countryMatch?.[1]?.trim() || "",
+      };
+    });
+
+    let privacyPageContent = "";
+    try {
+      const privacyLink = await page.evaluate(() => {
+        const a = Array.from(document.querySelectorAll("a[href]")).find(l => {
+          const text = (l.textContent || "").toLowerCase();
+          const href = (l.getAttribute("href") || "").toLowerCase();
+          return text.includes("privacy") || href.includes("privacy");
+        });
+        return a ? a.href : null;
+      });
+      if (privacyLink) {
+        await page.goto(privacyLink, { waitUntil: "networkidle2", timeout: 15000 });
+        privacyPageContent = await page.evaluate(() => (document.body?.innerText || "").slice(0, 5000));
+      }
+    } catch (e) { dbg("Could not fetch privacy page:", e.message); }
+
+    // Extract company name and email
+    let companyName = homepageContent.ogSiteName;
+    if (!companyName) {
+      const parts = homepageContent.title.split(/[-|]/);
+      companyName = parts[0]?.trim() || (() => {
+        try { const h = new URL(targetUrl).hostname.replace("www.", ""); return h.charAt(0).toUpperCase() + h.slice(1); } catch { return ""; }
+      })();
+    }
+    const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
+    const combinedText = (homepageContent.footer + " " + privacyPageContent).slice(0, 8000);
+    const uniqueEmails = [...new Set((combinedText.match(emailRegex) || []).map(e => e.toLowerCase()))];
+    const contactEmail = uniqueEmails.find(e => /privacy|legal|compliance|dpo/i.test(e)) ||
+      uniqueEmails.find(e => /info|contact|support|hello/i.test(e)) || uniqueEmails[0] || "";
+
+    const scrapedContext = [
+      `Homepage (${targetUrl}):\n${homepageContent.bodyText}`,
+      `Footer:\n${homepageContent.footer}`,
+      privacyPageContent ? `Privacy page:\n${privacyPageContent}` : "",
+    ].filter(Boolean).join("\n\n---\n\n").slice(0, 12000);
+
+    // Single DeepSeek call for all 10 policy types
+    const combinedSchemas = Object.entries(POLICY_SCHEMAS)
+      .map(([key, schema]) => `"${key}": ${schema}`)
+      .join(",\n");
+
+    const userPrompt = `Website: ${targetUrl}
+Company name detected: ${companyName}
+Contact email detected: ${contactEmail || "none"}
+Country detected: ${homepageContent.detectedCountry || "unknown"}
+Company registration: ${homepageContent.companyNo || "none"}
+VAT: ${homepageContent.vatNo || "none"}
+
+Return a JSON object with these 10 top-level keys, each prefilled for the corresponding policy type:
+{ ${combinedSchemas} }
+
+Website content:
+${scrapedContext}`;
+
+    const aiResult = await callDeepSeek(DEEPSEEK_SYSTEM_PROMPT, userPrompt, 45000);
+
+    // Build final analyses: merge AI result with high-confidence regex extractions
+    const baseOverrides = {
+      websiteUrl: targetUrl,
+      companyName: companyName || "",
+      organisationName: companyName || "",
+      websiteName: companyName || "",
+      country: homepageContent.detectedCountry || "",
+      contactEmail,
+      email: contactEmail,
+      scrapedDetails: {
+        companyNo: homepageContent.companyNo,
+        vatNo: homepageContent.vatNo,
+        registeredAddress: homepageContent.registeredAddress,
+      },
+    };
+
+    const analyses = {};
+    for (const key of Object.keys(POLICY_SCHEMAS)) {
+      analyses[key] = {
+        ...(aiResult?.[key] || {}),
+        ...baseOverrides,
+        // Re-apply companyName in case aiResult spread overwrote it
+        companyName: companyName || aiResult?.[key]?.companyName || "",
+      };
+    }
+
+    res.json({ success: true, analyses });
+  } catch (err) {
+    console.error("[analyze-all-policies] error:", err);
+    res.status(500).json({ error: "Failed to analyze website" });
+  } finally {
+    await page.close();
   }
 });
 
