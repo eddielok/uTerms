@@ -146,27 +146,20 @@ export const Layout: React.FC = () => {
             <Link to="/privacy-policy">Privacy Policy</Link>
             <Link to="/terms-of-service-uterms">Terms of Service</Link>
           </div>
-          <div className="footer-links">
-            <h4 className="font-semibold mb-4">Product</h4>
-            <Link to="/features">Features</Link>
-          </div>
           <div className="footer-links footer-links-legal">
-            <h4 className="font-semibold mb-4">Legal</h4>
-            <div className="footer-legal-grid">
-              <div className="footer-legal-col">
-                <Link to="/policies">Privacy Policy</Link>
-                <Link to="/policies?tab=terms">Terms of Service</Link>
-                <Link to="/policies?tab=cookies">Cookie Policy</Link>
-                <Link to="/policies?tab=eula">EULA</Link>
-                <Link to="/policies?tab=return">Return Policy</Link>
-              </div>
-              <div className="footer-legal-col">
-                <Link to="/policies?tab=disclaimer">Disclaimer</Link>
-                <Link to="/policies?tab=shipping">Shipping Policy</Link>
-                <Link to="/policies?tab=aup">Acceptable Use Policy</Link>
-                <Link to="/policies?tab=impressum">Impressum</Link>
-                <Link to="/policies?tab=accessibility">Accessibility Statement</Link>
-              </div>
+            <h4 className="font-semibold mb-4">Product</h4>
+            <div className="footer-product-grid">
+              <Link to="/features">Features</Link>
+              <Link to="/policies">Privacy Policy</Link>
+              <Link to="/policies?tab=impressum">Impressum</Link>
+              <Link to="/policies?tab=cookies">Cookie Policy</Link>
+              <Link to="/policies?tab=eula">EULA</Link>
+              <Link to="/policies?tab=return">Return Policy</Link>
+              <Link to="/policies?tab=disclaimer">Disclaimer</Link>
+              <Link to="/policies?tab=shipping">Shipping Policy</Link>
+              <Link to="/policies?tab=aup">Acceptable Use Policy</Link>
+              <Link to="/policies?tab=terms">Terms of Service</Link>
+              <Link to="/policies?tab=accessibility">Accessibility Statement</Link>
             </div>
           </div>
         </div>
