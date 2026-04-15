@@ -36,7 +36,7 @@ export const DoNotSell: React.FC = () => (
     <p className="text-muted">
       For any privacy-related enquiries, contact our Data Protection Officer at{' '}
       <a href="mailto:privacy@uterms.io" className="text-primary hover:underline">privacy@uterms.io</a>.
-      See our full <Link to="/policies" className="text-primary hover:underline">Privacy Policy</Link> for details.
+      See our full <Link to="/privacy-policy" className="text-primary hover:underline">Privacy Policy</Link> for details.
     </p>
   </div>
 );

@@ -8,7 +8,7 @@ export const UTermsTermsOfService: React.FC = () => {
       <Helmet>
         <title>Terms of Service — uTerms</title>
         <meta name="description" content="uTerms Terms of Service — the rules and conditions that govern your use of the uTerms platform." />
-        <link rel="canonical" href="https://uterms.io/terms-of-service" />
+        <link rel="canonical" href="https://uterms.io/terms-of-service-uterms" />
       </Helmet>
 
       <div className="legal-hero">

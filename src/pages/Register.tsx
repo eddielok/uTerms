@@ -102,7 +102,7 @@ export const Register: React.FC = () => {
             />
             
             <div className="text-xs text-muted mt-2">
-              By creating an account, you agree to our <Link to="/policies?tab=terms" className="auth-link">Terms of Service</Link> and <Link to="/policies?tab=privacy" className="auth-link">Privacy Policy</Link>.
+              By creating an account, you agree to our <Link to="/terms-of-service-uterms" className="auth-link">Terms of Service</Link> and <Link to="/privacy-policy" className="auth-link">Privacy Policy</Link>.
             </div>
 
             <Button type="submit" variant="primary" fullWidth className="mt-2" disabled={loading}>
