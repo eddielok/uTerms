@@ -1,0 +1,129 @@
+.legal-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 60vh;
+}
+
+/* Hero */
+.legal-hero {
+  padding: 6rem 0 4rem;
+  background: linear-gradient(135deg, rgba(249, 115, 22, 0.06) 0%, rgba(37, 99, 235, 0.04) 100%);
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+}
+
+.legal-title {
+  font-size: 2.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.75rem;
+}
+
+.legal-meta {
+  font-size: 0.9rem;
+  color: var(--color-muted, #6b7280);
+}
+
+/* Body */
+.legal-body {
+  max-width: 860px;
+  margin: 0 auto;
+  padding-top: 3rem;
+  padding-bottom: 6rem;
+}
+
+.legal-body section {
+  margin-bottom: 2.5rem;
+}
+
+.legal-body h2 {
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--color-border, #e5e7eb);
+}
+
+.legal-body h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.legal-body p {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--color-text, #374151);
+  margin-bottom: 0.85rem;
+}
+
+.legal-body ul {
+  padding-left: 1.5rem;
+  margin-bottom: 0.85rem;
+}
+
+.legal-body ul li {
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--color-text, #374151);
+  margin-bottom: 0.35rem;
+}
+
+.legal-body a {
+  color: var(--color-primary, #f97316);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal-body a:hover {
+  opacity: 0.8;
+}
+
+.legal-body address {
+  font-style: normal;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: var(--color-text, #374151);
+}
+
+.mt-4 {
+  margin-top: 1rem;
+}
+
+/* Table */
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  margin-bottom: 0.85rem;
+}
+
+.legal-table th,
+.legal-table td {
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--color-border, #e5e7eb);
+}
+
+.legal-table thead tr {
+  background: rgba(249, 115, 22, 0.07);
+}
+
+.legal-table th {
+  font-weight: 600;
+}
+
+.legal-table tbody tr:nth-child(even) {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+@media (max-width: 640px) {
+  .legal-title {
+    font-size: 2rem;
+  }
+
+  .legal-table {
+    display: block;
+    overflow-x: auto;
+  }
+}

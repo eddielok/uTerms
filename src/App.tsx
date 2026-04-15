@@ -18,6 +18,8 @@ const Policies = React.lazy(() => import("./pages/Policies").then(m => ({ defaul
 const Login = React.lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
 const Register = React.lazy(() => import("./pages/Register").then(m => ({ default: m.Register })));
 const DoNotSell = React.lazy(() => import("./pages/DoNotSell").then(m => ({ default: m.DoNotSell })));
+const UTermsPrivacyPolicy = React.lazy(() => import("./pages/UTermsPrivacyPolicy").then(m => ({ default: m.UTermsPrivacyPolicy })));
+const UTermsTermsOfService = React.lazy(() => import("./pages/UTermsTermsOfService").then(m => ({ default: m.UTermsTermsOfService })));
 
 // ── Dashboard & consent ───────────────────────────────────────────────────────
 const Dashboard = React.lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
@@ -106,6 +108,8 @@ function App() {
             <Route path="about" element={<About />} />
             <Route path="features" element={<Features />} />
             <Route path="do-not-sell" element={<DoNotSell />} />
+            <Route path="privacy-policy" element={<UTermsPrivacyPolicy />} />
+            <Route path="terms-of-service-uterms" element={<UTermsTermsOfService />} />
           </Route>
 
           {/* Authenticated Routes with Sidebar (Redirects to Login if NOT logged in) */}

@@ -140,13 +140,15 @@ export const Layout: React.FC = () => {
             </p>
           </div>
           <div className="footer-links">
-            <h4 className="font-semibold mb-4">Product</h4>
-            <Link to="/features">Features</Link>
-          </div>
-          <div className="footer-links">
             <h4 className="font-semibold mb-4">Company</h4>
             <Link to="/about">About Us</Link>
             <a href="mailto:privacy@uterms.io">Contact</a>
+            <Link to="/privacy-policy">Privacy Policy</Link>
+            <Link to="/terms-of-service-uterms">Terms of Service</Link>
+          </div>
+          <div className="footer-links">
+            <h4 className="font-semibold mb-4">Product</h4>
+            <Link to="/features">Features</Link>
           </div>
           <div className="footer-links footer-links-legal">
             <h4 className="font-semibold mb-4">Legal</h4>
