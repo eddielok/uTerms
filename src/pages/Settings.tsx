@@ -217,7 +217,7 @@ export const Settings: React.FC = () => {
         {isOAuthUser ? (
           <p className="settings-msg settings-msg-error">
             Your account is linked to Google. Passwords are managed by Google —
-            you cannot set a separate password here.
+            Please update your password in your Google account settings.
           </p>
         ) : (
           <form onSubmit={handlePasswordChange} className="settings-form">
