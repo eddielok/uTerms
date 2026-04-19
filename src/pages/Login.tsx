@@ -6,6 +6,7 @@ import { Card, CardContent } from "../components/Card";
 import { Input } from "../components/Input";
 import { supabase } from "../lib/supabase";
 import { renderGoogleButton } from "../lib/googleAuth";
+import { Alert } from "../components/Alert";
 import "./Auth.css";
 
 export const Login: React.FC = () => {
@@ -66,9 +67,7 @@ export const Login: React.FC = () => {
             <p className="auth-subtitle">Log in to your uTerms account</p>
           </div>
 
-          {errorMsg && (
-            <div className="text-red-500 text-sm mb-4">{errorMsg}</div>
-          )}
+          {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
           <form className="auth-form" onSubmit={handleLogin}>
             <Input
               label="Work Email"

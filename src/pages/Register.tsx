@@ -6,6 +6,7 @@ import { Card, CardContent } from '../components/Card';
 import { Input } from '../components/Input';
 import { supabase } from '../lib/supabase';
 import { renderGoogleButton } from '../lib/googleAuth';
+import { Alert } from '../components/Alert';
 import './Auth.css';
 
 export const Register: React.FC = () => {
@@ -17,6 +18,7 @@ export const Register: React.FC = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const googleBtnRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,7 +56,12 @@ export const Register: React.FC = () => {
         }
       });
       if (error) throw error;
-      navigate('/dashboard');
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        navigate('/dashboard');
+      } else {
+        setSuccessMsg('Account created! Check your email to confirm your account before logging in.');
+      }
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred during sign up.');
     } finally {
@@ -76,7 +83,8 @@ export const Register: React.FC = () => {
             <h1 className="auth-title">Create an account</h1>
           </div>
 
-          {errorMsg && <div className="text-red-500 text-sm mb-4">{errorMsg}</div>}
+          {errorMsg && <Alert variant="error">{errorMsg}</Alert>}
+          {successMsg && <Alert variant="success">{successMsg}</Alert>}
           <form className="auth-form" onSubmit={handleRegister}>
             <div className="flex gap-4">
               <Input label="First Name" placeholder="Jane" required value={firstName} onChange={e => setFirstName(e.target.value)} />
