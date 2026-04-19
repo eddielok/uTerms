@@ -41,6 +41,7 @@ export const Settings: React.FC = () => {
 
   // Export
   const [exportLoading, setExportLoading] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   // Delete
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -92,40 +93,49 @@ export const Settings: React.FC = () => {
   const handleExportData = async () => {
     if (!userId) return;
     setExportLoading(true);
-    const exportData: Record<string, unknown> = {
-      exported_at: new Date().toISOString(),
-    };
+    setExportError("");
+    try {
+      const exportData: Record<string, unknown> = {
+        exported_at: new Date().toISOString(),
+      };
 
-    const { data: cookieSettings } = await supabase
-      .from("user_cookie_settings")
-      .select("*")
-      .eq("user_id", userId);
-    exportData.cookie_settings = cookieSettings;
-
-    for (const table of POLICY_TABLES) {
-      const { data } = await supabase
-        .from(table)
+      const { data: cookieSettings, error: e1 } = await supabase
+        .from("user_cookie_settings")
         .select("*")
         .eq("user_id", userId);
-      exportData[table] = data;
+      if (e1) throw e1;
+      exportData.cookie_settings = cookieSettings;
+
+      for (const table of POLICY_TABLES) {
+        const { data, error } = await supabase
+          .from(table)
+          .select("*")
+          .eq("user_id", userId);
+        if (error) throw error;
+        exportData[table] = data;
+      }
+
+      const { data: consentLogs, error: e2 } = await supabase
+        .from("visitor_consent")
+        .select("*")
+        .eq("user_id", userId);
+      if (e2) throw e2;
+      exportData.visitor_consent = consentLogs;
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `uterms-data-export-${new Date().toISOString().split("T")[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      setExportError(err.message || "Export failed. Please try again.");
+    } finally {
+      setExportLoading(false);
     }
-
-    const { data: consentLogs } = await supabase
-      .from("visitor_consent")
-      .select("*")
-      .eq("user_id", userId);
-    exportData.visitor_consent = consentLogs;
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `uterms-data-export-${new Date().toISOString().split("T")[0]}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setExportLoading(false);
   };
 
   const handleDeleteAccount = async (e: React.FormEvent) => {
@@ -279,6 +289,7 @@ export const Settings: React.FC = () => {
         >
           {exportLoading ? "Preparing export…" : "Download My Data"}
         </button>
+        {exportError && <p style={{ color: '#ef4444', fontSize: '0.875rem', marginTop: '0.5rem' }}>{exportError}</p>}
       </section>
 
       {/* Danger Zone */}

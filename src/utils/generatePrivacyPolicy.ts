@@ -9,6 +9,7 @@ export interface ScannedCookie {
   httpOnly?: boolean;
   secure?: boolean;
   sameSite?: string;
+  description?: string;
 }
 
 export interface ScannedProvider {
@@ -17,6 +18,7 @@ export interface ScannedProvider {
 }
 
 export interface ScannedCategory {
+  id: string;
   name: string;
   providers: ScannedProvider[];
 }

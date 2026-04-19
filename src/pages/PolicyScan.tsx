@@ -160,7 +160,7 @@ export const PolicyScan: React.FC = () => {
           }
         }
       })
-      .catch(() => {});
+      .catch((err) => console.error('[PolicyScan] Failed to load saved results:', err));
   }, [userId]);
 
   const handleScan = async () => {

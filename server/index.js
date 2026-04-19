@@ -291,7 +291,7 @@ app.use(helmet({
 app.use(compression());
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io", "http://localhost:5173"];
+  : ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io"];
 app.use(
   cors({
     origin: ALLOWED_ORIGINS,
@@ -1109,9 +1109,17 @@ const DEEPSEEK_SYSTEM_PROMPT = `You are a legal analyst specialising in privacy 
 - Be conservative: when uncertain about booleans, default to false`;
 
 // ─── POST /api/analyze-policy ─────────────────────────────────────────────────
+const VALID_POLICY_TYPES = [
+  "privacy_policy", "cookie_policy", "terms_of_service", "eula",
+  "return_policy", "disclaimer", "shipping_policy", "acceptable_use_policy",
+  "impressum", "accessibility_statement",
+];
+
 app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
   const { url, policyType = "privacy_policy" } = req.body;
   if (!url) return res.status(400).json({ error: "URL is required" });
+  if (!VALID_POLICY_TYPES.includes(policyType))
+    return res.status(400).json({ error: "Invalid policyType" });
   const targetUrl = normalizeUrl(url);
   const urlError = validatePublicUrl(targetUrl);
   if (urlError) return res.status(400).json({ error: urlError });

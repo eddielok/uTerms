@@ -9,6 +9,9 @@ import {
   DEFAULT_ANSWERS,
   generatePrivacyPolicy,
   type WizardAnswers,
+  type ScannedCategory,
+  type ScannedProvider,
+  type ScannedCookie,
 } from "../utils/generatePrivacyPolicy";
 import "./PrivacyPolicyWizard.css";
 
@@ -603,9 +606,9 @@ export const PrivacyPolicyWizard: React.FC = () => {
                         {isCookieListExpanded && (
                           <div className="compact-cookie-list-container">
                             {answers.scannedCookies.categories.map(
-                              (cat: any) =>
+                              (cat: ScannedCategory) =>
                                 cat.providers.some(
-                                  (p: any) => p.cookies.length > 0,
+                                  (p: ScannedProvider) => p.cookies.length > 0,
                                 ) && (
                                   <div
                                     key={cat.id}
@@ -629,9 +632,9 @@ export const PrivacyPolicyWizard: React.FC = () => {
                                       {cat.name}
                                     </h4>
                                     <div className="compact-cookie-items">
-                                      {cat.providers.map((p: any) =>
+                                      {cat.providers.map((p: ScannedProvider) =>
                                         p.cookies.map(
-                                          (c: any, cookieIndex: number) => (
+                                          (c: ScannedCookie, cookieIndex: number) => (
                                             <div
                                               key={`${c.name}-${cookieIndex}`}
                                               className="compact-cookie-item"
