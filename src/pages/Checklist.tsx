@@ -32,7 +32,6 @@ interface GCMResult {
   checks: GCMCheck[];
 }
 
-const GCM_STORAGE_KEY = "uterms_gcm_scan";
 
 interface ChecklistItemProps {
   step: number;
@@ -120,18 +119,6 @@ export const Checklist: React.FC = () => {
         };
         setGcmResult(result);
         setGcmUrl(data.url);
-      } else {
-        // fall back to localStorage if no DB record yet
-        const saved = localStorage.getItem(GCM_STORAGE_KEY);
-        if (saved) {
-          try {
-            const parsed = JSON.parse(saved) as GCMResult;
-            setGcmResult(parsed);
-            setGcmUrl(parsed.url);
-          } catch {
-            /* ignore */
-          }
-        }
       }
     };
     loadGcmResult();
@@ -157,7 +144,6 @@ export const Checklist: React.FC = () => {
       if (!response.ok)
         throw new Error(data.details || data.error || "Scan failed");
       setGcmResult(data);
-      localStorage.setItem(GCM_STORAGE_KEY, JSON.stringify(data));
       if (userId) {
         await supabase.from("gcm_scan_results").upsert(
           {
