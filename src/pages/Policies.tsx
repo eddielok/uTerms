@@ -47,6 +47,7 @@ export const Policies: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get("tab") as TabType;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (tab && ALL_TABS.includes(tab)) setActiveTab(tab);
   }, [location]);
 

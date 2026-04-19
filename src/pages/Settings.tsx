@@ -131,8 +131,8 @@ export const Settings: React.FC = () => {
       a.download = `uterms-data-export-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err: any) {
-      setExportError(err.message || "Export failed. Please try again.");
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : "Export failed. Please try again.");
     } finally {
       setExportLoading(false);
     }

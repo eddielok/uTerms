@@ -17,6 +17,7 @@ export function useManagementPolicy(table: string) {
 
   useEffect(() => {
     if (!userId) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoading(true);
     supabase
       .from(table)

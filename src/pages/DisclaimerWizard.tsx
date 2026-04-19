@@ -110,8 +110,8 @@ export const DisclaimerWizard: React.FC = () => {
           .single();
         if (data) navigate(`/disclaimer/${data.id}/preview`);
       }
-    } catch (err: any) {
-      setSaveError(err.message || 'Failed to save. Please try again.');
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }

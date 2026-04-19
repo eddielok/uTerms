@@ -201,12 +201,13 @@ function TryItBtn({
       if (display.generated)
         display.generated = "[HTML content — truncated for display]";
       setResult(JSON.stringify(display, null, 2));
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsError(true);
+      const msg = err instanceof Error ? err.message : "Request failed";
       setResult(
-        err.message.includes("fetch")
+        msg.includes("fetch")
           ? "Cannot connect to backend. Make sure it is running: node server/index.js"
-          : err.message,
+          : msg,
       );
     } finally {
       setLoading(false);
@@ -373,6 +374,7 @@ function ApiKeySection({ userId }: { userId: string }) {
 
   useEffect(() => {
     if (!userId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLoading(false);
       return;
     }

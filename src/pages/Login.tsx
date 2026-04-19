@@ -22,6 +22,7 @@ export const Login: React.FC = () => {
     if (!el) return;
 
     const tryRender = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((window as any).google) {
         renderGoogleButton(
           el,
@@ -46,8 +47,8 @@ export const Login: React.FC = () => {
       });
       if (error) throw error;
       navigate("/dashboard");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Invalid login credentials.");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Invalid login credentials.");
     } finally {
       setLoading(false);
     }

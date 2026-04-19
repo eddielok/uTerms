@@ -186,8 +186,8 @@ export const PolicyScan: React.FC = () => {
       setAnalyses(data);
       setSavedAt(new Date().toISOString());
       setStatus('done');
-    } catch (err: any) {
-      setError(err.message || 'Scan failed. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Scan failed. Please try again.');
       setStatus('error');
     }
   };

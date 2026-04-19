@@ -38,6 +38,7 @@ export const Sidebar: React.FC = () => {
 
   useEffect(() => {
     if (location.pathname.startsWith("/consent-management")) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsConsentOpen(true);
     }
     if (

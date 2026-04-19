@@ -119,8 +119,8 @@ export const ImpressumWizard: React.FC = () => {
         const { data } = await supabase.from('impressum').insert(payload).select('id').single();
         if (data) navigate(`/impressum/${data.id}/preview`);
       }
-    } catch (err: any) {
-      setSaveError(err.message || 'Failed to save. Please try again.');
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }

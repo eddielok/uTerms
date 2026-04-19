@@ -98,7 +98,7 @@ export const Checklist: React.FC = () => {
     if (!gcmUrl && scannedData?.url) {
       setGcmUrl(scannedData.url);
     }
-  }, [scannedData]);
+  }, [scannedData, gcmUrl]);
 
   useEffect(() => {
     if (!userId) return;
@@ -159,13 +159,13 @@ export const Checklist: React.FC = () => {
           { onConflict: "user_id" },
         );
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       if (err instanceof TypeError && err.message.includes("fetch")) {
         setGcmError(
           `Cannot reach backend at ${API_URL}. Make sure the server is running: node server/index.js`,
         );
       } else {
-        setGcmError(err.message || "Failed to scan");
+        setGcmError(err instanceof Error ? err.message : "Failed to scan");
       }
     } finally {
       setGcmScanning(false);

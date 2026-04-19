@@ -192,7 +192,7 @@ function buildDE(a: ImpressumAnswers): string {
   const hasReg = REGISTERED_IN_HANDELSREGISTER.includes(a.entityType);
   const needsRep = REGISTERED_ENTITIES.includes(a.entityType);
 
-  let blocks: string[] = [];
+  const blocks: string[] = [];
 
   // Header
   blocks.push(`<p><strong>${legalBasisDE(a.operatingCountry)}</strong></p>`);
@@ -345,7 +345,7 @@ function buildEN(a: ImpressumAnswers): string {
   const hasReg = REGISTERED_IN_HANDELSREGISTER.includes(a.entityType);
   const needsRep = REGISTERED_ENTITIES.includes(a.entityType);
 
-  let blocks: string[] = [];
+  const blocks: string[] = [];
 
   // Header
   blocks.push(`<p><strong>${legalBasisEN(a.operatingCountry)}</strong></p>`);

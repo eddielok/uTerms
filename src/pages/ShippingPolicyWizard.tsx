@@ -107,8 +107,8 @@ export const ShippingPolicyWizard: React.FC = () => {
         const { data } = await supabase.from('shipping_policy').insert(payload).select('id').single();
         if (data) navigate(`/shipping-policy/${data.id}/preview`);
       }
-    } catch (err: any) {
-      setSaveError(err.message || 'Failed to save. Please try again.');
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }

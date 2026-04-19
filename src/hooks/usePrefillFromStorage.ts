@@ -10,7 +10,7 @@ export function usePrefillFromStorage<T extends object>(
       try {
         const stored = localStorage.getItem(key);
         if (stored) setAnswers(prev => ({ ...prev, ...(JSON.parse(stored) as Partial<T>) }));
-      } catch {}
+      } catch { /* ignore parse errors */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

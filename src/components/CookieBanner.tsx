@@ -66,6 +66,7 @@ export const CookieBanner: React.FC = () => {
     const initialPrefs: Record<string, boolean> = {};
     categories.forEach(c => { initialPrefs[c.id] = c.id === 'essential'; });
     setPrefs(initialPrefs);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPreview, scannedData]);
 
   useEffect(() => {

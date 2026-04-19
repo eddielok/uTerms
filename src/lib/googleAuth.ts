@@ -16,6 +16,7 @@ export async function renderGoogleButton(
   onSuccess: () => void,
   onError: (msg: string) => void
 ) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const google = (window as any).google;
   if (!google) {
     onError('Google Sign-In script not loaded.');
@@ -36,8 +37,8 @@ export async function renderGoogleButton(
         });
         if (error) throw error;
         onSuccess();
-      } catch (err: any) {
-        onError(err.message || 'Google sign-in failed.');
+      } catch (err: unknown) {
+        onError(err instanceof Error ? err.message : 'Google sign-in failed.');
       }
     },
   });

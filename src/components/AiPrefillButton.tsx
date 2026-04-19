@@ -40,8 +40,8 @@ export const AiPrefillButton: React.FC<Props> = ({
       const { analysis } = await response.json();
       onResult(analysis);
       setSuccess(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to analyse website');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to analyse website');
     } finally {
       setIsScanning(false);
     }

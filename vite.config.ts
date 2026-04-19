@@ -6,7 +6,9 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 function resourceBlockerPlugin(env: Record<string, string>) {
   return {
     name: 'resource-blocker',
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     configureServer(server: any) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       server.middlewares.use(async (req: any, res: any, next: any) => {
         if (req.url && req.url.startsWith('/resource-blocker/')) {
           const splitUrl = req.url.split('?')[0].split('/');
@@ -22,7 +24,7 @@ function resourceBlockerPlugin(env: Record<string, string>) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const data = await r.json() as any[];
             if (Array.isArray(data) && data[0]?.banner_config) config = { ...config, ...data[0].banner_config };
-          } catch (_) {}
+          } catch { /* ignore banner config fetch failure */ }
 
           res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
           res.end(`

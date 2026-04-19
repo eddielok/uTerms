@@ -69,6 +69,7 @@ export const WebsiteCookie: React.FC = () => {
   React.useEffect(() => {
     if (isScanning) return;
     if (scannedData && !url) setUrl(scannedData.url);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scannedData, setScannedData, isScanning]); // Intentionally excluding `url` to prevent looping.
 
   // Load existing schedule for the current user

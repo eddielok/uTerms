@@ -17,6 +17,7 @@ export const AuthCallback: React.FC = () => {
     const errorDescription = params.get('error_description');
 
     if (error) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsError(true);
       if (errorCode === 'otp_expired') {
         setMessage('This verification link has expired. Please go to Settings and request a new one.');

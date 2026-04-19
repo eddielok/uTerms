@@ -38,6 +38,7 @@ describe('buildCsvContent', () => {
 
   it('uses "Unknown" when visitor_id is undefined', () => {
     const log = makeLog();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (log as any).visitor_id = undefined;
     const result = buildCsvContent([log]);
     expect(result).toContain('"Unknown"');

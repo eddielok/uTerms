@@ -128,8 +128,8 @@ export const TermsWizard: React.FC = () => {
           .single();
         if (data) navigate(`/terms-of-service/${data.id}/preview`);
       }
-    } catch (err: any) {
-      setSaveError(err.message || 'Failed to save. Please try again.');
+    } catch (err: unknown) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }

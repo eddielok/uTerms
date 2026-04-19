@@ -6,6 +6,7 @@ export interface ScannedCookie {
   domain?: string;
   path?: string;
   expires?: string | number;
+  expiration?: string;
   httpOnly?: boolean;
   secure?: boolean;
   sameSite?: string;
@@ -345,12 +346,12 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
     const rows: string[] = [];
 
     // Iterate through categories
-    scannedCookies.categories.forEach((cat: any) => {
+    scannedCookies.categories.forEach((cat: ScannedCategory) => {
       // Iterate through providers in that category
       if (cat.providers) {
-        cat.providers.forEach((prov: any) => {
+        cat.providers.forEach((prov: ScannedProvider) => {
           if (prov.cookies) {
-            prov.cookies.forEach((c: any) => {
+            prov.cookies.forEach((c: ScannedCookie) => {
               rows.push(`
                 <tr>
                   <td style="padding: 4px; border: 1px solid #ddd;">${escapeHtml(c.name)}</td>

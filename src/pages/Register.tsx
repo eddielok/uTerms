@@ -26,6 +26,7 @@ export const Register: React.FC = () => {
     if (!el) return;
 
     const tryRender = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((window as any).google) {
         renderGoogleButton(
           el,
@@ -62,8 +63,8 @@ export const Register: React.FC = () => {
       } else {
         setSuccessMsg('Account created! Check your email to confirm your account before logging in.');
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during sign up.');
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : 'An error occurred during sign up.');
     } finally {
       setLoading(false);
     }
