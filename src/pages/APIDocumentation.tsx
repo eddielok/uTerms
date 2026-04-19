@@ -601,6 +601,8 @@ function CookieBannerSection({
 
   const getConsentJsSnippet = `fetch("${BASE_URL}/api/consent/${uid}?limit=50&offset=0", {\n  headers: { "X-API-Key": "${displayKey}" }\n})\n  .then(res => res.json())\n  .then(({ records, total }) => {\n    console.log(\`\${total} total records\`);\n    records.forEach(r => console.log(r.visitor_id, r.consent_data));\n  });`;
 
+  const deleteConsentCurlSnippet = `curl -X DELETE "${BASE_URL}/api/consent/${uid}" \\\n  -H "X-API-Key: ${displayKey}"`;
+
   return (
     <div className="api-doc-section" id="cookie-banner">
       <h2 className="api-doc-section-title">Cookie Banner &amp; Consent</h2>
@@ -734,8 +736,12 @@ function CookieBannerSection({
                 <td>object</td>
                 <td>Yes</td>
                 <td>
-                  Map of category → boolean (e.g.{" "}
-                  <code>{'{"analytics":true}'}</code>)
+                  Map of category → boolean. Valid keys:{" "}
+                  <code>essential</code>, <code>functional</code>,{" "}
+                  <code>analytics</code>, <code>marketing</code>,{" "}
+                  <code>social</code>, <code>unclassified</code>,{" "}
+                  <code>do_not_sell</code>. Note:{" "}
+                  <code>essential</code> cannot be <code>false</code>.
                 </td>
               </tr>
               <tr>
@@ -918,13 +924,483 @@ function CookieBannerSection({
             apiKey={apiKey}
           />
 
+        </div>
+      </div>
+
+      {/* ── DELETE /api/consent/:userId ── */}
+      <div className="api-endpoint-block" style={{ marginTop: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span
+            className="method-badge"
+            style={{ background: "#fee2e2", color: "#b91c1c" }}
+          >
+            DELETE
+          </span>
+          <span className="endpoint-url">
+            /api/consent/<span className="param">:userId</span>
+          </span>
+          <span className="api-key-required-badge">requires X-API-Key</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Permanently deletes <strong>all</strong> consent records for a user.
+            Intended for GDPR right-to-erasure requests. An audit log entry is
+            recorded server-side. This action is <strong>irreversible</strong>.
+          </p>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Type</th>
+                <th>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>success</td>
+                <td>boolean</td>
+                <td>
+                  <code>true</code> when records are deleted
+                </td>
+              </tr>
+              <tr>
+                <td>message</td>
+                <td>string</td>
+                <td>Confirmation message</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{deleteConsentCurlSnippet}</pre>
+            <CopyBtn text={deleteConsentCurlSnippet} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── POST /api/scan ───────────────────────────────────────────────────────────
+function ScanSection() {
+  const curlSnippet = `curl -X POST "${BASE_URL}/api/scan" \\\n  -H "Content-Type: application/json" \\\n  -d '{"url": "https://example.com"}'`;
+  const jsSnippet = `fetch("${BASE_URL}/api/scan", {\n  method: "POST",\n  headers: { "Content-Type": "application/json" },\n  body: JSON.stringify({ url: "https://example.com" })\n})\n  .then(res => res.json())\n  .then(data => console.log(data.cookiesCount, data.categories));`;
+
+  return (
+    <div className="api-doc-section" id="scan">
+      <h2 className="api-doc-section-title">Cookie Scanner</h2>
+      <div className="api-endpoint-block">
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/scan</span>
+          <span className="endpoint-desc">public — scans a URL for cookies and storage items</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Launches a headless browser, visits the target URL, intercepts all cookies and
+            browser storage items via CDP, and returns them grouped by category. Private IP
+            ranges and metadata endpoints are blocked.
+          </p>
+          <p className="api-sub-label">Request body</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>url</td><td>string</td><td>Yes</td><td>Public http/https URL to scan</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>url</td><td>string</td><td>Normalised URL that was scanned</td></tr>
+              <tr><td>cookiesCount</td><td>number</td><td>Total cookies and storage items found</td></tr>
+              <tr><td>categories</td><td>array</td><td>Cookies grouped into Essential, Functional, Analytics, Marketing, Social, Unclassified. Each category has <code>id</code>, <code>name</code>, <code>description</code>, and <code>providers</code> (array of <code>{'{ name, cookies }'}</code>).</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{curlSnippet}</pre>
+            <CopyBtn text={curlSnippet} />
+          </div>
+          <p className="api-sub-label">JavaScript</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{jsSnippet}</pre>
+            <CopyBtn text={jsSnippet} />
+          </div>
+          <div className="rate-callout" style={{ marginTop: "1rem" }}>
+            <Clock size={16} className="rate-callout-icon" />
+            <p>Limited to <strong>5 scans per hour</strong> per IP.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── POST /api/gcm-scan ───────────────────────────────────────────────────────
+function GcmScanSection() {
+  const curlSnippet = `curl -X POST "${BASE_URL}/api/gcm-scan" \\\n  -H "Content-Type: application/json" \\\n  -d '{"url": "https://example.com"}'`;
+
+  return (
+    <div className="api-doc-section" id="gcm-scan">
+      <h2 className="api-doc-section-title">GCM Compliance Scan</h2>
+      <div className="api-endpoint-block">
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/gcm-scan</span>
+          <span className="endpoint-desc">public — checks Google Consent Mode v2 compliance</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Scans a URL for Google Consent Mode v2 compliance. Checks whether GTM/gtag.js
+            is present, consent defaults are configured before GTM loads, and all required
+            parameters (<code>ad_storage</code>, <code>analytics_storage</code>,{" "}
+            <code>ad_user_data</code>, <code>ad_personalization</code>) are set.
+          </p>
+          <p className="api-sub-label">Request body</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>url</td><td>string</td><td>Yes</td><td>Website URL to scan</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>url</td><td>string</td><td>Scanned URL</td></tr>
+              <tr><td>scannedAt</td><td>ISO 8601</td><td>Scan timestamp</td></tr>
+              <tr><td>status</td><td>string</td><td><code>compliant</code> | <code>partial</code> | <code>non_compliant</code> | <code>not_applicable</code> (when no Google tags detected)</td></tr>
+              <tr><td>passCount</td><td>number</td><td>Number of checks passed</td></tr>
+              <tr><td>totalChecks</td><td>number</td><td>Total checks run</td></tr>
+              <tr><td>checks</td><td>array</td><td>Per-check results: <code>id</code>, <code>label</code>, <code>description</code>, <code>pass</code> (boolean | null), <code>required</code></td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{curlSnippet}</pre>
+            <CopyBtn text={curlSnippet} />
+          </div>
+          <div className="rate-callout" style={{ marginTop: "1rem" }}>
+            <Clock size={16} className="rate-callout-icon" />
+            <p>Limited to <strong>5 scans per hour</strong> per IP.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Policy Analysis section ──────────────────────────────────────────────────
+function PolicyAnalysisSection() {
+  const curlSingle = `curl -X POST "${BASE_URL}/api/analyze-policy" \\\n  -H "Content-Type: application/json" \\\n  -d '{"url": "https://example.com", "policyType": "privacy_policy"}'`;
+  const curlAll = `curl -X POST "${BASE_URL}/api/analyze-all-policies" \\\n  -H "Content-Type: application/json" \\\n  -d '{"url": "https://example.com", "userId": "YOUR_USER_ID"}'`;
+
+  return (
+    <div className="api-doc-section" id="policy-analysis">
+      <h2 className="api-doc-section-title">Policy Analysis (AI)</h2>
+      <p>
+        These endpoints scrape a website and use AI to pre-fill policy wizard fields. Useful
+        for automatically populating forms before manual review.
+      </p>
+
+      {/* POST /api/analyze-policy */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/analyze-policy</span>
+          <span className="endpoint-desc">public — AI pre-fill for a single policy type</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Scrapes the given URL and returns AI-inferred field values for a specific policy type.
+          </p>
+          <p className="api-sub-label">Request body</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>url</td><td>string</td><td>Yes</td><td>Website URL to analyse</td></tr>
+              <tr>
+                <td>policyType</td><td>string</td><td>No</td>
+                <td>
+                  One of: <code>privacy_policy</code> (default), <code>cookie_policy</code>,{" "}
+                  <code>terms_of_service</code>, <code>eula</code>, <code>return_policy</code>,{" "}
+                  <code>disclaimer</code>, <code>shipping_policy</code>, <code>aup</code>,{" "}
+                  <code>impressum</code>, <code>accessibility</code>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>success</td><td>boolean</td><td><code>true</code> on success</td></tr>
+              <tr><td>analysis</td><td>object</td><td>AI-inferred fields for the requested policy type, plus <code>websiteUrl</code>, <code>companyName</code>, <code>country</code>, <code>contactEmail</code>, and <code>scrapedDetails</code> (companyNo, vatNo, registeredAddress)</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{curlSingle}</pre>
+            <CopyBtn text={curlSingle} />
+          </div>
+          <div className="rate-callout" style={{ marginTop: "1rem" }}>
+            <Clock size={16} className="rate-callout-icon" />
+            <p>Limited to <strong>5 requests per hour</strong> per IP.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* POST /api/analyze-all-policies */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/analyze-all-policies</span>
+          <span className="endpoint-desc">public — AI pre-fill for all 10 policy types in one call</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Scrapes the URL once and returns AI-inferred fields for all 10 policy types. If{" "}
+            <code>userId</code> is provided the results are saved and can be retrieved via{" "}
+            <code>GET /api/policy-scan/:userId</code>.
+          </p>
+          <p className="api-sub-label">Request body</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>url</td><td>string</td><td>Yes</td><td>Website URL to analyse</td></tr>
+              <tr><td>userId</td><td>string (UUID)</td><td>No</td><td>If supplied, results are persisted for later retrieval</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>success</td><td>boolean</td><td><code>true</code> on success</td></tr>
+              <tr><td>analyses</td><td>object</td><td>Keys are policy type strings (e.g. <code>privacy_policy</code>), values are objects of AI-inferred fields</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{curlAll}</pre>
+            <CopyBtn text={curlAll} />
+          </div>
+          <div className="rate-callout" style={{ marginTop: "1rem" }}>
+            <Clock size={16} className="rate-callout-icon" />
+            <p>Limited to <strong>2 requests per 24 hours</strong> per IP.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* GET /api/policy-scan/:userId */}
+      <div className="api-endpoint-block">
+        <div className="api-endpoint-header">
+          <span className="method-badge method-badge-public">GET</span>
+          <span className="endpoint-url">/api/policy-scan/<span className="param">:userId</span></span>
+          <span className="endpoint-desc">public — retrieve saved policy scan results</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Returns the most recent result saved by <code>POST /api/analyze-all-policies</code> for a user.
+          </p>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>found</td><td>boolean</td><td><code>false</code> if no saved results exist</td></tr>
+              <tr><td>url</td><td>string</td><td>URL that was analysed (only when <code>found: true</code>)</td></tr>
+              <tr><td>analyses</td><td>object</td><td>Saved analyses keyed by policy type (only when <code>found: true</code>)</td></tr>
+              <tr><td>created_at</td><td>ISO 8601</td><td>When the scan was saved (only when <code>found: true</code>)</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Scan Schedule section ────────────────────────────────────────────────────
+function ScanScheduleSection({
+  userId,
+  apiKey,
+}: {
+  userId: string;
+  apiKey: string;
+}) {
+  const uid = userId || "YOUR_USER_ID";
+  const displayKey = apiKey || "YOUR_API_KEY";
+
+  const getSnippet = `curl -X GET "${BASE_URL}/api/scan-schedule/${uid}" \\\n  -H "X-API-Key: ${displayKey}"`;
+  const postSnippet = `curl -X POST "${BASE_URL}/api/scan-schedule" \\\n  -H "Content-Type: application/json" \\\n  -H "X-API-Key: ${displayKey}" \\\n  -d '{\n    "userId": "${uid}",\n    "url": "https://your-website.com",\n    "intervalMonths": 3,\n    "enabled": true\n  }'`;
+  const deleteSnippet = `curl -X DELETE "${BASE_URL}/api/scan-schedule/${uid}" \\\n  -H "X-API-Key: ${displayKey}"`;
+  const triggerSnippet = `curl -X POST "${BASE_URL}/api/scan-schedule/trigger" \\\n  -H "X-API-Key: ${displayKey}"`;
+  const runNowSnippet = `curl -X POST "${BASE_URL}/api/scan-schedule/${uid}/run-now" \\\n  -H "X-API-Key: ${displayKey}"`;
+
+  return (
+    <div className="api-doc-section" id="scan-schedule">
+      <h2 className="api-doc-section-title">Scan Schedule</h2>
+      <p>
+        Automate recurring cookie scans. Configure a scan interval and uTerms will
+        re-scan your website and update your cookie data automatically. All endpoints
+        require <code>X-API-Key</code>.
+      </p>
+
+      {/* GET */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge">GET</span>
+          <span className="endpoint-url">/api/scan-schedule/<span className="param">:userId</span></span>
+          <span className="api-key-required-badge">requires X-API-Key</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Returns the current scan schedule for a user, or <code>null</code> if none is configured.
+          </p>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{getSnippet}</pre>
+            <CopyBtn text={getSnippet} />
+          </div>
+        </div>
+      </div>
+
+      {/* POST */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/scan-schedule</span>
+          <span className="api-key-required-badge">requires X-API-Key</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Creates or updates a scan schedule (upsert). If a schedule already exists it is replaced.
+          </p>
+          <p className="api-sub-label">Request body</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>userId</td><td>string (UUID)</td><td>Yes</td><td>The user to configure the schedule for</td></tr>
+              <tr><td>url</td><td>string</td><td>Yes</td><td>Website URL to scan on schedule</td></tr>
+              <tr><td>intervalMonths</td><td>number</td><td>Yes</td><td>Scan frequency in months: <code>1</code>, <code>3</code>, <code>6</code>, or <code>12</code></td></tr>
+              <tr><td>enabled</td><td>boolean</td><td>No</td><td>Whether the schedule is active (default <code>true</code>)</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{postSnippet}</pre>
+            <CopyBtn text={postSnippet} />
+          </div>
+        </div>
+      </div>
+
+      {/* DELETE */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#fee2e2", color: "#b91c1c" }}>DELETE</span>
+          <span className="endpoint-url">/api/scan-schedule/<span className="param">:userId</span></span>
+          <span className="api-key-required-badge">requires X-API-Key</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>Removes the scan schedule for a user.</p>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{deleteSnippet}</pre>
+            <CopyBtn text={deleteSnippet} />
+          </div>
+        </div>
+      </div>
+
+      {/* POST /trigger */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/scan-schedule/trigger</span>
+          <span className="api-key-required-badge">requires X-API-Key</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Manually triggers all due scheduled scans (those whose <code>next_scan_at</code> is
+            in the past). Useful for testing without waiting for the nightly cron. Returns an
+            array of per-user scan results.
+          </p>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{triggerSnippet}</pre>
+            <CopyBtn text={triggerSnippet} />
+          </div>
+        </div>
+      </div>
+
+      {/* POST /:userId/run-now */}
+      <div className="api-endpoint-block">
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/scan-schedule/<span className="param">:userId</span>/run-now</span>
+          <span className="api-key-required-badge">requires X-API-Key</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Forces an immediate scan for the given user regardless of the scheduled time.
+            Updates <code>last_scan_at</code> and advances <code>next_scan_at</code>.
+          </p>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{runNowSnippet}</pre>
+            <CopyBtn text={runNowSnippet} />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Account section ──────────────────────────────────────────────────────────
+function AccountSection() {
+  const curlSnippet = `curl -X POST "${BASE_URL}/api/delete-account" \\\n  -H "Authorization: Bearer YOUR_JWT_TOKEN"`;
+
+  return (
+    <div className="api-doc-section" id="account">
+      <h2 className="api-doc-section-title">Account</h2>
+      <div className="api-endpoint-block">
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/delete-account</span>
+          <span className="api-key-required-badge">requires Authorization header</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Permanently deletes the authenticated user's account and all associated data
+            (cookie settings, consent records, policies) via database cascade. Requires a
+            valid Supabase JWT passed as a <code>Bearer</code> token. This action is{" "}
+            <strong>irreversible</strong>.
+          </p>
+          <p className="api-sub-label">Headers</p>
+          <table className="schema-table">
+            <thead><tr><th>Header</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><code>Authorization</code></td>
+                <td>Yes</td>
+                <td><code>Bearer &lt;supabase-jwt&gt;</code> — the user's active session token</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">Response fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>success</td><td>boolean</td><td><code>true</code> when the account is deleted</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{curlSnippet}</pre>
+            <CopyBtn text={curlSnippet} />
+          </div>
           <div className="rate-callout" style={{ marginTop: "1rem" }}>
             <AlertTriangle size={16} className="rate-callout-icon" />
-            {/* <p>
-              If this returns an empty <code>records</code> array, you may need to add a Supabase RLS SELECT policy for the <code>visitor_consent</code> table:
-              <br /><br />
-              <code>create policy "Owner can read own consent records" on visitor_consent for select using (true);</code>
-            </p> */}
+            <p>Limited to <strong>3 requests per 24 hours</strong> per IP.</p>
           </div>
         </div>
       </div>
@@ -996,6 +1472,36 @@ export const APIDocumentation: React.FC = () => {
           onClick={() => scrollTo("cookie-banner")}
         >
           Cookie Banner &amp; Consent
+        </button>
+        <button
+          className={`api-doc-nav-item ${activeSection === "scan" ? "active" : ""}`}
+          onClick={() => scrollTo("scan")}
+        >
+          Cookie Scanner
+        </button>
+        <button
+          className={`api-doc-nav-item ${activeSection === "gcm-scan" ? "active" : ""}`}
+          onClick={() => scrollTo("gcm-scan")}
+        >
+          GCM Compliance Scan
+        </button>
+        <button
+          className={`api-doc-nav-item ${activeSection === "policy-analysis" ? "active" : ""}`}
+          onClick={() => scrollTo("policy-analysis")}
+        >
+          Policy Analysis (AI)
+        </button>
+        <button
+          className={`api-doc-nav-item ${activeSection === "scan-schedule" ? "active" : ""}`}
+          onClick={() => scrollTo("scan-schedule")}
+        >
+          Scan Schedule
+        </button>
+        <button
+          className={`api-doc-nav-item ${activeSection === "account" ? "active" : ""}`}
+          onClick={() => scrollTo("account")}
+        >
+          Account
         </button>
         <div className="api-doc-nav-divider" />
         <p className="api-doc-nav-title">Policy Documents</p>
@@ -1188,6 +1694,27 @@ export const APIDocumentation: React.FC = () => {
                 <td>2 requests</td>
                 <td>24 hours</td>
               </tr>
+              <tr>
+                <td>
+                  <code>GET /api/banner/:userId</code>
+                </td>
+                <td>60 requests</td>
+                <td>1 minute</td>
+              </tr>
+              <tr>
+                <td>
+                  <code>POST /api/consent</code>
+                </td>
+                <td>20 requests</td>
+                <td>1 minute</td>
+              </tr>
+              <tr>
+                <td>
+                  <code>POST /api/delete-account</code>
+                </td>
+                <td>3 requests</td>
+                <td>24 hours</td>
+              </tr>
             </tbody>
           </table>
           <div className="rate-callout">
@@ -1253,6 +1780,21 @@ export const APIDocumentation: React.FC = () => {
 
         {/* Cookie Banner & Consent */}
         <CookieBannerSection userId={userId || ""} apiKey={apiKey} />
+
+        {/* Cookie Scanner */}
+        <ScanSection />
+
+        {/* GCM Compliance Scan */}
+        <GcmScanSection />
+
+        {/* Policy Analysis */}
+        <PolicyAnalysisSection />
+
+        {/* Scan Schedule */}
+        <ScanScheduleSection userId={userId || ""} apiKey={apiKey} />
+
+        {/* Account */}
+        <AccountSection />
 
         {/* Per-module sections */}
         {MODULES.map((mod) => (
