@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { Card, CardContent } from '../components/Card';
 import { Input } from '../components/Input';
 import { supabase } from '../lib/supabase';
+import { signInWithGoogle } from '../lib/googleAuth';
 import './Auth.css';
 
 export const Register: React.FC = () => {
@@ -42,19 +43,13 @@ export const Register: React.FC = () => {
     }
   };
 
-  const handleGoogleSignUp = async () => {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`
-        }
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      console.error("Error signing up with Google:", err.message);
-      alert(err.message);
-    }
+  const handleGoogleSignUp = () => {
+    setLoading(true);
+    setErrorMsg('');
+    signInWithGoogle(
+      () => navigate('/dashboard'),
+      (msg) => { setErrorMsg(msg); setLoading(false); }
+    );
   };
 
   return (
