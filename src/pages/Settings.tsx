@@ -22,9 +22,9 @@ export const Settings: React.FC = () => {
 
   // Email
   const [isOAuthUser, setIsOAuthUser] = useState(false);
-  const [email, setEmail] = useState("");
-  const [emailMsg, setEmailMsg] = useState("");
-  const [emailLoading, setEmailLoading] = useState(false);
+  // const [email, setEmail] = useState("");
+  // const [emailMsg, setEmailMsg] = useState("");
+  // const [emailLoading, setEmailLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -47,24 +47,24 @@ export const Settings: React.FC = () => {
   const [deleteMsg, setDeleteMsg] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  const handleEmailChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEmailLoading(true);
-    setEmailMsg("");
-    const { error } = await supabase.auth.updateUser(
-      { email },
-      { emailRedirectTo: `${window.location.origin}/auth/callback` },
-    );
-    setEmailLoading(false);
-    if (error) {
-      setEmailMsg(`Error: ${error.message}`);
-    } else {
-      setEmailMsg(
-        "Confirmation email sent. Check your inbox to verify the new address.",
-      );
-      setEmail("");
-    }
-  };
+  // const handleEmailChange = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   setEmailLoading(true);
+  //   setEmailMsg("");
+  //   const { error } = await supabase.auth.updateUser(
+  //     { email },
+  //     { emailRedirectTo: `${window.location.origin}/auth/callback` },
+  //   );
+  //   setEmailLoading(false);
+  //   if (error) {
+  //     setEmailMsg(`Error: ${error.message}`);
+  //   } else {
+  //     setEmailMsg(
+  //       "Confirmation email sent. Check your inbox to verify the new address.",
+  //     );
+  //     setEmail("");
+  //   }
+  // };
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
