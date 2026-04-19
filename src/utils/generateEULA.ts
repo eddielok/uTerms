@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface EULAAnswers {
   // Step 1: App & Publisher Info
   appName: string;
@@ -100,13 +102,16 @@ function formatDate(dateStr: string): string {
 }
 
 export function generateEULA(a: EULAAnswers): string {
-  const app = a.appName || 'the Software';
-  const company = a.companyName || 'the Licensor';
-  const site = a.websiteUrl || '#';
-  const email = a.contactEmail || a.supportEmail || 'legal@yourcompany.com';
-  const jurisdiction = a.governingLaw || a.country || 'England and Wales';
+  const app = escapeHtml(a.appName) || 'the Software';
+  const company = escapeHtml(a.companyName) || 'the Licensor';
+  const site = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl) || 'our website';
+  const email = escapeHtml(a.contactEmail || a.supportEmail) || 'legal@yourcompany.com';
+  const jurisdiction = escapeHtml(a.governingLaw || a.country) || 'England and Wales';
   const effectiveDateStr = formatDate(a.effectiveDate);
-  const platformList = a.platforms.length > 0 ? a.platforms.join(', ') : 'the supported platform(s)';
+  const platformList = a.platforms.length > 0 ? a.platforms.map(escapeHtml).join(', ') : 'the supported platform(s)';
+  const liabilityCap = escapeHtml(a.liabilityCap);
+  const appVersion = escapeHtml(a.appVersion);
 
   const licenceTypeText =
     a.licenseType === 'commercial'
@@ -117,7 +122,7 @@ export function generateEULA(a: EULAAnswers): string {
 
   const deviceText = a.allowsMultipleDevices
     ? 'an unlimited number of devices that you own or control'
-    : `up to <strong>${a.numberOfDevices || '1'}</strong> device${parseInt(a.numberOfDevices || '1') !== 1 ? 's' : ''} that you own or control`;
+    : `up to <strong>${escapeHtml(a.numberOfDevices) || '1'}</strong> device${parseInt(a.numberOfDevices || '1') !== 1 ? 's' : ''} that you own or control`;
 
   const disputeText =
     a.disputeResolution === 'arbitration'
@@ -145,7 +150,7 @@ export function generateEULA(a: EULAAnswers): string {
   // ─── 1. Grant of Licence ───────────────────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Grant of Licence</h2>
-  <p>Subject to the terms and conditions of this End User License Agreement (&ldquo;Agreement&rdquo;), <strong>${company}</strong> (&ldquo;Licensor&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) grants you (&ldquo;Licensee&rdquo; or &ldquo;you&rdquo;) a limited${a.isNonExclusive ? ', non-exclusive' : ''}${a.isNonTransferable ? ', non-transferable' : ''}, revocable licence to install and use <strong>${app}</strong>${a.appVersion ? ` (version ${a.appVersion})` : ''} (the &ldquo;Software&rdquo;) on ${deviceText} for your ${licenceTypeText} purposes on the following platform(s): <strong>${platformList}</strong>.</p>
+  <p>Subject to the terms and conditions of this End User License Agreement (&ldquo;Agreement&rdquo;), <strong>${company}</strong> (&ldquo;Licensor&rdquo;, &ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) grants you (&ldquo;Licensee&rdquo; or &ldquo;you&rdquo;) a limited${a.isNonExclusive ? ', non-exclusive' : ''}${a.isNonTransferable ? ', non-transferable' : ''}, revocable licence to install and use <strong>${app}</strong>${appVersion ? ` (version ${appVersion})` : ''} (the &ldquo;Software&rdquo;) on ${deviceText} for your ${licenceTypeText} purposes on the following platform(s): <strong>${platformList}</strong>.</p>
   ${a.allowsFamilySharing ? `<p><strong>Family Sharing:</strong> Where permitted by the applicable platform (e.g. Apple Family Sharing or Google Play Family Library), members of your immediate family household may also use the Software under this licence, provided they are bound by the terms of this Agreement.</p>` : ''}
   <p>This licence does not constitute a sale of the Software or any copy thereof. <strong>${company}</strong> retains all ownership of and title to the Software.</p>
 </section>`);
@@ -164,7 +169,7 @@ export function generateEULA(a: EULAAnswers): string {
   sections.push(`<section>
   <h2>${next()}. Intellectual Property</h2>
   <p>The Software, including all copies thereof, and all intellectual property rights subsisting therein (including but not limited to copyright, patents, trade marks, design rights, and trade secrets) are and shall remain the sole and exclusive property of <strong>${company}</strong> and its licensors. This Agreement does not convey to you any interest in or to the Software, but only a limited right of use as set out herein. All rights not expressly granted are reserved by <strong>${company}</strong>.</p>
-  ${a.hasThirdPartyComponents ? `<p><strong>Third-Party Components:</strong> The Software incorporates or is distributed with certain third-party open-source or licensed components. ${a.thirdPartyComponentsDescription ? a.thirdPartyComponentsDescription : 'These components are subject to their own licence terms, which are provided with the Software or available upon request.'} Your use of such components is governed by the applicable third-party licence terms.</p>` : ''}
+  ${a.hasThirdPartyComponents ? `<p><strong>Third-Party Components:</strong> The Software incorporates or is distributed with certain third-party open-source or licensed components. ${a.thirdPartyComponentsDescription ? escapeHtml(a.thirdPartyComponentsDescription) : 'These components are subject to their own licence terms, which are provided with the Software or available upon request.'} Your use of such components is governed by the applicable third-party licence terms.</p>` : ''}
 </section>`);
 
   // ─── 4. In-App Purchases (conditional) ────────────────────────────────────
@@ -178,7 +183,7 @@ export function generateEULA(a: EULAAnswers): string {
 
   // ─── 5. Updates & Support (conditional) ───────────────────────────────────
   if (a.providesUpdates || a.providesSupport) {
-    const supportEmailAddr = a.supportEmail || email;
+    const supportEmailAddr = escapeHtml(a.supportEmail) || email;
     sections.push(`<section>
   <h2>${next()}. Updates &amp; Support</h2>
   ${a.providesUpdates ? `<p><strong>Updates:</strong> <strong>${company}</strong> may, at its sole discretion, provide updates, patches, bug fixes, or new versions of the Software from time to time. ${a.updatesAreAutomatic ? 'Updates may be installed automatically without additional notice. ' : ''}Updates may add, modify, or remove features and functionality. Continued use of the Software following an update constitutes acceptance of the updated Software. We are under no obligation to provide any updates.</p>` : ''}
@@ -188,7 +193,7 @@ export function generateEULA(a: EULAAnswers): string {
 
   // ─── 6. Privacy & Data Collection (conditional) ───────────────────────────
   if (a.collectsData) {
-    const privacyUrl = a.privacyPolicyUrl || (site !== '#' ? `${site}/privacy-policy` : null);
+    const privacyUrl = safeUrl(a.privacyPolicyUrl) || (site !== '#' ? `${site}/privacy-policy` : null);
     sections.push(`<section>
   <h2>${next()}. Privacy &amp; Data Collection</h2>
   <p>The Software may collect and process certain information about you and your use of the Software in order to operate, maintain, and improve its functionality. By installing and using the Software, you consent to such collection and processing in accordance with our Privacy Policy${privacyUrl ? `, available at <a href="${privacyUrl}" target="_blank" rel="noopener noreferrer">${privacyUrl}</a>` : ''}.</p>
@@ -230,7 +235,7 @@ export function generateEULA(a: EULAAnswers): string {
     sections.push(`<section>
   <h2>${next()}. Limitation of Liability</h2>
   <p>TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL <strong>${company.toUpperCase()}</strong>, ITS DIRECTORS, OFFICERS, EMPLOYEES, AGENTS, OR LICENSORS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, EXEMPLARY, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF PROFITS, LOSS OF DATA, LOSS OF GOODWILL, BUSINESS INTERRUPTION, OR COST OF SUBSTITUTE GOODS OR SERVICES, ARISING OUT OF OR IN CONNECTION WITH THIS AGREEMENT OR THE USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.</p>
-  ${a.liabilityCap ? `<p>In any event, the total aggregate liability of <strong>${company}</strong> to you under or in connection with this Agreement shall not exceed <strong>${a.liabilityCap}</strong>.</p>` : ''}
+  ${liabilityCap ? `<p>In any event, the total aggregate liability of <strong>${company}</strong> to you under or in connection with this Agreement shall not exceed <strong>${liabilityCap}</strong>.</p>` : ''}
   <p>The limitations above shall apply whether the claim is based in contract, tort (including negligence), strict liability, or any other theory, and shall apply even if any limited remedy set forth herein has failed of its essential purpose. Some jurisdictions do not allow the limitation of liability for certain types of damages, in which case the above limitation shall apply to the maximum extent permitted by law.</p>
 </section>`);
   }
@@ -274,8 +279,8 @@ export function generateEULA(a: EULAAnswers): string {
   <p>If you have any questions about this Agreement, please contact us:</p>
   <ul>
     <li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>
-    ${a.companyName ? `<li><strong>Company:</strong> ${a.companyName}</li>` : ''}
-    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a></li>` : ''}
+    ${a.companyName ? `<li><strong>Company:</strong> ${company}</li>` : ''}
+    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a></li>` : ''}
   </ul>
 </section>`);
 

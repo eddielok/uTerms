@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface ReturnPolicyAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -119,11 +121,22 @@ function formatDate(dateStr: string): string {
 }
 
 export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
-  const company = a.companyName || 'We';
-  const site = a.websiteUrl || '#';
-  const email = a.contactEmail || 'returns@yourcompany.com';
+  const company = escapeHtml(a.companyName) || 'We';
+  const site = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl) || 'our website';
+  const email = escapeHtml(a.contactEmail) || 'returns@yourcompany.com';
   const effectiveDateStr = formatDate(a.effectiveDate);
-  const windowDays = a.returnWindowDays || '30';
+  const windowDays = escapeHtml(a.returnWindowDays) || '30';
+  const privacyPolicyUrl = safeUrl(a.privacyPolicyUrl);
+  const customerServiceAddress = escapeHtml(a.customerServiceAddress);
+  const customerServicePhone = escapeHtml(a.customerServicePhone);
+  const companyRegNumber = escapeHtml(a.companyRegNumber);
+  const vatNumber = escapeHtml(a.vatNumber);
+  const policyTitle = escapeHtml(a.policyTitle);
+  const refundProcessingDays = escapeHtml(String(a.refundProcessingDays || ''));
+  const restockingFeePercent = escapeHtml(String(a.restockingFeePercent || ''));
+  const eligibleItemsDescription = escapeHtml(a.eligibleItemsDescription);
+  const customExclusions = (a.customExclusions || '').split('\n').map(escapeHtml);
   const windowStart = a.returnWindowStart === 'purchase' ? 'date of purchase' : 'date of delivery';
 
   // Build refund methods list
@@ -159,7 +172,7 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
   if (a.excludeHygiene) exclusions.push('Intimate apparel, swimwear, pierced jewellery, or other hygiene-sensitive items where the seal has been broken');
   if (a.excludeOpened) exclusions.push('Items that have been opened and are no longer in a resalable condition');
   if (a.customExclusions.trim()) {
-    a.customExclusions.split('\n').map(l => l.trim()).filter(Boolean).forEach(l => exclusions.push(l));
+    customExclusions.map(l => l.trim()).filter(Boolean).forEach(l => exclusions.push(l));
   }
 
   const sections: string[] = [];
@@ -175,15 +188,15 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
   <h2>${next()}. Overview</h2>
   <p>At <strong>${company}</strong>, we want you to be completely satisfied with your purchase. This Return &amp; Refund Policy explains your rights and our procedures for returning ${productTypeText} and obtaining refunds.</p>
   <p>Please read this policy carefully before making a purchase. By completing a purchase on our website, you agree to the terms set out below.</p>
-  ${a.websiteUrl ? `<p>This policy applies to purchases made at <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a>.</p>` : ''}
+  ${a.websiteUrl ? `<p>This policy applies to purchases made at <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>.</p>` : ''}
 </section>`);
 
   // ─── 2. Return Window & Eligibility ──────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Return Window &amp; Eligibility</h2>
   <p>You may return eligible items within <strong>${windowDays} days</strong> of the <strong>${windowStart}</strong> for a refund or exchange, subject to the conditions described in this policy.</p>
-  ${a.eligibleItems === 'select' && a.eligibleItemsDescription
-    ? `<p><strong>Eligible items:</strong> ${a.eligibleItemsDescription}</p>`
+  ${a.eligibleItems === 'select' && eligibleItemsDescription
+    ? `<p><strong>Eligible items:</strong> ${eligibleItemsDescription}</p>`
     : '<p>All items are eligible for return unless otherwise stated on the product page or excluded under Section 3 of this policy.</p>'
   }
   ${conditions.length > 0 ? `<p>To be accepted for a return, items must be:</p>
@@ -215,7 +228,7 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
   </ul>
   <p><strong>Model Cancellation Form</strong> (complete and return only if you wish to cancel):</p>
   <blockquote style="border-left:3px solid #d1d5db;padding:0.75rem 1rem;margin:0.75rem 0;background:#f9fafb;">
-    <p>To: ${company}${a.customerServiceAddress ? `, ${a.customerServiceAddress}` : ''}<br>
+    <p>To: ${company}${customerServiceAddress ? `, ${customerServiceAddress}` : ''}<br>
     Email: <a href="mailto:${email}">${email}</a></p>
     <p>I hereby give notice that I cancel my contract of sale for the following goods: [description of goods ordered]<br>
     Ordered on [date] / Received on [date]<br>
@@ -257,7 +270,7 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
     ? `<p>Refunds will be issued via your choice of: <strong>${refundMethods.join(', ')}</strong>, subject to eligibility.</p>`
     : '<p>Refunds will be issued to the original payment method used at the time of purchase.</p>'
   }
-  <p>Once we receive and inspect your returned item, we will notify you of the approval or rejection of your refund. If approved, your refund will be processed within <strong>${a.refundProcessingDays || '5–10'} business days</strong>. Please note that your bank or card issuer may require additional time to post the credit to your account.</p>
+  <p>Once we receive and inspect your returned item, we will notify you of the approval or rejection of your refund. If approved, your refund will be processed within <strong>${refundProcessingDays || '5–10'} business days</strong>. Please note that your bank or card issuer may require additional time to post the credit to your account.</p>
   ${a.gdprApplies ? `<p><strong>UK &amp; EU statutory requirement:</strong> Where you cancel an order under your statutory 14-day right to cancel, we will issue your refund within <strong>14 days</strong> of receiving the returned goods or receiving proof of return postage (whichever is earlier). This legal deadline applies regardless of our standard processing timeline.</p>` : ''}
   <p>We reserve the right to refuse a refund if the item does not meet the return conditions set out in this policy.</p>
 </section>`);
@@ -273,8 +286,8 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
   }
   ${a.hasRestockingFee && a.restockingFeePercent
     ? a.gdprApplies
-      ? `<p><strong>Restocking Fee:</strong> A restocking fee of <strong>${a.restockingFeePercent}%</strong> applies to returns made outside the statutory cancellation period (i.e. after 14 days from delivery for UK / EU customers). <strong>This fee is automatically waived for any return initiated within the 14-day statutory cancellation window.</strong> Within that window, we may only deduct value where the item has been handled beyond what is necessary to establish its nature, characteristics, and functioning — and only to the extent of the actual diminution in value.</p>`
-      : `<p><strong>Restocking Fee:</strong> A restocking fee of <strong>${a.restockingFeePercent}%</strong> of the item price may be deducted from your refund for certain returns. We will notify you if a restocking fee applies before processing your return.</p>`
+      ? `<p><strong>Restocking Fee:</strong> A restocking fee of <strong>${restockingFeePercent}%</strong> applies to returns made outside the statutory cancellation period (i.e. after 14 days from delivery for UK / EU customers). <strong>This fee is automatically waived for any return initiated within the 14-day statutory cancellation window.</strong> Within that window, we may only deduct value where the item has been handled beyond what is necessary to establish its nature, characteristics, and functioning — and only to the extent of the actual diminution in value.</p>`
+      : `<p><strong>Restocking Fee:</strong> A restocking fee of <strong>${restockingFeePercent}%</strong> of the item price may be deducted from your refund for certain returns. We will notify you if a restocking fee applies before processing your return.</p>`
     : a.gdprApplies
     ? `<p><strong>UK &amp; EU customers:</strong> We do not charge a restocking fee. Under UK and EU consumer law, we may only make a deduction from your refund where you have handled an item beyond what is necessary to establish its nature, characteristics, and functioning, and only to the extent of any diminution in value.</p>`
     : ''
@@ -348,7 +361,7 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
     <li><strong>Right to Non-Discrimination:</strong> Exercising any CCPA right will not affect your ability to make a return, receive a refund, or otherwise use our services under this policy. We will not deny, charge a different price for, or provide a different level of service because you exercised a privacy right.</li>
   </ul>
   ${a.privacyPolicyUrl
-    ? `<p>For full details on how we collect, use, and disclose personal information, and to submit a CCPA / CPRA rights request, please see our <a href="${a.privacyPolicyUrl}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>`
+    ? `<p>For full details on how we collect, use, and disclose personal information, and to submit a CCPA / CPRA rights request, please see our <a href="${privacyPolicyUrl}" target="_blank" rel="noopener noreferrer">Privacy Policy</a>.</p>`
     : '<p>For full details on how we collect, use, and disclose personal information, and to submit a rights request, please refer to our Privacy Policy.</p>'
   }
   <p>To submit a request, contact us at <a href="mailto:${email}">${email}</a>. We will respond within the timeframe required by applicable law.</p>
@@ -361,17 +374,17 @@ export function generateReturnPolicy(a: ReturnPolicyAnswers): string {
   <p>If you have any questions about our Return &amp; Refund Policy, please get in touch:</p>
   <ul>
     <li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>
-    ${a.customerServicePhone ? `<li><strong>Phone:</strong> ${a.customerServicePhone}</li>` : ''}
-    ${a.customerServiceAddress ? `<li><strong>Address:</strong> ${a.customerServiceAddress}</li>` : ''}
-    ${a.companyName ? `<li><strong>Company:</strong> ${a.companyName}</li>` : ''}
-    ${a.companyRegNumber ? `<li><strong>Company Registration Number:</strong> ${a.companyRegNumber}</li>` : ''}
-    ${a.vatNumber ? `<li><strong>VAT Number:</strong> ${a.vatNumber}</li>` : ''}
-    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a></li>` : ''}
+    ${customerServicePhone ? `<li><strong>Phone:</strong> ${customerServicePhone}</li>` : ''}
+    ${customerServiceAddress ? `<li><strong>Address:</strong> ${customerServiceAddress}</li>` : ''}
+    ${a.companyName ? `<li><strong>Company:</strong> ${company}</li>` : ''}
+    ${companyRegNumber ? `<li><strong>Company Registration Number:</strong> ${companyRegNumber}</li>` : ''}
+    ${vatNumber ? `<li><strong>VAT Number:</strong> ${vatNumber}</li>` : ''}
+    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a></li>` : ''}
   </ul>
 </section>`);
 
   return `
-<h1>${a.policyTitle || 'Return &amp; Refund Policy'}</h1>
+<h1>${policyTitle || 'Return &amp; Refund Policy'}</h1>
 <p class="policy-meta">Last updated: ${effectiveDateStr}</p>
 
 ${sections.join('\n\n')}

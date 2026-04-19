@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface ToSAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -103,12 +105,14 @@ function formatDate(dateStr: string): string {
 }
 
 export function generateTermsOfService(a: ToSAnswers): string {
-  const company = a.companyName || 'the Company';
-  const site = a.websiteUrl || '#';
-  const serviceType = BUSINESS_TYPE_LABELS[a.businessType] || 'online service';
+  const company = escapeHtml(a.companyName) || 'the Company';
+  const site = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl) || 'our website';
+  const serviceType = escapeHtml(BUSINESS_TYPE_LABELS[a.businessType]) || 'online service';
   const effectiveDateStr = formatDate(a.effectiveDate);
-  const email = a.contactEmail || 'legal@yourcompany.com';
-  const jurisdiction = a.governingLaw || a.country || 'England and Wales';
+  const email = escapeHtml(a.contactEmail) || 'legal@yourcompany.com';
+  const jurisdiction = escapeHtml(a.governingLaw || a.country) || 'England and Wales';
+  const serviceDescription = escapeHtml(a.serviceDescription);
 
   const prohibitedList = a.prohibitedUses.length > 0
     ? a.prohibitedUses
@@ -133,12 +137,12 @@ export function generateTermsOfService(a: ToSAnswers): string {
   <p>These Terms of Service (&ldquo;Terms&rdquo;) constitute a legally binding agreement between you and <strong>${company}</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;), governing your access to and use of <a href="${site}" target="_blank" rel="noopener noreferrer">${site}</a> and our ${serviceType} (collectively, the &ldquo;Service&rdquo;).</p>
   <p>By accessing or using the Service, you confirm that you have read, understood, and agree to be bound by these Terms and our <a href="${site}/privacy-policy">Privacy Policy</a>. If you do not agree, you must not access or use the Service.</p>
   <p>If you have entered into a separate written agreement with <strong>${company}</strong> for the Service, that agreement shall supersede these Terms in the event of a conflict.</p>
-  ${a.minimumAge ? `<p>You must be at least <strong>${a.minimumAge} years old</strong> to use the Service. By using the Service, you represent and warrant that you meet this age requirement. If you are under 18, you represent that your parent or legal guardian has reviewed and agreed to these Terms on your behalf.</p>` : ''}
+  ${a.minimumAge ? `<p>You must be at least <strong>${escapeHtml(String(a.minimumAge))} years old</strong> to use the Service. By using the Service, you represent and warrant that you meet this age requirement. If you are under 18, you represent that your parent or legal guardian has reviewed and agreed to these Terms on your behalf.</p>` : ''}
 </section>
 
 <section>
   <h2>2. Description of Services</h2>
-  <p><strong>${company}</strong> provides a ${serviceType}${a.serviceDescription ? `: ${a.serviceDescription}` : '.'}</p>
+  <p><strong>${company}</strong> provides a ${serviceType}${serviceDescription ? `: ${serviceDescription}` : '.'}</p>
   <p>We reserve the right to modify, suspend, or discontinue any part of the Service at any time, with or without notice. We will not be liable to you or any third party for any modification, suspension, or discontinuation of the Service.</p>
   ${a.hasThirdPartyFinancialData ? `<p><strong>Third-Party Financial Data Disclaimer:</strong> The Service is for informational and connectivity purposes only. <strong>${company}</strong> is not a financial adviser, broker, or regulated financial institution. We do not guarantee the accuracy, completeness, timeliness, or fitness for any particular purpose of any third-party financial data integrated through our platform. Any financial information displayed through the Service is provided by independent third parties and may not reflect current market conditions. You should not rely on such information as the sole basis for any investment, financial, legal, or other decisions. We expressly disclaim all liability for any loss or damage arising from your reliance on third-party financial data.</p>` : ''}
 </section>
@@ -166,11 +170,11 @@ ${a.isPaid ? `
   <h2>4. Payments${a.isSubscription ? ', Subscriptions' : ''} &amp; Billing</h2>
   <p>Certain features of the Service require payment. By providing payment information, you authorize us to charge the applicable fees to your payment method.</p>
   ${a.isSubscription ? `
-  <p><strong>Subscriptions:</strong> Some features are billed on a recurring basis (&ldquo;Subscription&rdquo;). Your Subscription will automatically renew at the end of each billing period unless you cancel before the renewal date${a.cancellationNoticeDays ? ` by giving at least <strong>${a.cancellationNoticeDays} days&rsquo; notice</strong> prior to renewal` : ''}.</p>
+  <p><strong>Subscriptions:</strong> Some features are billed on a recurring basis (&ldquo;Subscription&rdquo;). Your Subscription will automatically renew at the end of each billing period unless you cancel before the renewal date${a.cancellationNoticeDays ? ` by giving at least <strong>${escapeHtml(String(a.cancellationNoticeDays))} days&rsquo; notice</strong> prior to renewal` : ''}.</p>
   ${a.hasAutoRenewal ? `<p><strong>Auto-Renewal:</strong> Subscriptions renew automatically at the end of each billing period. We will notify you of any price changes before they take effect.</p>` : ''}
   <p><strong>Cancellation:</strong> You may cancel your Subscription at any time${a.cancellationNoticeDays ? ` provided you give at least <strong>${a.cancellationNoticeDays} days&rsquo; written notice</strong> before your next renewal date` : ''}. ${a.cancellationAccess === 'end-of-period' ? `Upon cancellation, your access to paid features will continue until the end of your current billing period. You will not receive a refund for any unused portion of your Subscription, except where required by applicable law.` : `Cancellation takes effect immediately. Your access to paid features will end at the point of cancellation and no refund will be issued for any remaining time in the billing period, except where required by applicable law.`}</p>
   ` : ''}
-  ${a.hasRefundPolicy ? `<p><strong>Refunds:</strong> You may request a refund within <strong>${a.refundPeriod}</strong> of your purchase by contacting us at <a href="mailto:${email}">${email}</a>. Refunds are issued at our discretion and may be subject to conditions. Subscription fees are generally non-refundable except where required by applicable law.</p>` : '<p><strong>Refunds:</strong> All purchases are final and non-refundable except where required by applicable law.</p>'}
+  ${a.hasRefundPolicy ? `<p><strong>Refunds:</strong> You may request a refund within <strong>${escapeHtml(a.refundPeriod)}</strong> of your purchase by contacting us at <a href="mailto:${email}">${email}</a>. Refunds are issued at our discretion and may be subject to conditions. Subscription fees are generally non-refundable except where required by applicable law.</p>` : '<p><strong>Refunds:</strong> All purchases are final and non-refundable except where required by applicable law.</p>'}
   <p>All prices are exclusive of applicable taxes unless stated otherwise. You are responsible for all taxes associated with your use of the Service.</p>
 </section>
 ` : ''}
@@ -227,7 +231,7 @@ ${a.limitationOfLiability ? `
 <section>
   <h2>${baseOffset + (a.disclaimsWarranties ? 7 : 6) + tpiOffset}. Limitation of Liability</h2>
   <p>TO THE FULLEST EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT SHALL <strong>${company.toUpperCase()}</strong>, ITS DIRECTORS, EMPLOYEES, PARTNERS, AGENTS, SUPPLIERS, OR AFFILIATES BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING LOSS OF PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR IN CONNECTION WITH YOUR USE OF OR INABILITY TO USE THE SERVICE.</p>
-  ${a.liabilityCap ? `<p>In any event, our total cumulative liability to you for all claims arising from or related to the Service shall not exceed <strong>${a.liabilityCap}</strong>.</p>` : ''}
+  ${a.liabilityCap ? `<p>In any event, our total cumulative liability to you for all claims arising from or related to the Service shall not exceed <strong>${escapeHtml(a.liabilityCap)}</strong>.</p>` : ''}
   <p>Some jurisdictions do not allow the exclusion or limitation of certain warranties or liabilities. In such jurisdictions, our liability is limited to the greatest extent permitted by law.</p>
 </section>
 ` : ''}
@@ -256,8 +260,8 @@ ${a.requiresIndemnification ? `
   <p>If you have any questions about these Terms, please contact us:</p>
   <ul>
     <li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>
-    ${a.companyName ? `<li><strong>Company:</strong> ${a.companyName}</li>` : ''}
-    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a></li>` : ''}
+    ${a.companyName ? `<li><strong>Company:</strong> ${company}</li>` : ''}
+    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a></li>` : ''}
   </ul>
 </section>
 `.trim();

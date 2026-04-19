@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface AUPAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -198,12 +200,15 @@ function formatDate(dateStr: string): string {
 }
 
 export function generateAUP(a: AUPAnswers): string {
-  const company = a.companyName || 'We';
-  const site = a.websiteUrl || '#';
-  const email = a.contactEmail || 'legal@yourcompany.com';
+  const company = escapeHtml(a.companyName) || 'We';
+  const site = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl) || 'our website';
+  const email = escapeHtml(a.contactEmail) || 'legal@yourcompany.com';
   const effectiveDateStr = formatDate(a.effectiveDate);
-  const platformLabel = PLATFORM_TYPE_LABELS[a.platformType] || 'online platform';
-  const jurisdiction = a.governingLaw || a.country || 'England and Wales';
+  const platformLabel = escapeHtml(PLATFORM_TYPE_LABELS[a.platformType]) || 'online platform';
+  const jurisdiction = escapeHtml(a.governingLaw || a.country) || 'England and Wales';
+  const minimumAge = escapeHtml(String(a.minimumAge || ''));
+  const policyTitle = escapeHtml(a.policyTitle);
 
   const sections: string[] = [];
   let n = 0;
@@ -219,7 +224,7 @@ export function generateAUP(a: AUPAnswers): string {
   // ─── 1. Introduction & Purpose ───────────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Introduction &amp; Purpose</h2>
-  <p>This Acceptable Use Policy (&ldquo;Policy&rdquo;) sets out the rules governing your use of the ${platformLabel} operated by <strong>${company}</strong>${a.websiteUrl ? ` at <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a>` : ''} (the &ldquo;Platform&rdquo;).</p>
+  <p>This Acceptable Use Policy (&ldquo;Policy&rdquo;) sets out the rules governing your use of the ${platformLabel} operated by <strong>${company}</strong>${a.websiteUrl ? ` at <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>` : ''} (the &ldquo;Platform&rdquo;).</p>
   <p>The purpose of this Policy is to protect the integrity, security, and availability of the Platform, to safeguard the experience of all users, and to ensure that the Platform is used only for lawful and intended purposes. This Policy applies alongside our Terms of Service${a.allowsUGC ? ', Content Guidelines,' : ''} and Privacy Policy, which are incorporated herein by reference.</p>
   <p>By accessing or using the Platform, you agree to comply with this Policy. If you do not agree, you must not use the Platform.</p>
 </section>`);
@@ -234,7 +239,7 @@ export function generateAUP(a: AUPAnswers): string {
     <li>Visitors who access the Platform without registering an account</li>
     <li>Third-party integrations, applications, or services that interact with the Platform through any API or interface</li>
   </ul>
-  ${a.minimumAge ? `<p>You must be at least <strong>${a.minimumAge} years of age</strong> to use the Platform. If you are under 18, you confirm that your parent or legal guardian has reviewed and agreed to this Policy on your behalf.</p>` : ''}
+  ${minimumAge ? `<p>You must be at least <strong>${minimumAge} years of age</strong> to use the Platform. If you are under 18, you confirm that your parent or legal guardian has reviewed and agreed to this Policy on your behalf.</p>` : ''}
   ${a.handlesSensitiveData ? `<p>The Platform handles sensitive personal data. Users are required to exercise particular care when uploading, transmitting, or processing such data and must comply with all applicable data protection laws, including the UK GDPR, EU GDPR, and the Data Protection Act 2018, as applicable.</p>` : ''}
 </section>`);
 
@@ -397,15 +402,15 @@ export function generateAUP(a: AUPAnswers): string {
   <h2>${next()}. Contact Us</h2>
   <p>If you have questions about this Acceptable Use Policy, wish to report a violation, or need to discuss a specific use case, please contact us:</p>
   <ul>
-    ${a.companyName ? `<li><strong>Company:</strong> ${a.companyName}</li>` : ''}
+    ${a.companyName ? `<li><strong>Company:</strong> ${company}</li>` : ''}
     <li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>
-    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a></li>` : ''}
+    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a></li>` : ''}
   </ul>
   <p>These Terms are governed by and construed in accordance with the laws of <strong>${jurisdiction}</strong>. ${disputeText}</p>
 </section>`);
 
   return `
-<h1>${a.policyTitle || 'Acceptable Use Policy'}</h1>
+<h1>${policyTitle || 'Acceptable Use Policy'}</h1>
 <p class="policy-meta">Last updated: ${effectiveDateStr}</p>
 
 ${sections.join('\n\n')}

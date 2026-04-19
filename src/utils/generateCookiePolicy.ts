@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface SpecificCookie {
   name: string;
   provider: string;
@@ -110,8 +112,11 @@ const PROVIDER_LINKS: Record<string, string> = {
 };
 
 export function generateCookiePolicy(a: CookiePolicyAnswers): string {
-  const site = a.websiteName || a.websiteUrl || "this website";
-  const url = a.websiteUrl || "#";
+  const site = escapeHtml(a.websiteName || a.websiteUrl) || "this website";
+  const url = safeUrl(a.websiteUrl);
+  const contactEmail = escapeHtml(a.contactEmail) || "privacy@yourcompany.com";
+  const otherProviders = escapeHtml(a.otherProviders);
+  const cookieDuration = escapeHtml(a.cookieDuration);
   const effectiveDateStr = formatDate(a.effectiveDate);
 
   const allAnalytics = a.analyticsProviders;
@@ -135,7 +140,7 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
       <tr>
         <td><strong>Functional</strong></td>
         <td>Remember your preferences such as language, region, or login state.</td>
-        <td>Persistent (up to ${a.cookieDuration})</td>
+        <td>Persistent (up to ${cookieDuration})</td>
         <td>First-party</td>
         <td>Opt-in</td>
       </tr>`);
@@ -145,7 +150,7 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
       <tr>
         <td><strong>Analytics / Performance</strong></td>
         <td>Help us understand how visitors interact with the website by collecting and reporting information anonymously.</td>
-        <td>Persistent (up to ${a.cookieDuration})</td>
+        <td>Persistent (up to ${cookieDuration})</td>
         <td>First &amp; third-party</td>
         <td>Opt-in</td>
       </tr>`);
@@ -155,7 +160,7 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
       <tr>
         <td><strong>Marketing / Advertising</strong></td>
         <td>Track visitors across websites to display relevant and personalised advertising.</td>
-        <td>Persistent (up to ${a.cookieDuration})</td>
+        <td>Persistent (up to ${cookieDuration})</td>
         <td>Third-party</td>
         <td>Opt-in</td>
       </tr>`);
@@ -165,7 +170,7 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
       <tr>
         <td><strong>Social Media</strong></td>
         <td>Enable sharing of pages and content from our website onto social media platforms.</td>
-        <td>Persistent (up to ${a.cookieDuration})</td>
+        <td>Persistent (up to ${cookieDuration})</td>
         <td>Third-party</td>
         <td>Opt-in</td>
       </tr>`);
@@ -211,7 +216,7 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
     providerSections.push(`<p><em>Social Media:</em></p><ul>${items}</ul>`);
   }
   if (a.otherProviders.trim()) {
-    providerSections.push(`<p><em>Other:</em></p><p>${a.otherProviders}</p>`);
+    providerSections.push(`<p><em>Other:</em></p><p>${otherProviders}</p>`);
   }
 
   // Consent mechanism description
@@ -274,7 +279,7 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
         <li><strong>Right to Non-Discrimination</strong> — We will not discriminate against you for exercising any of your CCPA / CPRA rights.</li>
       </ul>
 
-      <p>To submit a request or for questions about your California privacy rights, contact us at <a href="mailto:${a.contactEmail}">${a.contactEmail}</a>. We will respond within 45 days as required by law.</p>
+      <p>To submit a request or for questions about your California privacy rights, contact us at <a href="mailto:${contactEmail}">${contactEmail}</a>. We will respond within 45 days as required by law.</p>
     </section>`;
   }
 
@@ -423,7 +428,7 @@ ${ccpaSection}
 <section>
   <h2>${4 + sectionOffset + 4}. Contact Us</h2>
   <p>If you have questions or concerns about our use of cookies, please contact us at:</p>
-  <p><a href="mailto:${a.contactEmail}">${a.contactEmail}</a></p>
+  <p><a href="mailto:${contactEmail}">${contactEmail}</a></p>
 </section>
 `.trim();
 }

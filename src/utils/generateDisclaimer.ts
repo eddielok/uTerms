@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface DisclaimerAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -107,9 +109,11 @@ const hasProfessionalSection = (a: DisclaimerAnswers) =>
   a.legalAdvice;
 
 export function generateDisclaimer(a: DisclaimerAnswers): string {
-  const company = a.companyName || "We";
-  const site = a.websiteUrl || "#";
-  const email = a.contactEmail || "contact@yourcompany.com";
+  const company = escapeHtml(a.companyName) || "We";
+  const site = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl) || "our website";
+  const email = escapeHtml(a.contactEmail) || "contact@yourcompany.com";
+  const policyTitle = escapeHtml(a.policyTitle);
   const effectiveDateStr = formatDate(a.effectiveDate);
 
   const sections: string[] = [];
@@ -119,7 +123,7 @@ export function generateDisclaimer(a: DisclaimerAnswers): string {
   // ─── 1. Overview ─────────────────────────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Overview</h2>
-  <p>The information provided by <strong>${company}</strong>${a.websiteUrl ? ` on <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a>` : ""} is for <strong>general informational purposes only</strong>. All information on this site is provided in good faith; however, we make no representation or warranty of any kind, express or implied, regarding the accuracy, adequacy, validity, reliability, availability, or completeness of any information on the site.</p>
+  <p>The information provided by <strong>${company}</strong>${a.websiteUrl ? ` on <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>` : ""} is for <strong>general informational purposes only</strong>. All information on this site is provided in good faith; however, we make no representation or warranty of any kind, express or implied, regarding the accuracy, adequacy, validity, reliability, availability, or completeness of any information on the site.</p>
   <p>By accessing or using this website, you acknowledge that you have read, understood, and agree to be bound by this Disclaimer.</p>
 </section>`);
 
@@ -347,14 +351,14 @@ export function generateDisclaimer(a: DisclaimerAnswers): string {
   <h2>${next()}. Contact Us</h2>
   <p>If you have any questions about this Disclaimer, please contact us:</p>
   <ul>
-    ${a.companyName ? `<li><strong>Company:</strong> ${a.companyName}</li>` : ""}
+    ${a.companyName ? `<li><strong>Company:</strong> ${company}</li>` : ""}
     <li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>
-    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a></li>` : ""}
+    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a></li>` : ""}
   </ul>
 </section>`);
 
   return `
-<h1>${a.policyTitle || "Disclaimer"}</h1>
+<h1>${policyTitle || "Disclaimer"}</h1>
 <p class="policy-meta">Last updated: ${effectiveDateStr}</p>
 
 ${sections.join("\n\n")}

@@ -10,6 +10,8 @@ export interface KnownIssue {
   workaround: string;
 }
 
+import { escapeHtml, safeUrl } from './html';
+
 export interface AccessibilityAnswers {
   // Step 1: Organisation & Website
   organisationName: string;
@@ -184,9 +186,16 @@ function testingApproachText(approaches: string[]): string {
 }
 
 export function generateAccessibilityStatement(a: AccessibilityAnswers): string {
-  const org = a.organisationName || 'We';
-  const site = a.websiteName || a.websiteUrl || 'this website';
-  const email = a.contactEmail || 'accessibility@yourorganisation.com';
+  const org = escapeHtml(a.organisationName) || 'We';
+  const site = escapeHtml(a.websiteName || a.websiteUrl) || 'this website';
+  const siteUrl = safeUrl(a.websiteUrl);
+  const email = escapeHtml(a.contactEmail) || 'accessibility@yourorganisation.com';
+  const contactName = escapeHtml(a.contactName);
+  const contactPhone = escapeHtml(a.contactPhone);
+  const responseTimeDays = escapeHtml(String(a.responseTimeDays || ''));
+  const outOfScopeDescription = escapeHtml(a.outOfScopeDescription);
+  const feedbackProcess = escapeHtml(a.feedbackProcess);
+  const policyTitle = escapeHtml(a.policyTitle);
   const enforcement = getEnforcement(a.country);
   const preparedDate = formatDate(a.datePrepared);
   const reviewedDate = formatDate(a.dateLastReviewed);
@@ -198,7 +207,7 @@ export function generateAccessibilityStatement(a: AccessibilityAnswers): string 
   // ─── 1. Overview ─────────────────────────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Overview</h2>
-  <p><strong>${org}</strong> is committed to making ${a.websiteUrl ? `<a href="${a.websiteUrl}" target="_blank" rel="noopener noreferrer">${site}</a>` : `<em>${site}</em>`} accessible, in accordance with applicable accessibility legislation and best practice.</p>
+  <p><strong>${org}</strong> is committed to making ${siteUrl !== '#' ? `<a href="${siteUrl}" target="_blank" rel="noopener noreferrer">${site}</a>` : `<em>${site}</em>`} accessible, in accordance with applicable accessibility legislation and best practice.</p>
   <p>This accessibility statement applies to <strong>${site}</strong>.</p>
   ${a.sector === 'public' ? `<p>As a public sector body, we are required to meet the accessibility requirements of the Public Sector Bodies (Websites and Mobile Applications) Accessibility Regulations 2018 (for UK) or equivalent national implementing legislation.</p>` : ''}
   ${(a.sector === 'private' || a.sector === 'non-profit') && a.country !== 'United States' ? `<p>The European Accessibility Act (EAA), applicable from June 2025, extends accessibility requirements to a wider range of private sector products and services. We are committed to meeting these obligations.</p>` : ''}
@@ -235,7 +244,7 @@ export function generateAccessibilityStatement(a: AccessibilityAnswers): string 
 
     if (a.hasOutOfScopeContent) {
       subSections.push(`<h3>Content that's not within the scope of the accessibility regulations</h3>
-  <p>${a.outOfScopeDescription || 'Certain content on this website is exempt from the accessibility regulations, including third-party content that we do not fund, develop, or control; content published before 23 September 2019 that has not been substantially revised; and live video streams.'}</p>`);
+  <p>${outOfScopeDescription || 'Certain content on this website is exempt from the accessibility regulations, including third-party content that we do not fund, develop, or control; content published before 23 September 2019 that has not been substantially revised; and live video streams.'}</p>`);
     }
 
     sections.push(`<section>
@@ -275,18 +284,18 @@ export function generateAccessibilityStatement(a: AccessibilityAnswers): string 
 
   // ─── 6. Feedback & Contact ────────────────────────────────────────────────
   const contactLines: string[] = [];
-  if (a.contactName) contactLines.push(`<li><strong>Name / Team:</strong> ${a.contactName}</li>`);
+  if (contactName) contactLines.push(`<li><strong>Name / Team:</strong> ${contactName}</li>`);
   contactLines.push(`<li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>`);
-  if (a.contactPhone) contactLines.push(`<li><strong>Phone:</strong> ${a.contactPhone}</li>`);
+  if (contactPhone) contactLines.push(`<li><strong>Phone:</strong> ${contactPhone}</li>`);
 
   sections.push(`<section>
   <h2>${next()}. Feedback and Contact Information</h2>
   <p>We are always looking to improve the accessibility of ${site}. If you experience any barriers not listed in this statement, or if you think we are not meeting the requirements of the accessibility regulations, please contact us.</p>
-  ${a.feedbackProcess ? `<p>${a.feedbackProcess}</p>` : ''}
+  ${feedbackProcess ? `<p>${feedbackProcess}</p>` : ''}
   <ul>
     ${contactLines.join('\n    ')}
   </ul>
-  <p>We aim to respond to accessibility feedback within <strong>${a.responseTimeDays || '5'} working days</strong>.</p>
+  <p>We aim to respond to accessibility feedback within <strong>${responseTimeDays || '5'} working days</strong>.</p>
   <p>If you need information on this website in a different format — such as accessible PDF, large print, easy read, audio recording, or Braille — please contact us using the details above and we will consider your request.</p>
 </section>`);
 
@@ -315,7 +324,7 @@ export function generateAccessibilityStatement(a: AccessibilityAnswers): string 
 </section>`);
 
   return `
-<h1>${a.policyTitle || 'Accessibility Statement'}</h1>
+<h1>${policyTitle || 'Accessibility Statement'}</h1>
 <p class="policy-meta">Last updated: ${preparedDate}</p>
 
 ${sections.join('\n\n')}

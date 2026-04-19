@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface ShippingPolicyAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -118,9 +120,18 @@ const DISPATCH_DAYS_LABELS: Record<string, string> = {
 };
 
 export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
-  const company = a.companyName || 'We';
-  const site = a.websiteUrl || '#';
-  const email = a.contactEmail || 'support@yourcompany.com';
+  const company = escapeHtml(a.companyName) || 'We';
+  const site = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl) || 'our website';
+  const email = escapeHtml(a.contactEmail) || 'support@yourcompany.com';
+  const policyTitle = escapeHtml(a.policyTitle);
+  const customCoverageDescription = escapeHtml(a.customCoverageDescription);
+  const otherCarrier = escapeHtml(a.otherCarrier);
+  const freeShippingThreshold = escapeHtml(String(a.freeShippingThreshold || ''));
+  const processingTime = escapeHtml(a.processingTime);
+  const cutoffTime = escapeHtml(a.cutoffTime);
+  const trackingNotification = escapeHtml(a.trackingNotification);
+  const excludedCountriesList = (a.excludedCountries || '').split('\n').filter(Boolean).map(escapeHtml);
   const effectiveDateStr = formatDate(a.effectiveDate);
   const currencySymbol = a.currency.includes('£') ? '£' : a.currency.includes('$') ? '$' : a.currency.includes('€') ? '€' : '';
 
@@ -131,13 +142,13 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
   // ─── 1. Overview ─────────────────────────────────────────────────────────
   sections.push(`<section>
   <h2>${next()}. Overview</h2>
-  <p>Thank you for shopping with <strong>${company}</strong>${a.websiteUrl ? ` at <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a>` : ''}. This Shipping Policy explains how we process, dispatch, and deliver your orders, and what to do if something goes wrong.</p>
+  <p>Thank you for shopping with <strong>${company}</strong>${a.websiteUrl ? ` at <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>` : ''}. This Shipping Policy explains how we process, dispatch, and deliver your orders, and what to do if something goes wrong.</p>
   <p>By placing an order with us, you agree to the terms set out in this policy. Please read it carefully before completing your purchase.</p>
 </section>`);
 
   // ─── 2. Shipping Destinations ────────────────────────────────────────────
-  const coverageText = a.internationalCoverage === 'custom' && a.customCoverageDescription
-    ? a.customCoverageDescription
+  const coverageText = a.internationalCoverage === 'custom' && customCoverageDescription
+    ? customCoverageDescription
     : COVERAGE_LABELS[a.internationalCoverage] || 'worldwide';
 
   sections.push(`<section>
@@ -146,8 +157,8 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
     ? `<p>We ship ${coverageText}. If your country or region is not listed at checkout, unfortunately we are unable to fulfil your order at this time.</p>`
     : `<p>We currently ship to addresses within <strong>${a.country}</strong> only. We do not offer international shipping at this time. Please check back in the future as we plan to expand our delivery regions.</p>`
   }
-  ${a.excludedCountries.trim()
-    ? `<p><strong>We do not currently ship to the following countries or regions:</strong></p><p>${a.excludedCountries.trim().replace(/\n/g, ', ')}</p>`
+  ${excludedCountriesList.length > 0
+    ? `<p><strong>We do not currently ship to the following countries or regions:</strong></p><p>${excludedCountriesList.join(', ')}</p>`
     : ''
   }
   ${!a.acceptsPOBox ? `<p>We are currently unable to deliver to PO Box addresses. Please provide a full street address when placing your order.</p>` : ''}
@@ -155,7 +166,7 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
 
   // ─── 3. Shipping Methods & Delivery Timeframes ───────────────────────────
   const methods: string[] = [];
-  if (a.offersFreeShipping) methods.push(`<tr><td><strong>Free Shipping</strong></td><td>Orders over ${currencySymbol}${a.freeShippingThreshold}</td><td>Same as standard delivery</td></tr>`);
+  if (a.offersFreeShipping) methods.push(`<tr><td><strong>Free Shipping</strong></td><td>Orders over ${currencySymbol}${freeShippingThreshold}</td><td>Same as standard delivery</td></tr>`);
   if (a.offersStandard) methods.push(`<tr><td><strong>Standard Delivery</strong></td><td>${currencySymbol}${a.standardCost}</td><td>${a.standardDays} business days</td></tr>`);
   if (a.offersExpress) methods.push(`<tr><td><strong>Express Delivery</strong></td><td>${currencySymbol}${a.expressCost}</td><td>${a.expressDays} business days</td></tr>`);
   if (a.offersOvernight) methods.push(`<tr><td><strong>Next-Day Delivery</strong></td><td>${currencySymbol}${a.overnightCost}</td><td>${a.overnightDays} business day</td></tr>`);
@@ -181,8 +192,8 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
 
   sections.push(`<section>
   <h2>${next()}. Order Processing Times</h2>
-  <p>All orders are subject to a processing period before dispatch. Orders are typically processed within <strong>${a.processingTime} business days</strong> of payment confirmation.</p>
-  ${a.cutoffTime ? `<p>Orders placed before <strong>${a.cutoffTime}</strong> on a business day will begin processing the same day. Orders placed after this time, or on weekends and public holidays, will begin processing the next business day.</p>` : ''}
+  <p>All orders are subject to a processing period before dispatch. Orders are typically processed within <strong>${processingTime} business days</strong> of payment confirmation.</p>
+  ${cutoffTime ? `<p>Orders placed before <strong>${cutoffTime}</strong> on a business day will begin processing the same day. Orders placed after this time, or on weekends and public holidays, will begin processing the next business day.</p>` : ''}
   <p>We dispatch orders <strong>${dispatchDaysLabel}</strong>. Orders placed on non-dispatch days will be processed and dispatched on the next available business day.</p>
   ${a.peakPeriodWarning ? `<p><strong>Peak periods:</strong> During busy periods such as Christmas, Black Friday, and other sale events, processing and delivery times may be longer than usual. We will endeavour to communicate any significant delays via our website or by email.</p>` : ''}
   ${a.handlesPreorders ? `<p><strong>Pre-orders and back-orders:</strong> Items available for pre-order or listed as back-ordered will be dispatched as soon as stock is available. The estimated dispatch date will be noted on the product page or in your order confirmation email.</p>` : ''}
@@ -193,14 +204,14 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
   if (a.offersFreeShipping) {
     sections.push(`<section>
   <h2>${next()}. Free Shipping</h2>
-  <p>We offer <strong>free standard shipping</strong> on all orders over <strong>${currencySymbol}${a.freeShippingThreshold}</strong>${a.shipsInternationally ? ' (applies to domestic orders only unless otherwise stated at checkout)' : ''}. The free shipping threshold is calculated on the order subtotal after any discounts are applied, and before taxes and other fees.</p>
+  <p>We offer <strong>free standard shipping</strong> on all orders over <strong>${currencySymbol}${freeShippingThreshold}</strong>${a.shipsInternationally ? ' (applies to domestic orders only unless otherwise stated at checkout)' : ''}. The free shipping threshold is calculated on the order subtotal after any discounts are applied, and before taxes and other fees.</p>
   <p>Free shipping is delivered via our standard delivery service. If you require express or next-day delivery, standard shipping charges will apply regardless of order value.</p>
 </section>`);
   }
 
   // ─── 6. Carriers & Tracking ──────────────────────────────────────────────
   const allCarriers = [...a.carriers];
-  if (a.otherCarrier.trim()) allCarriers.push(a.otherCarrier.trim());
+  if (otherCarrier.trim()) allCarriers.push(otherCarrier.trim());
 
   sections.push(`<section>
   <h2>${next()}. Shipping Carriers &amp; Tracking</h2>
@@ -209,7 +220,7 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
     : `<p>We work with a range of trusted shipping carriers to deliver your orders. The carrier used will depend on your location and chosen delivery method.</p>`
   }
   ${a.providesTracking
-    ? `<p><strong>Order tracking:</strong> Once your order has been dispatched, you will receive a ${a.trackingNotification === 'email' ? 'confirmation email' : a.trackingNotification === 'sms' ? 'SMS notification' : 'confirmation email and SMS'} containing your tracking number and a link to track your parcel. Please allow up to 24 hours for tracking information to update after your dispatch notification.</p>`
+    ? `<p><strong>Order tracking:</strong> Once your order has been dispatched, you will receive a ${trackingNotification === 'email' ? 'confirmation email' : trackingNotification === 'sms' ? 'SMS notification' : 'confirmation email and SMS'} containing your tracking number and a link to track your parcel. Please allow up to 24 hours for tracking information to update after your dispatch notification.</p>`
     : `<p>We do not currently offer order tracking for all shipments. You will receive a dispatch confirmation when your order has been sent.</p>`
   }
   ${a.remoteAreaSurcharge ? `<p><strong>Remote and rural areas:</strong> Deliveries to certain remote, rural, or island locations may be subject to an additional surcharge or extended delivery timeframe. Any applicable surcharge will be displayed at checkout before you complete your order.</p>` : ''}
@@ -273,14 +284,14 @@ export function generateShippingPolicy(a: ShippingPolicyAnswers): string {
   <h2>${next()}. Contact Us</h2>
   <p>If you have any questions about our shipping practices or need help with an order, please get in touch:</p>
   <ul>
-    ${a.companyName ? `<li><strong>Company:</strong> ${a.companyName}</li>` : ''}
+    ${a.companyName ? `<li><strong>Company:</strong> ${company}</li>` : ''}
     <li><strong>Email:</strong> <a href="mailto:${email}">${email}</a></li>
-    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a></li>` : ''}
+    ${a.websiteUrl ? `<li><strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a></li>` : ''}
   </ul>
 </section>`);
 
   return `
-<h1>${a.policyTitle || 'Shipping Policy'}</h1>
+<h1>${policyTitle || 'Shipping Policy'}</h1>
 <p class="policy-meta">Last updated: ${effectiveDateStr}</p>
 
 ${sections.join('\n\n')}

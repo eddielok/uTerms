@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export type EntityType =
   | 'individual'
   | 'sole-trader'
@@ -160,9 +162,33 @@ function formatDate(dateStr: string): string {
 
 function buildDE(a: ImpressumAnswers): string {
   const entityLabel = ENTITY_LABELS_DE[a.entityType];
-  const address = [a.street, `${a.postcode} ${a.city}`.trim(), a.state, a.country]
+  const companyName = escapeHtml(a.companyName);
+  const street = escapeHtml(a.street);
+  const postcode = escapeHtml(a.postcode);
+  const city = escapeHtml(a.city);
+  const state = escapeHtml(a.state);
+  const country = escapeHtml(a.country);
+  const registrationCourt = escapeHtml(a.registrationCourt);
+  const registrationNumber = escapeHtml(a.registrationNumber);
+  const vatId = escapeHtml(a.vatId);
+  const taxNumber = escapeHtml(a.taxNumber);
+  const phone = escapeHtml(a.phone);
+  const fax = escapeHtml(a.fax);
+  const email = escapeHtml(a.email);
+  const websiteUrl = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl);
+  const reps = a.representatives.filter(Boolean).map(escapeHtml);
+  const editorialPerson = escapeHtml(a.editorialPerson);
+  const editorialAddress = escapeHtml(a.editorialAddress);
+  const professionalTitle = escapeHtml(a.professionalTitle);
+  const titleAwardedIn = escapeHtml(a.titleAwardedIn);
+  const chamber = escapeHtml(a.chamber);
+  const supervisoryAuthority = escapeHtml(a.supervisoryAuthority);
+  const professionalRegulations = escapeHtml(a.professionalRegulations);
+  const insuranceProvider = escapeHtml(a.insuranceProvider);
+  const insuranceCoverage = escapeHtml(a.insuranceCoverage);
+  const address = [street, `${postcode} ${city}`.trim(), state, country]
     .filter(Boolean).join('<br>');
-  const reps = a.representatives.filter(Boolean);
   const hasReg = REGISTERED_IN_HANDELSREGISTER.includes(a.entityType);
   const needsRep = REGISTERED_ENTITIES.includes(a.entityType);
 
@@ -173,38 +199,38 @@ function buildDE(a: ImpressumAnswers): string {
 
   // Company info
   blocks.push(`<p>
-  <strong>${a.companyName}${entityLabel ? ` ${entityLabel}` : ''}</strong><br>
+  <strong>${companyName}${entityLabel ? ` ${entityLabel}` : ''}</strong><br>
   ${address}
 </p>`);
 
   // Handelsregister
-  if (hasReg && (a.registrationCourt || a.registrationNumber)) {
+  if (hasReg && (registrationCourt || registrationNumber)) {
     blocks.push(`<p>
   <strong>Handelsregister:</strong><br>
-  ${a.registrationCourt ? `Registergericht: ${a.registrationCourt}<br>` : ''}
-  ${a.registrationNumber ? `Registernummer: ${a.registrationNumber}` : ''}
+  ${registrationCourt ? `Registergericht: ${registrationCourt}<br>` : ''}
+  ${registrationNumber ? `Registernummer: ${registrationNumber}` : ''}
 </p>`);
   }
 
   // VAT
-  if (a.vatId) {
+  if (vatId) {
     blocks.push(`<p>
   <strong>Umsatzsteuer:</strong><br>
   Umsatzsteuer-Identifikationsnummer gemäß § 27a Umsatzsteuergesetz:<br>
-  ${a.vatId}
+  ${vatId}
 </p>`);
-  } else if (a.taxNumber) {
+  } else if (taxNumber) {
     blocks.push(`<p>
-  <strong>Steuernummer:</strong> ${a.taxNumber}
+  <strong>Steuernummer:</strong> ${taxNumber}
 </p>`);
   }
 
   // Contact
   const contactLines: string[] = [];
-  if (a.phone) contactLines.push(`Telefon: ${a.phone}`);
-  if (a.fax) contactLines.push(`Telefax: ${a.fax}`);
-  if (a.email) contactLines.push(`E-Mail: <a href="mailto:${a.email}">${a.email}</a>`);
-  if (a.websiteUrl) contactLines.push(`Web: <a href="${a.websiteUrl}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a>`);
+  if (phone) contactLines.push(`Telefon: ${phone}`);
+  if (fax) contactLines.push(`Telefax: ${fax}`);
+  if (email) contactLines.push(`E-Mail: <a href="mailto:${email}">${email}</a>`);
+  if (websiteUrl !== '#') contactLines.push(`Web: <a href="${websiteUrl}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>`);
   if (contactLines.length > 0) {
     blocks.push(`<p>
   <strong>Kontakt:</strong><br>
@@ -222,24 +248,24 @@ function buildDE(a: ImpressumAnswers): string {
   }
 
   // Editorial responsibility
-  if (a.hasEditorialContent && a.editorialPerson) {
+  if (a.hasEditorialContent && editorialPerson) {
     blocks.push(`<p>
   <strong>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV:</strong><br>
-  ${a.editorialPerson}${a.editorialAddress ? `<br>${a.editorialAddress}` : ''}
+  ${editorialPerson}${editorialAddress ? `<br>${editorialAddress}` : ''}
 </p>`);
   }
 
   // Professional info
   if (a.isRegulatedProfession) {
     const profLines: string[] = [];
-    if (a.professionalTitle) profLines.push(`Berufsbezeichnung: ${a.professionalTitle}`);
-    if (a.titleAwardedIn) profLines.push(`Verliehen in: ${a.titleAwardedIn}`);
-    if (a.chamber) profLines.push(`Kammer: ${a.chamber}`);
-    if (a.supervisoryAuthority) profLines.push(`Aufsichtsbehörde: ${a.supervisoryAuthority}`);
-    if (a.professionalRegulations) profLines.push(`Berufsrechtliche Regelungen: ${a.professionalRegulations}`);
-    if (a.hasInsurance && a.insuranceProvider) {
-      profLines.push(`Berufshaftpflichtversicherung: ${a.insuranceProvider}`);
-      if (a.insuranceCoverage) profLines.push(`Geltungsbereich: ${a.insuranceCoverage}`);
+    if (professionalTitle) profLines.push(`Berufsbezeichnung: ${professionalTitle}`);
+    if (titleAwardedIn) profLines.push(`Verliehen in: ${titleAwardedIn}`);
+    if (chamber) profLines.push(`Kammer: ${chamber}`);
+    if (supervisoryAuthority) profLines.push(`Aufsichtsbehörde: ${supervisoryAuthority}`);
+    if (professionalRegulations) profLines.push(`Berufsrechtliche Regelungen: ${professionalRegulations}`);
+    if (a.hasInsurance && insuranceProvider) {
+      profLines.push(`Berufshaftpflichtversicherung: ${insuranceProvider}`);
+      if (insuranceCoverage) profLines.push(`Geltungsbereich: ${insuranceCoverage}`);
     }
     if (profLines.length > 0) {
       blocks.push(`<p>
@@ -289,9 +315,33 @@ function buildDE(a: ImpressumAnswers): string {
 
 function buildEN(a: ImpressumAnswers): string {
   const entityLabel = ENTITY_LABELS_EN[a.entityType];
-  const address = [a.street, `${a.postcode} ${a.city}`.trim(), a.state, a.country]
+  const companyName = escapeHtml(a.companyName);
+  const street = escapeHtml(a.street);
+  const postcode = escapeHtml(a.postcode);
+  const city = escapeHtml(a.city);
+  const state = escapeHtml(a.state);
+  const country = escapeHtml(a.country);
+  const registrationCourt = escapeHtml(a.registrationCourt);
+  const registrationNumber = escapeHtml(a.registrationNumber);
+  const vatId = escapeHtml(a.vatId);
+  const taxNumber = escapeHtml(a.taxNumber);
+  const phone = escapeHtml(a.phone);
+  const fax = escapeHtml(a.fax);
+  const email = escapeHtml(a.email);
+  const websiteUrl = safeUrl(a.websiteUrl);
+  const websiteDisplay = escapeHtml(a.websiteUrl);
+  const reps = a.representatives.filter(Boolean).map(escapeHtml);
+  const editorialPerson = escapeHtml(a.editorialPerson);
+  const editorialAddress = escapeHtml(a.editorialAddress);
+  const professionalTitle = escapeHtml(a.professionalTitle);
+  const titleAwardedIn = escapeHtml(a.titleAwardedIn);
+  const chamber = escapeHtml(a.chamber);
+  const supervisoryAuthority = escapeHtml(a.supervisoryAuthority);
+  const professionalRegulations = escapeHtml(a.professionalRegulations);
+  const insuranceProvider = escapeHtml(a.insuranceProvider);
+  const insuranceCoverage = escapeHtml(a.insuranceCoverage);
+  const address = [street, `${postcode} ${city}`.trim(), state, country]
     .filter(Boolean).join('<br>');
-  const reps = a.representatives.filter(Boolean);
   const hasReg = REGISTERED_IN_HANDELSREGISTER.includes(a.entityType);
   const needsRep = REGISTERED_ENTITIES.includes(a.entityType);
 
@@ -302,38 +352,38 @@ function buildEN(a: ImpressumAnswers): string {
 
   // Company info
   blocks.push(`<p>
-  <strong>${a.companyName}${entityLabel ? ` — ${entityLabel}` : ''}</strong><br>
+  <strong>${companyName}${entityLabel ? ` — ${entityLabel}` : ''}</strong><br>
   ${address}
 </p>`);
 
   // Commercial register
-  if (hasReg && (a.registrationCourt || a.registrationNumber)) {
+  if (hasReg && (registrationCourt || registrationNumber)) {
     blocks.push(`<p>
   <strong>Commercial Register:</strong><br>
-  ${a.registrationCourt ? `Registry Court: ${a.registrationCourt}<br>` : ''}
-  ${a.registrationNumber ? `Registration Number: ${a.registrationNumber}` : ''}
+  ${registrationCourt ? `Registry Court: ${registrationCourt}<br>` : ''}
+  ${registrationNumber ? `Registration Number: ${registrationNumber}` : ''}
 </p>`);
   }
 
   // VAT
-  if (a.vatId) {
+  if (vatId) {
     blocks.push(`<p>
   <strong>VAT:</strong><br>
   VAT Identification Number pursuant to § 27a German VAT Act (UStG):<br>
-  ${a.vatId}
+  ${vatId}
 </p>`);
-  } else if (a.taxNumber) {
+  } else if (taxNumber) {
     blocks.push(`<p>
-  <strong>Tax Number:</strong> ${a.taxNumber}
+  <strong>Tax Number:</strong> ${taxNumber}
 </p>`);
   }
 
   // Contact
   const contactLines: string[] = [];
-  if (a.phone) contactLines.push(`Phone: ${a.phone}`);
-  if (a.fax) contactLines.push(`Fax: ${a.fax}`);
-  if (a.email) contactLines.push(`Email: <a href="mailto:${a.email}">${a.email}</a>`);
-  if (a.websiteUrl) contactLines.push(`Web: <a href="${a.websiteUrl}" target="_blank" rel="noopener noreferrer">${a.websiteUrl}</a>`);
+  if (phone) contactLines.push(`Phone: ${phone}`);
+  if (fax) contactLines.push(`Fax: ${fax}`);
+  if (email) contactLines.push(`Email: <a href="mailto:${email}">${email}</a>`);
+  if (websiteUrl !== '#') contactLines.push(`Web: <a href="${websiteUrl}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>`);
   if (contactLines.length > 0) {
     blocks.push(`<p>
   <strong>Contact:</strong><br>
@@ -351,24 +401,24 @@ function buildEN(a: ImpressumAnswers): string {
   }
 
   // Editorial responsibility
-  if (a.hasEditorialContent && a.editorialPerson) {
+  if (a.hasEditorialContent && editorialPerson) {
     blocks.push(`<p>
   <strong>Responsible for editorial content pursuant to § 18 para. 2 MStV:</strong><br>
-  ${a.editorialPerson}${a.editorialAddress ? `<br>${a.editorialAddress}` : ''}
+  ${editorialPerson}${editorialAddress ? `<br>${editorialAddress}` : ''}
 </p>`);
   }
 
   // Professional info
   if (a.isRegulatedProfession) {
     const profLines: string[] = [];
-    if (a.professionalTitle) profLines.push(`Professional Title: ${a.professionalTitle}`);
-    if (a.titleAwardedIn) profLines.push(`Awarded in: ${a.titleAwardedIn}`);
-    if (a.chamber) profLines.push(`Chamber / Association: ${a.chamber}`);
-    if (a.supervisoryAuthority) profLines.push(`Supervisory Authority: ${a.supervisoryAuthority}`);
-    if (a.professionalRegulations) profLines.push(`Professional Regulations: ${a.professionalRegulations}`);
-    if (a.hasInsurance && a.insuranceProvider) {
-      profLines.push(`Professional Liability Insurance: ${a.insuranceProvider}`);
-      if (a.insuranceCoverage) profLines.push(`Coverage Area: ${a.insuranceCoverage}`);
+    if (professionalTitle) profLines.push(`Professional Title: ${professionalTitle}`);
+    if (titleAwardedIn) profLines.push(`Awarded in: ${titleAwardedIn}`);
+    if (chamber) profLines.push(`Chamber / Association: ${chamber}`);
+    if (supervisoryAuthority) profLines.push(`Supervisory Authority: ${supervisoryAuthority}`);
+    if (professionalRegulations) profLines.push(`Professional Regulations: ${professionalRegulations}`);
+    if (a.hasInsurance && insuranceProvider) {
+      profLines.push(`Professional Liability Insurance: ${insuranceProvider}`);
+      if (insuranceCoverage) profLines.push(`Coverage Area: ${insuranceCoverage}`);
     }
     if (profLines.length > 0) {
       blocks.push(`<p>
@@ -419,7 +469,7 @@ function buildEN(a: ImpressumAnswers): string {
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export function generateImpressum(a: ImpressumAnswers): string {
-  const title = a.policyTitle || 'Impressum';
+  const title = escapeHtml(a.policyTitle) || 'Impressum';
   const effectiveDateStr = formatDate(a.effectiveDate);
 
   let body = '';

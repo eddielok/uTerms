@@ -1,3 +1,5 @@
+import { escapeHtml, safeUrl } from './html';
+
 export interface WizardAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -90,16 +92,6 @@ export const DEFAULT_ANSWERS: WizardAnswers = {
   notificationMethod: "website",
 };
 
-// Helper to escape HTML to prevent XSS
-const escapeHtml = (unsafe: string) => {
-  if (!unsafe) return "";
-  return unsafe
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-};
 
 function li(text: string) {
   return `<li>${text}</li>`;
@@ -220,6 +212,7 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
       jurisdiction = "the United Kingdom";
     }
   }
+  jurisdiction = escapeHtml(jurisdiction);
 
   const notifText =
     notificationMethod === "email"
@@ -228,9 +221,10 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
         ? "We will notify you of material changes by email and by posting a notice on our website."
         : "We will post the updated policy on this page with a revised effective date.";
 
-  const email = privacyEmail || "privacy@yourcompany.com";
-  const company = companyName || "our company";
-  const site = websiteUrl || "#";
+  const email = escapeHtml(privacyEmail) || "privacy@yourcompany.com";
+  const company = escapeHtml(companyName) || "our company";
+  const site = safeUrl(websiteUrl);
+  const websiteDisplay = escapeHtml(websiteUrl) || "our website";
 
   // Legal basis entries (GDPR Article 6)
   const legalBasisEntries: {
@@ -371,7 +365,7 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
 
   <section>
     <h2>1. Introduction</h2>
-    <p>This Privacy Policy describes how <strong>${company}</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) collects, uses, and protects information when you visit or use our services at <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteUrl || "our website"}</a>.${jurisdiction ? ` This policy is governed by the applicable laws of <strong>${jurisdiction}</strong>.` : ""}</p>
+    <p>This Privacy Policy describes how <strong>${company}</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;, or &ldquo;our&rdquo;) collects, uses, and protects information when you visit or use our services at <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>.${jurisdiction ? ` This policy is governed by the applicable laws of <strong>${jurisdiction}</strong>.` : ""}</p>
     <p>By using our services, you agree to the collection and use of information in accordance with this policy.</p>
   </section>
 
@@ -461,7 +455,7 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
               : ""
           }${
             cookiePolicyUrl
-              ? ` For full details, please read our <a href="${cookiePolicyUrl}" target="_blank" rel="noopener noreferrer">Cookie Policy</a>.`
+              ? ` For full details, please read our <a href="${safeUrl(cookiePolicyUrl)}" target="_blank" rel="noopener noreferrer">Cookie Policy</a>.`
               : " You can control or disable cookies through your browser settings, though this may affect some functionality."
           }</p>
       ${
@@ -518,8 +512,8 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
     <p>If you have any questions, concerns, or requests regarding this Privacy Policy, please contact us:</p>
     <ul>
       ${email ? li(`<strong>Email:</strong> <a href="mailto:${email}">${email}</a>`) : ""}
-      ${companyName ? li(`<strong>Company:</strong> ${companyName}`) : ""}
-      ${websiteUrl ? li(`<strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteUrl}</a>`) : ""}
+      ${companyName ? li(`<strong>Company:</strong> ${company}`) : ""}
+      ${websiteUrl ? li(`<strong>Website:</strong> <a href="${site}" target="_blank" rel="noopener noreferrer">${websiteDisplay}</a>`) : ""}
     </ul>
   </section>
 `.trim();

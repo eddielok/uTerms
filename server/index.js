@@ -14,6 +14,7 @@ const compression = require("compression");
 const rateLimit = require("express-rate-limit");
 const puppeteer = require("puppeteer");
 const cron = require("node-cron");
+const sanitizeHtml = require("sanitize-html");
 
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const {
@@ -877,6 +878,16 @@ const EMBED_POLICY_ROUTES = [
   },
 ];
 
+const POLICY_SANITIZE_OPTIONS = {
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'figure', 'figcaption', 'mark', 'small', 'del', 'ins', 'sub', 'sup', 'abbr', 'address', 'hr']),
+  allowedAttributes: {
+    ...sanitizeHtml.defaults.allowedAttributes,
+    '*': ['class', 'style', 'id'],
+    'a': ['href', 'target', 'rel'],
+  },
+  allowedSchemes: ['http', 'https', 'mailto'],
+};
+
 EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
   app.get(routePath, async (req, res) => {
     const { userId } = req.params;
@@ -888,6 +899,9 @@ EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
         return res
           .status(404)
           .json({ error: "No published document found for this user" });
+      if (policy.generated) {
+        policy.generated = sanitizeHtml(policy.generated, POLICY_SANITIZE_OPTIONS);
+      }
       res.set("Cache-Control", "public, max-age=300");
       res.json(policy);
     } catch (err) {
