@@ -11,32 +11,43 @@ async function generateNonce(): Promise<[string, string]> {
   return [raw, hashed];
 }
 
-export function signInWithGoogle(onSuccess: () => void, onError: (msg: string) => void) {
+export async function renderGoogleButton(
+  container: HTMLElement,
+  onSuccess: () => void,
+  onError: (msg: string) => void
+) {
   const google = (window as any).google;
   if (!google) {
-    onError('Google Sign-In is not available.');
+    onError('Google Sign-In script not loaded.');
     return;
   }
 
-  generateNonce().then(([rawNonce, hashedNonce]) => {
-    google.accounts.id.initialize({
-      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
-      nonce: hashedNonce,
-      callback: async (response: { credential: string }) => {
-        try {
-          const { error } = await supabase.auth.signInWithIdToken({
-            provider: 'google',
-            token: response.credential,
-            nonce: rawNonce,
-          });
-          if (error) throw error;
-          onSuccess();
-        } catch (err: any) {
-          onError(err.message || 'Google sign-in failed.');
-        }
-      },
-      ux_mode: 'popup',
-    });
-    google.accounts.id.prompt();
+  const [rawNonce, hashedNonce] = await generateNonce();
+
+  google.accounts.id.initialize({
+    client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+    nonce: hashedNonce,
+    callback: async (response: { credential: string }) => {
+      try {
+        const { error } = await supabase.auth.signInWithIdToken({
+          provider: 'google',
+          token: response.credential,
+          nonce: rawNonce,
+        });
+        if (error) throw error;
+        onSuccess();
+      } catch (err: any) {
+        onError(err.message || 'Google sign-in failed.');
+      }
+    },
+  });
+
+  google.accounts.id.renderButton(container, {
+    type: 'standard',
+    theme: 'outline',
+    size: 'large',
+    text: 'continue_with',
+    shape: 'rectangular',
+    width: container.offsetWidth || 340,
   });
 }
