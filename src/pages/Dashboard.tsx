@@ -66,20 +66,25 @@ export const Dashboard: React.FC = () => {
     if (!userId) return;
     const fetchConsents = async () => {
       setIsLoadingConsents(true);
-      const { count } = await supabase
-        .from("visitor_consent")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", userId);
-      setTotalConsents(count ?? 0);
+      try {
+        const { count } = await supabase
+          .from("visitor_consent")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", userId);
+        setTotalConsents(count ?? 0);
 
-      const { data } = await supabase
-        .from("visitor_consent")
-        .select("consent_data, created_at")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(500);
-      setConsentRecords(data || []);
-      setIsLoadingConsents(false);
+        const { data } = await supabase
+          .from("visitor_consent")
+          .select("consent_data, created_at")
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        setConsentRecords(data || []);
+      } catch (err) {
+        console.error("[Dashboard] Failed to fetch consents:", err);
+      } finally {
+        setIsLoadingConsents(false);
+      }
     };
     fetchConsents();
   }, [userId]);
@@ -88,26 +93,31 @@ export const Dashboard: React.FC = () => {
     if (!userId) return;
     const fetchPolicies = async () => {
       setIsLoadingPolicies(true);
-      const results = await Promise.all(
-        POLICY_DEFS.map(async (def) => {
-          const { data } = await supabase
-            .from(def.table)
-            .select("id, title, updated_at")
-            .eq("user_id", userId)
-            .eq("status", "published")
-            .order("updated_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          return {
-            ...def,
-            id: data?.id ?? null,
-            title: data?.title ?? null,
-            updated_at: data?.updated_at ?? null,
-          };
-        })
-      );
-      setPolicies(results);
-      setIsLoadingPolicies(false);
+      try {
+        const results = await Promise.all(
+          POLICY_DEFS.map(async (def) => {
+            const { data } = await supabase
+              .from(def.table)
+              .select("id, title, updated_at")
+              .eq("user_id", userId)
+              .eq("status", "published")
+              .order("updated_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            return {
+              ...def,
+              id: data?.id ?? null,
+              title: data?.title ?? null,
+              updated_at: data?.updated_at ?? null,
+            };
+          })
+        );
+        setPolicies(results);
+      } catch (err) {
+        console.error("[Dashboard] Failed to fetch policies:", err);
+      } finally {
+        setIsLoadingPolicies(false);
+      }
     };
     fetchPolicies();
   }, [userId]);

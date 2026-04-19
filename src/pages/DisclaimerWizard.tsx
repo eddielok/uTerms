@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { usePrefillFromStorage } from '../hooks/usePrefillFromStorage';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AiPrefillButton } from '../components/AiPrefillButton';
 import { useCookieConfig } from '../context/CookieContext';
@@ -53,19 +54,12 @@ export const DisclaimerWizard: React.FC = () => {
   const { userId } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  // Apply localStorage prefill from Policy Scan (new policies only)
-  useEffect(() => {
-    if (!isEditing) {
-      try {
-        const stored = localStorage.getItem('uterms_prefill_disclaimer');
-        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } catch {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<DisclaimerAnswers>(DEFAULT_DISCLAIMER_ANSWERS);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  usePrefillFromStorage('uterms_prefill_disclaimer', setAnswers, isEditing);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   useEffect(() => {
@@ -93,6 +87,7 @@ export const DisclaimerWizard: React.FC = () => {
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const generated = generateDisclaimer(answers);
       const payload = {
@@ -115,6 +110,8 @@ export const DisclaimerWizard: React.FC = () => {
           .single();
         if (data) navigate(`/disclaimer/${data.id}/preview`);
       }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -240,7 +237,7 @@ export const DisclaimerWizard: React.FC = () => {
                       type="checkbox"
                       style={{ marginTop: '2px' }}
                       checked={answers[key as keyof DisclaimerAnswers] as boolean}
-                      onChange={(e) => set(key as keyof DisclaimerAnswers, e.target.checked as any)}
+                      onChange={(e) => set(key as keyof DisclaimerAnswers, e.target.checked)}
                     />
                     <span>
                       <strong>{label}</strong>
@@ -366,7 +363,7 @@ export const DisclaimerWizard: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={answers[key as keyof DisclaimerAnswers] as boolean}
-                      onChange={(e) => set(key as keyof DisclaimerAnswers, e.target.checked as any)}
+                      onChange={(e) => set(key as keyof DisclaimerAnswers, e.target.checked)}
                     />
                     <span>{label}</span>
                   </label>
@@ -587,14 +584,17 @@ export const DisclaimerWizard: React.FC = () => {
               Next <ArrowRight size={16} />
             </button>
           ) : (
-            <button
-              className="btn-generate"
-              onClick={handleGenerate}
-              disabled={isSaving || !answers.companyName || !answers.contactEmail}
-            >
-              <Sparkles size={16} />
-              {isSaving ? 'Generating...' : 'Generate Disclaimer'}
-            </button>
+            <>
+              <button
+                className="btn-generate"
+                onClick={handleGenerate}
+                disabled={isSaving || !answers.companyName || !answers.contactEmail}
+              >
+                <Sparkles size={16} />
+                {isSaving ? 'Generating...' : 'Generate Disclaimer'}
+              </button>
+              {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{saveError}</p>}
+            </>
           )}
         </div>
       </div>

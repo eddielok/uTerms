@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { usePrefillFromStorage } from '../hooks/usePrefillFromStorage';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AiPrefillButton } from '../components/AiPrefillButton';
 import { useCookieConfig } from '../context/CookieContext';
@@ -42,19 +43,12 @@ export const ReturnPolicyWizard: React.FC = () => {
   const { userId } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  // Apply localStorage prefill from Policy Scan (new policies only)
-  useEffect(() => {
-    if (!isEditing) {
-      try {
-        const stored = localStorage.getItem('uterms_prefill_return_policy');
-        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } catch {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<ReturnPolicyAnswers>(DEFAULT_RETURN_POLICY_ANSWERS);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  usePrefillFromStorage('uterms_prefill_return_policy', setAnswers, isEditing);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   useEffect(() => {
@@ -91,6 +85,7 @@ export const ReturnPolicyWizard: React.FC = () => {
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const generated = generateReturnPolicy(answers);
       const payload = {
@@ -113,6 +108,8 @@ export const ReturnPolicyWizard: React.FC = () => {
           .single();
         if (data) navigate(`/return-policy/${data.id}/preview`);
       }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -304,7 +301,7 @@ export const ReturnPolicyWizard: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={answers[key as keyof ReturnPolicyAnswers] as boolean}
-                      onChange={(e) => set(key as keyof ReturnPolicyAnswers, e.target.checked as any)}
+                      onChange={(e) => set(key as keyof ReturnPolicyAnswers, e.target.checked)}
                     />
                     <span style={{ fontSize: '0.875rem' }}>{label}</span>
                   </label>
@@ -812,6 +809,8 @@ export const ReturnPolicyWizard: React.FC = () => {
               Next <ArrowRight size={16} />
             </button>
           ) : (
+            <>
+            {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>{saveError}</p>}
             <button
               className="btn-generate"
               onClick={handleGenerate}
@@ -820,6 +819,7 @@ export const ReturnPolicyWizard: React.FC = () => {
               <Sparkles size={16} />
               {isSaving ? 'Generating...' : 'Generate Return Policy'}
             </button>
+            </>
           )}
         </div>
       </div>

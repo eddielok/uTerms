@@ -174,25 +174,25 @@ export const Checklist: React.FC = () => {
 
   const handleCopy = () => {
     const scriptText = `<script src="${APP_URL}/uterms-embed.js?id=${userId || "YOUR_USER_ID"}&mode=auto&api=${API_URL}"></script>`;
-    navigator.clipboard.writeText(scriptText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    navigator.clipboard.writeText(scriptText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => setGcmError("Failed to copy to clipboard. Please copy manually."));
   };
 
   const handleCopyPref = () => {
     const prefText = `<a href="#" class="uterms-preferences">Consent Preferences</a>`;
-    navigator.clipboard.writeText(prefText);
-    setCopiedPref(true);
-    setTimeout(() => setCopiedPref(false), 2000);
+    navigator.clipboard.writeText(prefText).then(() => {
+      setCopiedPref(true);
+      setTimeout(() => setCopiedPref(false), 2000);
+    }).catch(() => setGcmError("Failed to copy to clipboard. Please copy manually."));
   };
 
   return (
     <div className="checklist-page-container">
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 0.5rem 0' }}>
-          Cookie Consent Setup
-        </h1>
-        <p style={{ color: '#6b7280', fontSize: '0.95rem', margin: 0, lineHeight: 1.6 }}>
+      <div className="checklist-page-header">
+        <h1 className="checklist-page-title">Cookie Consent Setup</h1>
+        <p className="checklist-page-subtitle">
           Follow these steps to make your website compliant with GDPR, CCPA, and Google Consent Mode v2.
           Complete each step in order — scanning your website first unlocks the embed snippets below.
         </p>

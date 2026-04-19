@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { usePrefillFromStorage } from "../hooks/usePrefillFromStorage";
 import { useNavigate, useParams } from "react-router-dom";
 import { AiPrefillButton } from "../components/AiPrefillButton";
 import { useCookieConfig } from "../context/CookieContext";
@@ -67,20 +68,13 @@ export const PrivacyPolicyWizard: React.FC = () => {
   const { userId, scannedData } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  // Apply localStorage prefill from Policy Scan (new policies only)
-  useEffect(() => {
-    if (!isEditing) {
-      try {
-        const stored = localStorage.getItem('uterms_prefill_privacy_policy');
-        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } catch {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<WizardAnswers>(DEFAULT_ANSWERS);
   const [policyTitle, setPolicyTitle] = useState("Privacy Policy");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  usePrefillFromStorage('uterms_prefill_privacy_policy', setAnswers, isEditing);
   const [isLoading, setIsLoading] = useState(isEditing);
   const [isCookieListExpanded, setIsCookieListExpanded] = useState(false);
 
@@ -179,6 +173,7 @@ export const PrivacyPolicyWizard: React.FC = () => {
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const generated = generatePrivacyPolicy(answers);
       const payload = {
@@ -201,6 +196,8 @@ export const PrivacyPolicyWizard: React.FC = () => {
           .single();
         if (data) navigate(`/policy-management/${data.id}/preview`);
       }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -578,7 +575,7 @@ export const PrivacyPolicyWizard: React.FC = () => {
                   </div>
 
                   {answers.scannedCookies &&
-                    answers.scannedCookies.cookiesCount > 0 && (
+                    (answers.scannedCookies.cookiesCount ?? 0) > 0 && (
                       <div className="wizard-field mt-4 p-4 bg-gray-50 rounded-lg">
                         <p className="font-semibold text-gray-800 mb-2">
                           Detected Cookies (
@@ -726,6 +723,7 @@ export const PrivacyPolicyWizard: React.FC = () => {
                   Your privacy policy is ready to generate based on your
                   answers.
                 </p>
+                {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>{saveError}</p>}
                 <button
                   className="btn-generate"
                   onClick={handleGenerate}

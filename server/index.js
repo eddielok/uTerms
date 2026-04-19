@@ -289,9 +289,12 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false, // Allow embed scripts to be loaded cross-origin
 }));
 app.use(compression());
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io", "http://localhost:5173"];
 app.use(
   cors({
-    origin: ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io", "http://localhost:5173"],
+    origin: ALLOWED_ORIGINS,
     credentials: true,
   }),
 );
@@ -314,7 +317,6 @@ app.use("/api/analyze-policy", scanLimiter);
 app.use("/api/analyze-all-policies", policyScanLimiter);
 
 app.use(express.json());
-Sentry.setupExpressErrorHandler(app);
 // ─── Cookie category templates ────────────────────────────────────────────────
 const CATEGORY_TEMPLATES = [
   {
@@ -1908,6 +1910,7 @@ app.post("/api/delete-account", deleteAccountLimiter, async (req, res) => {
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
+Sentry.setupExpressErrorHandler(app);
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Scanner API running on http://localhost:${PORT}`);

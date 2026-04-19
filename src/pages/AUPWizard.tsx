@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { usePrefillFromStorage } from '../hooks/usePrefillFromStorage';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AiPrefillButton } from '../components/AiPrefillButton';
 import { useCookieConfig } from '../context/CookieContext';
@@ -63,19 +64,12 @@ export const AUPWizard: React.FC = () => {
   const { userId } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  // Apply localStorage prefill from Policy Scan (new policies only)
-  useEffect(() => {
-    if (!isEditing) {
-      try {
-        const stored = localStorage.getItem('uterms_prefill_aup');
-        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } catch {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<AUPAnswers>(DEFAULT_AUP_ANSWERS);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  usePrefillFromStorage('uterms_prefill_aup', setAnswers, isEditing);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   useEffect(() => {
@@ -113,6 +107,7 @@ export const AUPWizard: React.FC = () => {
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const generated = generateAUP(answers);
       const payload = {
@@ -135,6 +130,8 @@ export const AUPWizard: React.FC = () => {
           .single();
         if (data) navigate(`/acceptable-use-policy/${data.id}/preview`);
       }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -506,14 +503,17 @@ export const AUPWizard: React.FC = () => {
               Next <ArrowRight size={16} />
             </button>
           ) : (
-            <button
-              className="btn-generate"
-              onClick={handleGenerate}
-              disabled={isSaving || !answers.companyName || !answers.contactEmail}
-            >
-              <Sparkles size={16} />
-              {isSaving ? 'Generating...' : 'Generate Acceptable Use Policy'}
-            </button>
+            <>
+              <button
+                className="btn-generate"
+                onClick={handleGenerate}
+                disabled={isSaving || !answers.companyName || !answers.contactEmail}
+              >
+                <Sparkles size={16} />
+                {isSaving ? 'Generating...' : 'Generate Acceptable Use Policy'}
+              </button>
+              {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{saveError}</p>}
+            </>
           )}
         </div>
       </div>

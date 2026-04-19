@@ -1,5 +1,31 @@
 import { escapeHtml, safeUrl } from './html';
 
+export interface ScannedCookie {
+  name: string;
+  value?: string;
+  domain?: string;
+  path?: string;
+  expires?: string | number;
+  httpOnly?: boolean;
+  secure?: boolean;
+  sameSite?: string;
+}
+
+export interface ScannedProvider {
+  name: string;
+  cookies: ScannedCookie[];
+}
+
+export interface ScannedCategory {
+  name: string;
+  providers: ScannedProvider[];
+}
+
+export interface ScannedCookieData {
+  categories: ScannedCategory[];
+  cookiesCount?: number;
+}
+
 export interface WizardAnswers {
   // Step 1: Business Info
   companyName: string;
@@ -45,7 +71,7 @@ export interface WizardAnswers {
   cookieTypes: string[];
   cookiePolicyUrl: string;
   unclassifiedCookiesDescription?: string; // For user explanation of unclassified cookies
-  scannedCookies?: any; // New field to hold the raw scan data
+  scannedCookies?: ScannedCookieData;
 
   // Step 7: Contact & Updates
   privacyEmail: string;
@@ -268,9 +294,9 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
     sharesWithSocialMedia;
 
   // Check if we have GA or other analytics cookies
-  const hasAnalyticsCookies = scannedCookies?.categories?.some((cat: any) => {
-    return cat.providers?.some((prov: any) => {
-      return prov.cookies?.some((c: any) => {
+  const hasAnalyticsCookies = scannedCookies?.categories?.some((cat: ScannedCategory) => {
+    return cat.providers?.some((prov: ScannedProvider) => {
+      return prov.cookies?.some((c: ScannedCookie) => {
         const name = c.name?.toLowerCase() || "";
         return (
           name.includes("_ga") ||
@@ -286,9 +312,9 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
   });
 
   // Check if we have API-related functional cookies
-  const hasApiCookies = scannedCookies?.categories?.some((cat: any) => {
-    return cat.providers?.some((prov: any) => {
-      return prov.cookies?.some((c: any) => {
+  const hasApiCookies = scannedCookies?.categories?.some((cat: ScannedCategory) => {
+    return cat.providers?.some((prov: ScannedProvider) => {
+      return prov.cookies?.some((c: ScannedCookie) => {
         const name = c.name?.toLowerCase() || "";
         return name.includes("api") || name.includes("_cache");
       });

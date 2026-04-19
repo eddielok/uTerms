@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import React, { useEffect, useState } from "react";
+import { usePrefillFromStorage } from "../hooks/usePrefillFromStorage";
 import { useNavigate, useParams } from "react-router-dom";
 import { AiPrefillButton } from "../components/AiPrefillButton";
 import { useCookieConfig } from "../context/CookieContext";
@@ -91,15 +92,6 @@ export const CookiePolicyWizard: React.FC = () => {
   const { userId, scannedData } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  // Apply localStorage prefill from Policy Scan (new policies only)
-  useEffect(() => {
-    if (!isEditing) {
-      try {
-        const stored = localStorage.getItem('uterms_prefill_cookie_policy');
-        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } catch {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<CookiePolicyAnswers>(
@@ -107,6 +99,8 @@ export const CookiePolicyWizard: React.FC = () => {
   );
   const [policyTitle, setPolicyTitle] = useState("Cookie Policy");
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  usePrefillFromStorage('uterms_prefill_cookie_policy', setAnswers, isEditing);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   // Load existing policy when editing
@@ -236,6 +230,7 @@ export const CookiePolicyWizard: React.FC = () => {
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const generated = generateCookiePolicy(answers);
       const payload = {
@@ -258,6 +253,8 @@ export const CookiePolicyWizard: React.FC = () => {
           .single();
         if (data) navigate(`/cookie-policy/${data.id}/preview`);
       }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -1156,6 +1153,7 @@ export const CookiePolicyWizard: React.FC = () => {
                 <p>
                   Your cookie policy is ready to generate based on your answers.
                 </p>
+                {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem', margin: '0 0 0.5rem' }}>{saveError}</p>}
                 <button
                   className="btn-generate"
                   onClick={handleGenerate}

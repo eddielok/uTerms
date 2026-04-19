@@ -1,5 +1,6 @@
 import { ArrowLeft, ArrowRight, Check, Sparkles } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { usePrefillFromStorage } from '../hooks/usePrefillFromStorage';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AiPrefillButton } from '../components/AiPrefillButton';
 import { useCookieConfig } from '../context/CookieContext';
@@ -48,19 +49,12 @@ export const ShippingPolicyWizard: React.FC = () => {
   const { userId } = useCookieConfig();
   const navigate = useNavigate();
   const isEditing = Boolean(id);
-  // Apply localStorage prefill from Policy Scan (new policies only)
-  useEffect(() => {
-    if (!isEditing) {
-      try {
-        const stored = localStorage.getItem('uterms_prefill_shipping_policy');
-        if (stored) setAnswers(prev => ({ ...prev, ...JSON.parse(stored) }));
-      } catch {}
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState<ShippingPolicyAnswers>(DEFAULT_SHIPPING_POLICY_ANSWERS);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  usePrefillFromStorage('uterms_prefill_shipping_policy', setAnswers, isEditing);
   const [isLoading, setIsLoading] = useState(isEditing);
 
   useEffect(() => {
@@ -95,6 +89,7 @@ export const ShippingPolicyWizard: React.FC = () => {
   const handleGenerate = async () => {
     if (!userId) return;
     setIsSaving(true);
+    setSaveError(null);
     try {
       const generated = generateShippingPolicy(answers);
       const payload = {
@@ -112,6 +107,8 @@ export const ShippingPolicyWizard: React.FC = () => {
         const { data } = await supabase.from('shipping_policy').insert(payload).select('id').single();
         if (data) navigate(`/shipping-policy/${data.id}/preview`);
       }
+    } catch (err: any) {
+      setSaveError(err.message || 'Failed to save. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -268,7 +265,7 @@ export const ShippingPolicyWizard: React.FC = () => {
             ].map(({ toggle, label, thresholdKey, costKey, daysKey }) => (
               <div key={toggle} className="wizard-field" style={{ borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem' }}>
                 <label className="wizard-checkbox-item" style={{ marginBottom: '0.5rem' }}>
-                  <input type="checkbox" checked={answers[toggle] as boolean} onChange={(e) => set(toggle, e.target.checked as any)} />
+                  <input type="checkbox" checked={answers[toggle] as boolean} onChange={(e) => set(toggle, e.target.checked)} />
                   <strong>{label}</strong>
                 </label>
                 {answers[toggle] && (
@@ -539,14 +536,17 @@ export const ShippingPolicyWizard: React.FC = () => {
               Next <ArrowRight size={16} />
             </button>
           ) : (
-            <button
-              className="btn-generate"
-              onClick={handleGenerate}
-              disabled={isSaving || !answers.companyName || !answers.contactEmail}
-            >
-              <Sparkles size={16} />
-              {isSaving ? 'Generating...' : 'Generate Shipping Policy'}
-            </button>
+            <>
+              <button
+                className="btn-generate"
+                onClick={handleGenerate}
+                disabled={isSaving || !answers.companyName || !answers.contactEmail}
+              >
+                <Sparkles size={16} />
+                {isSaving ? 'Generating...' : 'Generate Shipping Policy'}
+              </button>
+              {saveError && <p style={{ color: '#ef4444', fontSize: '0.875rem', margin: '0.5rem 0 0' }}>{saveError}</p>}
+            </>
           )}
         </div>
       </div>
