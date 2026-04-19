@@ -93,7 +93,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
+      <div className="sidebar-header" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#fb923c" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width={28} height={28}>
             <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.5 3.8 17 5 19 5a1 1 0 0 1 1 1z" />
             <text x="12" y="12" dominantBaseline="central" textAnchor="middle" fontFamily="sans-serif" fontSize="12" fontWeight="bold" fill="#fb923c" stroke="none">U</text>
