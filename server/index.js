@@ -2384,7 +2384,7 @@ async function runDiagnosis(userId, url, scanTypes, notificationEmail) {
 }
 
 // ─── POST /api/diagnosis/scan ─────────────────────────────────────────────────
-app.post("/api/diagnosis/scan", validateApiKey, async (req, res) => {
+app.post("/api/diagnosis/scan", validateApiKey, diagnosisLimiter, async (req, res) => {
   const { userId, url, scanTypes, notificationEmail } = req.body;
   if (!userId || !isValidUUID(userId))
     return res.status(400).json({ error: "Invalid user ID" });
