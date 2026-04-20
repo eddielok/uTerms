@@ -11,56 +11,56 @@ import {
   RefreshCw,
   Shield,
   XCircle,
-} from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Alert } from '../components/Alert';
-import { Button } from '../components/Button';
-import { useCookieConfig } from '../context/CookieContext';
-import { API_URL } from '../lib/config';
-import { supabase } from '../lib/supabase';
-import './WebsiteDiagnosis.css';
+} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { Alert } from "../components/Alert";
+import { Button } from "../components/Button";
+import { useCookieConfig } from "../context/CookieContext";
+import { API_URL } from "../lib/config";
+import { supabase } from "../lib/supabase";
+import "./WebsiteDiagnosis.css";
 
 const SCAN_TYPES = [
   {
-    id: 'gdpr_pecr',
-    label: 'GDPR / PECR website checks',
-    desc: 'Cookie consent, data collection notices, privacy policy completeness, legitimate interest claims.',
+    id: "gdpr_pecr",
+    label: "GDPR / PECR website checks",
+    desc: "Cookie consent, data collection notices, privacy policy completeness, legitimate interest claims.",
   },
   {
-    id: 'fca_vendor',
-    label: 'FCA / vendor due-diligence checks',
-    desc: 'Financial promotions, risk disclaimers, regulatory statements and third-party vendor disclosures.',
+    id: "fca_vendor",
+    label: "FCA / vendor due-diligence checks",
+    desc: "Financial promotions, risk disclaimers, regulatory statements and third-party vendor disclosures.",
   },
   {
-    id: 'iso27001',
-    label: 'ISO 27001 evidence checklist',
-    desc: 'Information security policy links, data handling statements, incident disclosure and ISMS evidence.',
+    id: "iso27001",
+    label: "ISO 27001 evidence checklist",
+    desc: "Information security policy links, data handling statements, incident disclosure and ISMS evidence.",
   },
   {
-    id: 'accessibility_legal',
-    label: 'Accessibility and legal page review',
-    desc: 'WCAG compliance indicators, accessibility statement, terms of service and mandatory legal pages.',
+    id: "accessibility_legal",
+    label: "Accessibility and legal page review",
+    desc: "WCAG compliance indicators, accessibility statement, terms of service and mandatory legal pages.",
   },
   {
-    id: 'ccpa',
-    label: 'CCPA website checks',
+    id: "ccpa",
+    label: "CCPA website checks",
     desc: '"Do Not Sell" link, consumer rights disclosure, privacy policy California section.',
   },
 ];
 
 const INTERVALS: { value: 1 | 3 | 6 | 12; label: string }[] = [
-  { value: 1, label: 'Monthly' },
-  { value: 3, label: 'Every 3 Months' },
-  { value: 6, label: 'Every 6 Months' },
-  { value: 12, label: 'Yearly' },
+  { value: 1, label: "Monthly" },
+  { value: 3, label: "Every 3 Months" },
+  { value: 6, label: "Every 6 Months" },
+  { value: 12, label: "Yearly" },
 ];
 
 interface DiagnosisCheck {
   id: string;
   category: string;
   title: string;
-  status: 'pass' | 'fail' | 'warning' | 'na';
+  status: "pass" | "fail" | "warning" | "na";
   detail: string;
   action?: string | null;
 }
@@ -72,7 +72,7 @@ interface DiagnosisReport {
   report: {
     score: number;
     summary: string;
-    riskLevel: 'high' | 'medium' | 'low';
+    riskLevel: "high" | "medium" | "low";
     checks: DiagnosisCheck[];
   };
   created_at: string;
@@ -90,19 +90,33 @@ interface DiagnosisSchedule {
 }
 
 interface SubscriptionStatus {
-  status: 'active' | 'inactive' | 'canceled' | 'past_due';
+  status: "active" | "inactive" | "canceled" | "past_due";
   subscriptionId?: string;
 }
 
-function StatusIcon({ status }: { status: DiagnosisCheck['status'] }) {
-  if (status === 'pass') return <CheckCircle2 size={16} className="diag-status-pass" />;
-  if (status === 'fail') return <XCircle size={16} className="diag-status-fail" />;
-  if (status === 'warning') return <AlertTriangle size={16} className="diag-status-warn" />;
+function StatusIcon({ status }: { status: DiagnosisCheck["status"] }) {
+  if (status === "pass")
+    return <CheckCircle2 size={16} className="diag-status-pass" />;
+  if (status === "fail")
+    return <XCircle size={16} className="diag-status-fail" />;
+  if (status === "warning")
+    return <AlertTriangle size={16} className="diag-status-warn" />;
   return <MinusCircle size={16} className="diag-status-na" />;
 }
 
-function ScoreBadge({ score, riskLevel }: { score: number; riskLevel: string }) {
-  const cls = riskLevel === 'high' ? 'diag-score-high' : riskLevel === 'medium' ? 'diag-score-medium' : 'diag-score-low';
+function ScoreBadge({
+  score,
+  riskLevel,
+}: {
+  score: number;
+  riskLevel: string;
+}) {
+  const cls =
+    riskLevel === "high"
+      ? "diag-score-high"
+      : riskLevel === "medium"
+        ? "diag-score-medium"
+        : "diag-score-low";
   return (
     <div className={`diag-score-badge ${cls}`}>
       <span className="diag-score-num">{score}</span>
@@ -116,7 +130,9 @@ export const WebsiteDiagnosis: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionStatus | null>(
+    null,
+  );
   const [schedule, setSchedule] = useState<DiagnosisSchedule | null>(null);
   const [reports, setReports] = useState<DiagnosisReport[]>([]);
   const [apiKey, setApiKey] = useState<string | null>(null);
@@ -124,24 +140,26 @@ export const WebsiteDiagnosis: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isSavingSchedule, setIsSavingSchedule] = useState(false);
   const [isCreatingCheckout, setIsCreatingCheckout] = useState(false);
-  const [scanResult, setScanResult] = useState<DiagnosisReport['report'] | null>(null);
+  const [scanResult, setScanResult] = useState<
+    DiagnosisReport["report"] | null
+  >(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [expandedReport, setExpandedReport] = useState<string | null>(null);
 
   // Form state
-  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState("");
 
-  const [selectedTypes, setSelectedTypes] = useState<string[]>(['gdpr_pecr']);
-  const [notificationEmail, setNotificationEmail] = useState('');
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(["gdpr_pecr"]);
+  const [notificationEmail, setNotificationEmail] = useState("");
   const [scheduleInterval, setScheduleInterval] = useState<1 | 3 | 6 | 12>(1);
   const [scheduleEnabled, setScheduleEnabled] = useState(true);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('subscription') === 'success') {
-      setSuccessMsg('Subscription activated! You can now run diagnoses.');
-      navigate('/website-diagnosis', { replace: true });
+    if (params.get("subscription") === "success") {
+      setSuccessMsg("Subscription activated! You can now run diagnoses.");
+      navigate("/website-diagnosis", { replace: true });
       // Poll until webhook writes active status (up to 10s)
       let attempts = 0;
       const poll = setInterval(() => {
@@ -150,25 +168,25 @@ export const WebsiteDiagnosis: React.FC = () => {
         if (attempts >= 5) clearInterval(poll);
       }, 2000);
       return () => clearInterval(poll);
-    } else if (params.get('subscription') === 'cancel') {
-      setError('Subscription setup was cancelled.');
-      navigate('/website-diagnosis', { replace: true });
+    } else if (params.get("subscription") === "cancel") {
+      setError("Subscription setup was cancelled.");
+      navigate("/website-diagnosis", { replace: true });
     }
   }, [location.search, navigate]);
 
   useEffect(() => {
     if (!userId) return;
     supabase
-      .from('api_keys')
-      .select('api_key')
-      .eq('user_id', userId)
+      .from("api_keys")
+      .select("api_key")
+      .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => {
         const key = data?.api_key ?? null;
         setApiKey(key);
         loadAll(key);
       });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // Pre-fill notification email from Supabase user
@@ -181,13 +199,19 @@ export const WebsiteDiagnosis: React.FC = () => {
 
   async function loadAll(key?: string | null) {
     if (!userId) return;
-    const k = key ?? apiKey ?? '';
+    const k = key ?? apiKey ?? "";
     setIsLoading(true);
     try {
       const [subRes, schedRes, repRes] = await Promise.all([
-        fetch(`${API_URL}/api/stripe/subscription/${userId}`, { headers: { 'x-api-key': k } }),
-        fetch(`${API_URL}/api/diagnosis/schedule/${userId}`, { headers: { 'x-api-key': k } }),
-        fetch(`${API_URL}/api/diagnosis/reports/${userId}`, { headers: { 'x-api-key': k } }),
+        fetch(`${API_URL}/api/stripe/subscription/${userId}`, {
+          headers: { "x-api-key": k },
+        }),
+        fetch(`${API_URL}/api/diagnosis/schedule/${userId}`, {
+          headers: { "x-api-key": k },
+        }),
+        fetch(`${API_URL}/api/diagnosis/reports/${userId}`, {
+          headers: { "x-api-key": k },
+        }),
       ]);
 
       if (subRes.ok) {
@@ -199,9 +223,12 @@ export const WebsiteDiagnosis: React.FC = () => {
         const sched = await schedRes.json();
         if (sched) {
           setSchedule(sched);
-          setWebsiteUrl(sched.website_url || '');
-          setSelectedTypes(sched.scan_types?.length ? sched.scan_types : ['gdpr_pecr']);
-          if (sched.notification_email) setNotificationEmail(sched.notification_email);
+          setWebsiteUrl(sched.website_url || "");
+          setSelectedTypes(
+            sched.scan_types?.length ? sched.scan_types : ["gdpr_pecr"],
+          );
+          if (sched.notification_email)
+            setNotificationEmail(sched.notification_email);
           setScheduleInterval((sched.interval_months as 1 | 3 | 6 | 12) || 1);
           setScheduleEnabled(sched.enabled ?? true);
         }
@@ -224,15 +251,18 @@ export const WebsiteDiagnosis: React.FC = () => {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/api/stripe/create-checkout`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey ?? ''},
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey ?? "",
+        },
         body: JSON.stringify({ userId, email: notificationEmail }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to create checkout');
+      if (!res.ok) throw new Error(data.error || "Failed to create checkout");
       window.location.href = data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start checkout');
+      setError(err instanceof Error ? err.message : "Failed to start checkout");
     } finally {
       setIsCreatingCheckout(false);
     }
@@ -242,15 +272,22 @@ export const WebsiteDiagnosis: React.FC = () => {
     if (!userId) return;
     try {
       const res = await fetch(`${API_URL}/api/stripe/portal`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey ?? ''},
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey ?? "",
+        },
         body: JSON.stringify({ userId }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to open portal');
+      if (!res.ok) throw new Error(data.error || "Failed to open portal");
       window.location.href = data.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to open subscription portal');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to open subscription portal",
+      );
     }
   };
 
@@ -261,8 +298,11 @@ export const WebsiteDiagnosis: React.FC = () => {
     setScanResult(null);
     try {
       const res = await fetch(`${API_URL}/api/diagnosis/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey ?? ''},
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey ?? "",
+        },
         body: JSON.stringify({
           userId,
           url: websiteUrl.trim(),
@@ -271,12 +311,14 @@ export const WebsiteDiagnosis: React.FC = () => {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Scan failed');
+      if (!res.ok) throw new Error(data.error || "Scan failed");
       setScanResult(data.report);
-      setReports(prev => [data.savedReport, ...prev].slice(0, 20));
-      setSuccessMsg('Diagnosis complete! Report has been sent to your email.');
+      setReports((prev) => [data.savedReport, ...prev].slice(0, 20));
+      setSuccessMsg("Diagnosis complete! Report has been sent to your email.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Scan failed. Please try again.');
+      setError(
+        err instanceof Error ? err.message : "Scan failed. Please try again.",
+      );
     } finally {
       setIsScanning(false);
     }
@@ -288,8 +330,11 @@ export const WebsiteDiagnosis: React.FC = () => {
     setError(null);
     try {
       const res = await fetch(`${API_URL}/api/diagnosis/schedule`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey ?? ''},
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey ?? "",
+        },
         body: JSON.stringify({
           userId,
           url: websiteUrl.trim(),
@@ -300,27 +345,27 @@ export const WebsiteDiagnosis: React.FC = () => {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to save schedule');
+      if (!res.ok) throw new Error(data.error || "Failed to save schedule");
       setSchedule(data);
-      setSuccessMsg('Schedule saved successfully.');
+      setSuccessMsg("Schedule saved successfully.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save schedule');
+      setError(err instanceof Error ? err.message : "Failed to save schedule");
     } finally {
       setIsSavingSchedule(false);
     }
   };
 
   const toggleType = (id: string) => {
-    setSelectedTypes(prev =>
-      prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
+    setSelectedTypes((prev) =>
+      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
     );
   };
 
-  const isSubscribed = subscription?.status === 'active';
+  const isSubscribed = subscription?.status === "active";
 
   const checksByCategory = (checks: DiagnosisCheck[]) => {
     const map: Record<string, DiagnosisCheck[]> = {};
-    checks.forEach(c => {
+    checks.forEach((c) => {
       if (!map[c.category]) map[c.category] = [];
       map[c.category].push(c);
     });
@@ -342,34 +387,58 @@ export const WebsiteDiagnosis: React.FC = () => {
         <div>
           <h1 className="diag-title">Website Diagnosis</h1>
           <p className="diag-subtitle">
-            AI-powered compliance audit across GDPR, CCPA, ISO 27001, accessibility and more.
+            AI-powered compliance audit across GDPR, CCPA, ISO 27001,
+            accessibility and more.
           </p>
         </div>
         <div className="diag-header-actions">
           {isSubscribed ? (
-            <button className="diag-manage-btn" onClick={handleManageSubscription}>
+            <button
+              className="diag-manage-btn"
+              onClick={handleManageSubscription}
+            >
               <CreditCard size={14} /> Manage Subscription
             </button>
           ) : null}
         </div>
       </div>
 
-      {error && <div style={{ marginBottom: '1rem' }}><Alert variant="error">{error}</Alert></div>}
-      {successMsg && <div style={{ marginBottom: '1rem' }}><Alert variant="success">{successMsg}</Alert></div>}
+      {error && (
+        <div style={{ marginBottom: "1rem" }}>
+          <Alert variant="error">{error}</Alert>
+        </div>
+      )}
+      {successMsg && (
+        <div style={{ marginBottom: "1rem" }}>
+          <Alert variant="success">{successMsg}</Alert>
+        </div>
+      )}
 
       {!isSubscribed ? (
         <div className="diag-paywall">
-          <div className="diag-paywall-icon"><Shield size={40} /></div>
+          <div className="diag-paywall-icon">
+            <Shield size={40} />
+          </div>
           <h2 className="diag-paywall-title">Website Diagnosis</h2>
           <p className="diag-paywall-desc">
-            Get a full compliance audit of your website — GDPR, CCPA, ISO 27001, accessibility and more.
-            Scheduled reports delivered to your inbox.
+            Get a full compliance audit of your website — GDPR, CCPA, ISO 27001,
+            accessibility and more. Scheduled reports delivered to your inbox.
           </p>
           <ul className="diag-paywall-features">
-            <li><CheckCircle2 size={16} /> AI-powered compliance checks across 5 frameworks</li>
-            <li><CheckCircle2 size={16} /> Actionable audit checklist with risk scoring</li>
-            <li><CheckCircle2 size={16} /> Scheduled reports (monthly to yearly)</li>
-            <li><CheckCircle2 size={16} /> Email delivery via Resend</li>
+            <li>
+              <CheckCircle2 size={16} /> AI-powered compliance checks across 5
+              frameworks
+            </li>
+            <li>
+              <CheckCircle2 size={16} /> Actionable audit checklist with risk
+              scoring
+            </li>
+            <li>
+              <CheckCircle2 size={16} /> Scheduled reports (monthly to yearly)
+            </li>
+            <li>
+              <CheckCircle2 size={16} /> Email delivery
+            </li>
           </ul>
           <div className="diag-paywall-price">
             <span className="diag-price-amount">£1</span>
@@ -381,7 +450,13 @@ export const WebsiteDiagnosis: React.FC = () => {
             disabled={isCreatingCheckout}
             className="diag-subscribe-btn"
           >
-            {isCreatingCheckout ? <><Loader2 size={14} className="diag-spinner" /> Redirecting…</> : 'Subscribe Now'}
+            {isCreatingCheckout ? (
+              <>
+                <Loader2 size={14} className="diag-spinner" /> Redirecting…
+              </>
+            ) : (
+              "Subscribe Now"
+            )}
           </Button>
         </div>
       ) : (
@@ -396,7 +471,7 @@ export const WebsiteDiagnosis: React.FC = () => {
                 className="diag-input"
                 placeholder="https://www.example.com"
                 value={websiteUrl}
-                onChange={e => setWebsiteUrl(e.target.value)}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
                 disabled={isScanning}
               />
             </div>
@@ -404,7 +479,7 @@ export const WebsiteDiagnosis: React.FC = () => {
             <div className="diag-field">
               <label className="diag-label">Compliance Checks</label>
               <div className="diag-checklist">
-                {SCAN_TYPES.map(type => (
+                {SCAN_TYPES.map((type) => (
                   <label key={type.id} className="diag-check-item">
                     <input
                       type="checkbox"
@@ -422,34 +497,38 @@ export const WebsiteDiagnosis: React.FC = () => {
             </div>
 
             <div className="diag-field">
-              <label className="diag-label"><Mail size={14} /> Notification Email</label>
+              <label className="diag-label">
+                <Mail size={14} /> Notification Email
+              </label>
               <input
                 type="email"
                 className="diag-input"
                 placeholder="you@company.com"
                 value={notificationEmail}
-                onChange={e => setNotificationEmail(e.target.value)}
+                onChange={(e) => setNotificationEmail(e.target.value)}
                 disabled={isScanning}
               />
             </div>
 
             <div className="diag-field">
-              <label className="diag-label"><Clock size={14} /> Scheduled Report</label>
+              <label className="diag-label">
+                <Clock size={14} /> Scheduled Report
+              </label>
               <div className="diag-schedule-row">
                 <label className="diag-toggle">
                   <input
                     type="checkbox"
                     checked={scheduleEnabled}
-                    onChange={e => setScheduleEnabled(e.target.checked)}
+                    onChange={(e) => setScheduleEnabled(e.target.checked)}
                   />
                   <span>Enable scheduled reports</span>
                 </label>
                 {scheduleEnabled && (
                   <div className="diag-interval-pills">
-                    {INTERVALS.map(i => (
+                    {INTERVALS.map((i) => (
                       <button
                         key={i.value}
-                        className={`diag-interval-pill ${scheduleInterval === i.value ? 'active' : ''}`}
+                        className={`diag-interval-pill ${scheduleInterval === i.value ? "active" : ""}`}
                         onClick={() => setScheduleInterval(i.value)}
                       >
                         {i.label}
@@ -460,7 +539,12 @@ export const WebsiteDiagnosis: React.FC = () => {
               </div>
               {schedule?.next_run_at && (
                 <p className="diag-next-run">
-                  Next scheduled run: {new Date(schedule.next_run_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  Next scheduled run:{" "}
+                  {new Date(schedule.next_run_at).toLocaleDateString("en-GB", {
+                    day: "numeric",
+                    month: "short",
+                    year: "numeric",
+                  })}
                 </p>
               )}
             </div>
@@ -471,18 +555,34 @@ export const WebsiteDiagnosis: React.FC = () => {
                 onClick={handleSaveSchedule}
                 disabled={isSavingSchedule || !websiteUrl.trim()}
               >
-                {isSavingSchedule ? <><Loader2 size={14} className="diag-spinner" />Saving…</> : 'Save Schedule'}
+                {isSavingSchedule ? (
+                  <>
+                    <Loader2 size={14} className="diag-spinner" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save Schedule"
+                )}
               </button>
               <Button
                 variant="primary"
                 onClick={handleScan}
-                disabled={isScanning || !websiteUrl.trim() || selectedTypes.length === 0}
+                disabled={
+                  isScanning || !websiteUrl.trim() || selectedTypes.length === 0
+                }
                 className="diag-scan-btn"
               >
-                {isScanning
-                  ? <><Loader2 size={14} className="diag-spinner" />Scanning…</>
-                  : <><RefreshCw size={14} />Run Diagnosis Now</>
-                }
+                {isScanning ? (
+                  <>
+                    <Loader2 size={14} className="diag-spinner" />
+                    Scanning…
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw size={14} />
+                    Run Diagnosis Now
+                  </>
+                )}
               </Button>
             </div>
           </div>
@@ -494,31 +594,46 @@ export const WebsiteDiagnosis: React.FC = () => {
                   <h2 className="diag-section-title">Latest Diagnosis</h2>
                   <p className="diag-result-summary">{scanResult.summary}</p>
                 </div>
-                <ScoreBadge score={scanResult.score} riskLevel={scanResult.riskLevel} />
+                <ScoreBadge
+                  score={scanResult.score}
+                  riskLevel={scanResult.riskLevel}
+                />
               </div>
 
-              {Object.entries(checksByCategory(scanResult.checks)).map(([cat, checks]) => {
-                const typeLabel = SCAN_TYPES.find(t => t.id === cat)?.label || cat;
-                return (
-                  <div key={cat} className="diag-category-block">
-                    <h3 className="diag-category-title">{typeLabel}</h3>
-                    <div className="diag-checks-list">
-                      {checks.map(check => (
-                        <div key={check.id} className={`diag-check-row diag-check-${check.status}`}>
-                          <StatusIcon status={check.status} />
-                          <div className="diag-check-content">
-                            <span className="diag-check-title">{check.title}</span>
-                            <span className="diag-check-detail">{check.detail}</span>
-                            {check.action && check.status !== 'pass' && (
-                              <span className="diag-check-action">Action: {check.action}</span>
-                            )}
+              {Object.entries(checksByCategory(scanResult.checks)).map(
+                ([cat, checks]) => {
+                  const typeLabel =
+                    SCAN_TYPES.find((t) => t.id === cat)?.label || cat;
+                  return (
+                    <div key={cat} className="diag-category-block">
+                      <h3 className="diag-category-title">{typeLabel}</h3>
+                      <div className="diag-checks-list">
+                        {checks.map((check) => (
+                          <div
+                            key={check.id}
+                            className={`diag-check-row diag-check-${check.status}`}
+                          >
+                            <StatusIcon status={check.status} />
+                            <div className="diag-check-content">
+                              <span className="diag-check-title">
+                                {check.title}
+                              </span>
+                              <span className="diag-check-detail">
+                                {check.detail}
+                              </span>
+                              {check.action && check.status !== "pass" && (
+                                <span className="diag-check-action">
+                                  Action: {check.action}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                },
+              )}
             </div>
           )}
 
@@ -526,45 +641,79 @@ export const WebsiteDiagnosis: React.FC = () => {
             <div className="diag-history-card">
               <h2 className="diag-section-title">Report History</h2>
               <div className="diag-history-list">
-                {reports.map(rep => (
+                {reports.map((rep) => (
                   <div key={rep.id} className="diag-history-item">
                     <button
                       className="diag-history-header"
-                      onClick={() => setExpandedReport(expandedReport === rep.id ? null : rep.id)}
+                      onClick={() =>
+                        setExpandedReport(
+                          expandedReport === rep.id ? null : rep.id,
+                        )
+                      }
                     >
                       <div className="diag-history-meta">
-                        <span className="diag-history-url">{rep.website_url}</span>
+                        <span className="diag-history-url">
+                          {rep.website_url}
+                        </span>
                         <span className="diag-history-date">
-                          {new Date(rep.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          {new Date(rep.created_at).toLocaleDateString(
+                            "en-GB",
+                            { day: "numeric", month: "short", year: "numeric" },
+                          )}
                         </span>
                       </div>
                       <div className="diag-history-right">
-                        <span className={`diag-risk-badge diag-risk-${rep.report?.riskLevel}`}>
-                          {rep.report?.riskLevel ?? '—'} risk
+                        <span
+                          className={`diag-risk-badge diag-risk-${rep.report?.riskLevel}`}
+                        >
+                          {rep.report?.riskLevel ?? "—"} risk
                         </span>
-                        <span className="diag-history-score">{rep.report?.score ?? '—'}/100</span>
-                        {expandedReport === rep.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        <span className="diag-history-score">
+                          {rep.report?.score ?? "—"}/100
+                        </span>
+                        {expandedReport === rep.id ? (
+                          <ChevronUp size={16} />
+                        ) : (
+                          <ChevronDown size={16} />
+                        )}
                       </div>
                     </button>
 
                     {expandedReport === rep.id && rep.report?.checks && (
                       <div className="diag-history-body">
-                        <p className="diag-result-summary">{rep.report.summary}</p>
-                        {Object.entries(checksByCategory(rep.report.checks)).map(([cat, checks]) => {
-                          const typeLabel = SCAN_TYPES.find(t => t.id === cat)?.label || cat;
+                        <p className="diag-result-summary">
+                          {rep.report.summary}
+                        </p>
+                        {Object.entries(
+                          checksByCategory(rep.report.checks),
+                        ).map(([cat, checks]) => {
+                          const typeLabel =
+                            SCAN_TYPES.find((t) => t.id === cat)?.label || cat;
                           return (
                             <div key={cat} className="diag-category-block">
-                              <h3 className="diag-category-title">{typeLabel}</h3>
+                              <h3 className="diag-category-title">
+                                {typeLabel}
+                              </h3>
                               <div className="diag-checks-list">
-                                {checks.map(check => (
-                                  <div key={check.id} className={`diag-check-row diag-check-${check.status}`}>
+                                {checks.map((check) => (
+                                  <div
+                                    key={check.id}
+                                    className={`diag-check-row diag-check-${check.status}`}
+                                  >
                                     <StatusIcon status={check.status} />
                                     <div className="diag-check-content">
-                                      <span className="diag-check-title">{check.title}</span>
-                                      <span className="diag-check-detail">{check.detail}</span>
-                                      {check.action && check.status !== 'pass' && (
-                                        <span className="diag-check-action">Action: {check.action}</span>
-                                      )}
+                                      <span className="diag-check-title">
+                                        {check.title}
+                                      </span>
+                                      <span className="diag-check-detail">
+                                        {check.detail}
+                                      </span>
+                                      {check.action &&
+                                        check.status !== "pass" && (
+                                          <span className="diag-check-action">
+                                            Action: {check.action}
+                                          </span>
+                                        )}
                                     </div>
                                   </div>
                                 ))}
