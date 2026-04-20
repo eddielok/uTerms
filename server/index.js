@@ -210,8 +210,18 @@ async function getSharedBrowser() {
     );
     _sharedBrowser = null;
   });
+  _sharedBrowser.on("targetcrashedwitherror", () => {
+    console.warn("[browser-pool] Browser target crashed — will relaunch on next scan.");
+    _sharedBrowser = null;
+  });
   console.log("[browser-pool] Warm browser launched.");
   return _sharedBrowser;
+}
+
+function releaseSharedBrowser() {
+  if (_sharedBrowser) {
+    _sharedBrowser = null;
+  }
 }
 
 // Block resources that don't affect cookie setting (images, fonts, media)
@@ -1897,13 +1907,17 @@ app.post("/api/scan-schedule", validateApiKey, async (req, res) => {
       .status(400)
       .json({ error: "intervalMonths must be 1, 3, 6, or 12" });
 
+  const normalizedUrl = normalizeUrl(url);
+  const urlError = validatePublicUrl(normalizedUrl);
+  if (urlError) return res.status(400).json({ error: urlError });
+
   const now = new Date();
   const nextScanAt = new Date(now);
   nextScanAt.setMonth(nextScanAt.getMonth() + Number(intervalMonths));
 
   const payload = {
     user_id: userId,
-    url: normalizeUrl(url),
+    url: normalizedUrl,
     interval_months: Number(intervalMonths),
     enabled: enabled !== false,
     next_scan_at: nextScanAt.toISOString(),
@@ -2472,6 +2486,15 @@ app.post("/api/diagnosis/schedule", validateApiKey, async (req, res) => {
     return res
       .status(400)
       .json({ error: "intervalMonths must be 1, 3, 6, or 12" });
+  if (
+    notificationEmail &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(notificationEmail)
+  )
+    return res.status(400).json({ error: "Invalid notification email" });
+
+  const normalizedUrl = normalizeUrl(url);
+  const urlError = validatePublicUrl(normalizedUrl);
+  if (urlError) return res.status(400).json({ error: urlError });
 
   const now = new Date();
   const nextRunAt = new Date(now);
@@ -2488,7 +2511,7 @@ app.post("/api/diagnosis/schedule", validateApiKey, async (req, res) => {
         },
         body: JSON.stringify({
           user_id: userId,
-          website_url: normalizeUrl(url),
+          website_url: normalizedUrl,
           scan_types: Array.isArray(scanTypes)
             ? scanTypes.filter((t) => VALID_SCAN_TYPES.includes(t))
             : ["gdpr_pecr"],
@@ -2776,6 +2799,11 @@ app.post("/api/stripe/portal", validateApiKey, async (req, res) => {
 
 // ─── Start ────────────────────────────────────────────────────────────────────
 Sentry.setupExpressErrorHandler(app);
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Scanner API running on http://localhost:${PORT}`);
