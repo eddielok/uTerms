@@ -263,6 +263,14 @@ const policyScanLimiter = rateLimit({
   message: { error: "Policy Scan limit reached. You can scan up to 2 times per 24 hours." },
 });
 
+const diagnosisLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24 hours
+  max: 1,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "You can only run one manual diagnosis per 24 hours." },
+});
+
 const consentLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 20,
@@ -2112,7 +2120,7 @@ async function runDiagnosis(userId, url, scanTypes, notificationEmail) {
 }
 
 // ─── POST /api/diagnosis/scan ─────────────────────────────────────────────────
-app.post("/api/diagnosis/scan", validateApiKey, scanLimiter, async (req, res) => {
+app.post("/api/diagnosis/scan", validateApiKey, diagnosisLimiter, async (req, res) => {
   const { userId, url, scanTypes, notificationEmail } = req.body;
   if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
   if (!url) return res.status(400).json({ error: "URL is required" });
