@@ -35,7 +35,9 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || "";
 const IP_SALT = process.env.IP_SALT;
 if (!IP_SALT) {
-  console.error("[server] FATAL: IP_SALT is not set. Set a random 32+ character value in .env to ensure IP anonymisation is secure.");
+  console.error(
+    "[server] FATAL: IP_SALT is not set. Set a random 32+ character value in .env to ensure IP anonymisation is secure.",
+  );
   process.exit(1);
 }
 
@@ -116,9 +118,9 @@ function validatePublicUrl(rawUrl) {
   )
     return "Scanning private IP ranges is not allowed";
   if (
-    h === "169.254.169.254" ||        // AWS / Azure IMDS
-    h === "168.63.129.16" ||          // Azure internal DNS
-    h === "metadata.google.internal"  // GCP metadata
+    h === "169.254.169.254" || // AWS / Azure IMDS
+    h === "168.63.129.16" || // Azure internal DNS
+    h === "metadata.google.internal" // GCP metadata
   )
     return "Scanning metadata endpoints is not allowed";
   return null;
@@ -132,7 +134,11 @@ function isValidUUID(id) {
 }
 
 // ─── Generic published-policy fetcher (used by embed routes) ──────────────────
-async function fetchPublishedPolicy(table, userId, fields = 'id,title,status,generated,updated_at') {
+async function fetchPublishedPolicy(
+  table,
+  userId,
+  fields = "id,title,status,generated,updated_at",
+) {
   const url = `${SUPABASE_URL}/rest/v1/${table}?user_id=eq.${encodeURIComponent(userId)}&status=eq.published&select=${fields}&order=updated_at.desc&limit=1`;
   const response = await supabaseFetch(url, { headers: anonHeaders() });
   if (!response.ok) {
@@ -194,9 +200,14 @@ let _sharedBrowser = null;
 
 async function getSharedBrowser() {
   if (_sharedBrowser && _sharedBrowser.connected) return _sharedBrowser;
-  _sharedBrowser = await puppeteer.launch({ headless: true, args: BROWSER_ARGS });
+  _sharedBrowser = await puppeteer.launch({
+    headless: true,
+    args: BROWSER_ARGS,
+  });
   _sharedBrowser.on("disconnected", () => {
-    console.warn("[browser-pool] Browser disconnected — will relaunch on next scan.");
+    console.warn(
+      "[browser-pool] Browser disconnected — will relaunch on next scan.",
+    );
     _sharedBrowser = null;
   });
   console.log("[browser-pool] Warm browser launched.");
@@ -260,7 +271,10 @@ const policyScanLimiter = rateLimit({
   max: 2,
   standardHeaders: true,
   legacyHeaders: false,
-  message: { error: "Policy Scan limit reached. You can scan up to 2 times per 24 hours." },
+  message: {
+    error:
+      "Policy Scan limit reached. You can scan up to 2 times per 24 hours.",
+  },
 });
 
 const diagnosisLimiter = rateLimit({
@@ -282,23 +296,25 @@ const consentLimiter = rateLimit({
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", SUPABASE_URL || ""],
-      frameSrc: ["'none'"],
-      objectSrc: ["'none'"],
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", SUPABASE_URL || ""],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+      },
     },
-  },
-  crossOriginEmbedderPolicy: false, // Allow embed scripts to be loaded cross-origin
-}));
+    crossOriginEmbedderPolicy: false, // Allow embed scripts to be loaded cross-origin
+  }),
+);
 app.use(compression());
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
   : ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io"];
 app.use(
   cors({
@@ -325,7 +341,7 @@ app.use("/api/analyze-policy", scanLimiter);
 app.use("/api/analyze-all-policies", policyScanLimiter);
 
 // Stripe webhook needs raw body before the JSON parser
-app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
 app.use(express.json());
 // ─── Cookie category templates ────────────────────────────────────────────────
 const CATEGORY_TEMPLATES = [
@@ -437,7 +453,10 @@ async function performScan(url) {
             "ok",
           ].includes(text);
         });
-        if (acceptBtn) { acceptBtn.click(); return true; }
+        if (acceptBtn) {
+          acceptBtn.click();
+          return true;
+        }
         return false;
       });
       // Only wait if a button was clicked — no point sleeping otherwise
@@ -593,7 +612,15 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
 });
 
 // ─── POST /api/consent ────────────────────────────────────────────────────────
-const VALID_CONSENT_KEYS = new Set(["essential", "functional", "analytics", "marketing", "social", "unclassified", "do_not_sell"]);
+const VALID_CONSENT_KEYS = new Set([
+  "essential",
+  "functional",
+  "analytics",
+  "marketing",
+  "social",
+  "unclassified",
+  "do_not_sell",
+]);
 
 app.post("/api/consent", async (req, res) => {
   const { user_id, visitor_id, consent_data, url } = req.body;
@@ -605,12 +632,18 @@ app.post("/api/consent", async (req, res) => {
     return res.status(400).json({ error: "consent_data must be an object" });
   for (const [key, val] of Object.entries(consent_data)) {
     if (!VALID_CONSENT_KEYS.has(key))
-      return res.status(400).json({ error: `Unknown consent category: ${key}` });
+      return res
+        .status(400)
+        .json({ error: `Unknown consent category: ${key}` });
     if (typeof val !== "boolean")
-      return res.status(400).json({ error: `Consent value for ${key} must be boolean` });
+      return res
+        .status(400)
+        .json({ error: `Consent value for ${key} must be boolean` });
   }
   if (consent_data.essential === false)
-    return res.status(400).json({ error: "Essential cookies cannot be rejected" });
+    return res
+      .status(400)
+      .json({ error: "Essential cookies cannot be rejected" });
 
   try {
     const payload = {
@@ -661,8 +694,13 @@ app.delete("/api/consent/:userId", validateApiKey, async (req, res) => {
         .status(response.status)
         .json({ error: "Failed to delete consent records" });
     }
-    console.info(`[Audit] Consent records deleted for user_id=${userId} by IP=${anonymizeIp(req.ip)} at ${new Date().toISOString()}`);
-    Sentry.captureMessage(`Consent records deleted`, { level: "info", extra: { user_id: userId, ip: anonymizeIp(req.ip) } });
+    console.info(
+      `[Audit] Consent records deleted for user_id=${userId} by IP=${anonymizeIp(req.ip)} at ${new Date().toISOString()}`,
+    );
+    Sentry.captureMessage(`Consent records deleted`, {
+      level: "info",
+      extra: { user_id: userId, ip: anonymizeIp(req.ip) },
+    });
     res.json({ success: true, message: "All consent records deleted." });
   } catch (err) {
     console.error("[Consent DELETE] Error:", err.message);
@@ -765,7 +803,10 @@ TEST_HTML_FILES.forEach((file) => {
 // Cookie banner — large standalone script, served as static file
 app.get("/uterms-embed.js", (req, res) => {
   if (!req.query.id)
-    return res.status(400).type("text/javascript").send('console.error("User ID required");');
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
   res
     .type("text/javascript")
     .set("Cache-Control", "public, max-age=300")
@@ -777,16 +818,89 @@ app.get("/uterms-embed.js", (req, res) => {
 // Policy document embeds — generated from a single shared template.
 // Each entry differs only in container ID, API path, label, and optional styling.
 const POLICY_EMBED_SCRIPTS = [
-  { route: "/uterms-policy-embed.js",        containerId: "uterms-policy",          className: "uterms-policy-doc",          apiPath: "/api/embed/policy/",          label: "privacy policy",             errorText: "Privacy policy could not be loaded." },
-  { route: "/uterms-cookie-embed.js",         containerId: "uterms-cookie-policy",   className: "uterms-cookie-policy-doc",   apiPath: "/api/embed/cookie-policy/",   label: "cookie policy",              errorText: "Cookie policy could not be loaded." },
-  { route: "/uterms-tos-embed.js",            containerId: "uterms-tos",             className: "uterms-tos-doc",             apiPath: "/api/embed/tos/",             label: "Terms of Service",           errorText: "Terms of Service could not be loaded." },
-  { route: "/uterms-eula-embed.js",           containerId: "uterms-eula",            className: "uterms-eula-doc",            apiPath: "/api/embed/eula/",            label: "End User License Agreement", errorText: "EULA could not be loaded." },
-  { route: "/uterms-return-policy-embed.js",  containerId: "uterms-return-policy",   className: "uterms-return-policy-doc",   apiPath: "/api/embed/return-policy/",   label: "Return Policy",              errorText: "Return Policy could not be loaded." },
-  { route: "/uterms-disclaimer-embed.js",     containerId: "uterms-disclaimer",      className: "uterms-disclaimer-doc",      apiPath: "/api/embed/disclaimer/",      label: "Disclaimer",                 errorText: "Disclaimer could not be loaded." },
-  { route: "/uterms-shipping-embed.js",       containerId: "uterms-shipping-policy", className: "uterms-shipping-policy-doc", apiPath: "/api/embed/shipping-policy/", label: "Shipping Policy",            errorText: "Shipping Policy could not be loaded." },
-  { route: "/uterms-aup-embed.js",            containerId: "uterms-aup",             className: "uterms-aup-doc",             apiPath: "/api/embed/aup/",             label: "Acceptable Use Policy",      errorText: "Acceptable Use Policy could not be loaded." },
-  { route: "/uterms-impressum-embed.js",      containerId: "uterms-impressum",       className: "uterms-impressum-doc",       apiPath: "/api/embed/impressum/",       label: "Impressum",                  errorText: "Impressum could not be loaded.",       fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif", maxWidth: "720px", lineHeight: "1.7" },
-  { route: "/uterms-accessibility-embed.js",  containerId: "uterms-accessibility",   className: "uterms-accessibility-doc",   apiPath: "/api/embed/accessibility/",   label: "Accessibility Statement",    errorText: "Accessibility Statement could not be loaded." },
+  {
+    route: "/uterms-policy-embed.js",
+    containerId: "uterms-policy",
+    className: "uterms-policy-doc",
+    apiPath: "/api/embed/policy/",
+    label: "privacy policy",
+    errorText: "Privacy policy could not be loaded.",
+  },
+  {
+    route: "/uterms-cookie-embed.js",
+    containerId: "uterms-cookie-policy",
+    className: "uterms-cookie-policy-doc",
+    apiPath: "/api/embed/cookie-policy/",
+    label: "cookie policy",
+    errorText: "Cookie policy could not be loaded.",
+  },
+  {
+    route: "/uterms-tos-embed.js",
+    containerId: "uterms-tos",
+    className: "uterms-tos-doc",
+    apiPath: "/api/embed/tos/",
+    label: "Terms of Service",
+    errorText: "Terms of Service could not be loaded.",
+  },
+  {
+    route: "/uterms-eula-embed.js",
+    containerId: "uterms-eula",
+    className: "uterms-eula-doc",
+    apiPath: "/api/embed/eula/",
+    label: "End User License Agreement",
+    errorText: "EULA could not be loaded.",
+  },
+  {
+    route: "/uterms-return-policy-embed.js",
+    containerId: "uterms-return-policy",
+    className: "uterms-return-policy-doc",
+    apiPath: "/api/embed/return-policy/",
+    label: "Return Policy",
+    errorText: "Return Policy could not be loaded.",
+  },
+  {
+    route: "/uterms-disclaimer-embed.js",
+    containerId: "uterms-disclaimer",
+    className: "uterms-disclaimer-doc",
+    apiPath: "/api/embed/disclaimer/",
+    label: "Disclaimer",
+    errorText: "Disclaimer could not be loaded.",
+  },
+  {
+    route: "/uterms-shipping-embed.js",
+    containerId: "uterms-shipping-policy",
+    className: "uterms-shipping-policy-doc",
+    apiPath: "/api/embed/shipping-policy/",
+    label: "Shipping Policy",
+    errorText: "Shipping Policy could not be loaded.",
+  },
+  {
+    route: "/uterms-aup-embed.js",
+    containerId: "uterms-aup",
+    className: "uterms-aup-doc",
+    apiPath: "/api/embed/aup/",
+    label: "Acceptable Use Policy",
+    errorText: "Acceptable Use Policy could not be loaded.",
+  },
+  {
+    route: "/uterms-impressum-embed.js",
+    containerId: "uterms-impressum",
+    className: "uterms-impressum-doc",
+    apiPath: "/api/embed/impressum/",
+    label: "Impressum",
+    errorText: "Impressum could not be loaded.",
+    fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+    maxWidth: "720px",
+    lineHeight: "1.7",
+  },
+  {
+    route: "/uterms-accessibility-embed.js",
+    containerId: "uterms-accessibility",
+    className: "uterms-accessibility-doc",
+    apiPath: "/api/embed/accessibility/",
+    label: "Accessibility Statement",
+    errorText: "Accessibility Statement could not be loaded.",
+  },
 ];
 
 function buildPolicyEmbedScript(cfg) {
@@ -863,7 +977,10 @@ function buildPolicyEmbedScript(cfg) {
 POLICY_EMBED_SCRIPTS.forEach((cfg) => {
   app.get(cfg.route, (req, res) => {
     if (!req.query.id)
-      return res.status(400).type("text/javascript").send('console.error("User ID required");');
+      return res
+        .status(400)
+        .type("text/javascript")
+        .send('console.error("User ID required");');
     res
       .type("text/javascript")
       .set("Cache-Control", "public, max-age=300")
@@ -891,13 +1008,38 @@ const EMBED_POLICY_ROUTES = [
 ];
 
 const POLICY_SANITIZE_OPTIONS = {
-  allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside', 'figure', 'figcaption', 'mark', 'small', 'del', 'ins', 'sub', 'sup', 'abbr', 'address', 'hr']),
+  allowedTags: sanitizeHtml.defaults.allowedTags.concat([
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "section",
+    "article",
+    "header",
+    "footer",
+    "nav",
+    "main",
+    "aside",
+    "figure",
+    "figcaption",
+    "mark",
+    "small",
+    "del",
+    "ins",
+    "sub",
+    "sup",
+    "abbr",
+    "address",
+    "hr",
+  ]),
   allowedAttributes: {
     ...sanitizeHtml.defaults.allowedAttributes,
-    '*': ['class', 'style', 'id'],
-    'a': ['href', 'target', 'rel'],
+    "*": ["class", "style", "id"],
+    a: ["href", "target", "rel"],
   },
-  allowedSchemes: ['http', 'https', 'mailto'],
+  allowedSchemes: ["http", "https", "mailto"],
 };
 
 EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
@@ -906,13 +1048,16 @@ EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
     if (!isValidUUID(userId))
       return res.status(400).json({ error: "Invalid user ID" });
     try {
-      const policy = await fetchPublishedPolicy(table, userId, 'generated');
+      const policy = await fetchPublishedPolicy(table, userId, "generated");
       if (!policy)
         return res
           .status(404)
           .json({ error: "No published document found for this user" });
       if (policy.generated) {
-        policy.generated = sanitizeHtml(policy.generated, POLICY_SANITIZE_OPTIONS);
+        policy.generated = sanitizeHtml(
+          policy.generated,
+          POLICY_SANITIZE_OPTIONS,
+        );
       }
       res.set("Cache-Control", "public, max-age=300");
       res.json(policy);
@@ -922,7 +1067,6 @@ EMBED_POLICY_ROUTES.forEach(({ path: routePath, table }) => {
     }
   });
 });
-
 
 // ─── DeepSeek V3 helper ───────────────────────────────────────────────────────
 async function callDeepSeek(systemPrompt, userPrompt, timeoutMs = 30000) {
@@ -943,14 +1087,17 @@ async function callDeepSeek(systemPrompt, userPrompt, timeoutMs = 30000) {
           { role: "user", content: userPrompt },
         ],
         response_format: { type: "json_object" },
-        max_tokens: 2000,
+        max_tokens: 4000,
         temperature: 0.1,
       }),
       signal: controller.signal,
     });
     const data = await resp.json();
     if (!resp.ok) {
-      console.error("[DeepSeek] API error:", data?.error?.message || JSON.stringify(data));
+      console.error(
+        "[DeepSeek] API error:",
+        data?.error?.message || JSON.stringify(data),
+      );
       return null;
     }
     const raw = data?.choices?.[0]?.message?.content;
@@ -1124,9 +1271,16 @@ const DEEPSEEK_SYSTEM_PROMPT = `You are a legal analyst specialising in privacy 
 
 // ─── POST /api/analyze-policy ─────────────────────────────────────────────────
 const VALID_POLICY_TYPES = [
-  "privacy_policy", "cookie_policy", "terms_of_service", "eula",
-  "return_policy", "disclaimer", "shipping_policy", "acceptable_use_policy",
-  "impressum", "accessibility_statement",
+  "privacy_policy",
+  "cookie_policy",
+  "terms_of_service",
+  "eula",
+  "return_policy",
+  "disclaimer",
+  "shipping_policy",
+  "acceptable_use_policy",
+  "impressum",
+  "accessibility_statement",
 ];
 
 app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
@@ -1254,7 +1408,10 @@ app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
       `Homepage body:\n${homepageContent.bodyText}`,
       `Footer:\n${homepageContent.footer}`,
       privacyPageContent ? `Privacy page:\n${privacyPageContent}` : "",
-    ].filter(Boolean).join("\n\n---\n\n").slice(0, 12000);
+    ]
+      .filter(Boolean)
+      .join("\n\n---\n\n")
+      .slice(0, 12000);
 
     const userPrompt = `Website: ${targetUrl}\nCompany name detected: ${companyName}\nContact email detected: ${privacyEmail || "none"}\nCountry detected: ${homepageContent.detectedCountry || "unknown"}\n\nReturn JSON matching this schema:\n${schema}\n\nWebsite content:\n${scrapedContext}`;
 
@@ -1265,9 +1422,14 @@ app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
       ...(aiAnalysis || {}),
       websiteUrl: targetUrl,
       companyName: companyName || aiAnalysis?.companyName || "",
-      country: homepageContent.detectedCountry || aiAnalysis?.country || "United Kingdom",
-      contactEmail: privacyEmail || aiAnalysis?.contactEmail || aiAnalysis?.email || "",
-      email: privacyEmail || aiAnalysis?.email || aiAnalysis?.contactEmail || "",
+      country:
+        homepageContent.detectedCountry ||
+        aiAnalysis?.country ||
+        "United Kingdom",
+      contactEmail:
+        privacyEmail || aiAnalysis?.contactEmail || aiAnalysis?.email || "",
+      email:
+        privacyEmail || aiAnalysis?.email || aiAnalysis?.contactEmail || "",
       scrapedDetails: {
         companyNo: homepageContent.companyNo,
         vatNo: homepageContent.vatNo,
@@ -1290,13 +1452,15 @@ app.post("/api/analyze-policy", scanLimiter, async (req, res) => {
 // Returns saved policy scan results for a user.
 app.get("/api/policy-scan/:userId", generalLimiter, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   try {
     const response = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/policy_scan_results?user_id=eq.${encodeURIComponent(userId)}&select=url,analyses,created_at&limit=1`,
       { headers: serviceHeaders() },
     );
-    if (!response.ok) return res.status(500).json({ error: "Failed to fetch scan results" });
+    if (!response.ok)
+      return res.status(500).json({ error: "Failed to fetch scan results" });
     const rows = await response.json();
     if (!rows.length) return res.json({ found: false });
     return res.json({ found: true, ...rows[0] });
@@ -1325,17 +1489,37 @@ app.post("/api/analyze-all-policies", async (req, res) => {
 
     const homepageContent = await page.evaluate(() => {
       const title = document.title || "";
-      const ogSiteName = document.querySelector('meta[property="og:site_name"]')?.getAttribute("content") || "";
-      const description = document.querySelector('meta[name="description"]')?.getAttribute("content") || "";
-      const footerEl = document.querySelector("footer, .footer, #footer, [class*='footer']");
+      const ogSiteName =
+        document
+          .querySelector('meta[property="og:site_name"]')
+          ?.getAttribute("content") || "";
+      const description =
+        document
+          .querySelector('meta[name="description"]')
+          ?.getAttribute("content") || "";
+      const footerEl = document.querySelector(
+        "footer, .footer, #footer, [class*='footer']",
+      );
       const footer = (footerEl?.innerText || "").slice(0, 2000);
       const bodyText = (document.body?.innerText || "").slice(0, 6000);
-      const coNoMatch = bodyText.match(/(?:company\s*(?:no|number|reg(?:istration)?)[\s.:#]*|(?:reference|registration)\s+number\s+)([A-Z0-9]{6,12})/i);
-      const vatMatch = bodyText.match(/vat\s*(?:no|number|reg(?:istration)?)[\s.:]*([A-Z]{0,2}[0-9]{9,12})/i);
-      const addrMatch = bodyText.match(/registered\s+offices?\s+(?:address[:\s]+|at\s+)([^.\n]{10,200})/i);
-      const countryMatch = bodyText.match(/registered\s+in\s+(England\s*(?:&|and)\s*Wales|Scotland|United\s+Kingdom|United\s+States|Canada|Australia|Germany|France|Netherlands|Singapore|India)/i);
+      const coNoMatch = bodyText.match(
+        /(?:company\s*(?:no|number|reg(?:istration)?)[\s.:#]*|(?:reference|registration)\s+number\s+)([A-Z0-9]{6,12})/i,
+      );
+      const vatMatch = bodyText.match(
+        /vat\s*(?:no|number|reg(?:istration)?)[\s.:]*([A-Z]{0,2}[0-9]{9,12})/i,
+      );
+      const addrMatch = bodyText.match(
+        /registered\s+offices?\s+(?:address[:\s]+|at\s+)([^.\n]{10,200})/i,
+      );
+      const countryMatch = bodyText.match(
+        /registered\s+in\s+(England\s*(?:&|and)\s*Wales|Scotland|United\s+Kingdom|United\s+States|Canada|Australia|Germany|France|Netherlands|Singapore|India)/i,
+      );
       return {
-        title, ogSiteName, description, footer, bodyText,
+        title,
+        ogSiteName,
+        description,
+        footer,
+        bodyText,
         companyNo: coNoMatch?.[1]?.trim() || "",
         vatNo: vatMatch?.[1]?.trim() || "",
         registeredAddress: addrMatch?.[1]?.trim() || "",
@@ -1346,7 +1530,7 @@ app.post("/api/analyze-all-policies", async (req, res) => {
     let privacyPageContent = "";
     try {
       const privacyLink = await page.evaluate(() => {
-        const a = Array.from(document.querySelectorAll("a[href]")).find(l => {
+        const a = Array.from(document.querySelectorAll("a[href]")).find((l) => {
           const text = (l.textContent || "").toLowerCase();
           const href = (l.getAttribute("href") || "").toLowerCase();
           return text.includes("privacy") || href.includes("privacy");
@@ -1354,30 +1538,58 @@ app.post("/api/analyze-all-policies", async (req, res) => {
         return a ? a.href : null;
       });
       if (privacyLink) {
-        await page.goto(privacyLink, { waitUntil: "networkidle2", timeout: 15000 });
-        privacyPageContent = await page.evaluate(() => (document.body?.innerText || "").slice(0, 5000));
+        await page.goto(privacyLink, {
+          waitUntil: "networkidle2",
+          timeout: 15000,
+        });
+        privacyPageContent = await page.evaluate(() =>
+          (document.body?.innerText || "").slice(0, 5000),
+        );
       }
-    } catch (e) { dbg("Could not fetch privacy page:", e.message); }
+    } catch (e) {
+      dbg("Could not fetch privacy page:", e.message);
+    }
 
     // Extract company name and email
     let companyName = homepageContent.ogSiteName;
     if (!companyName) {
       const parts = homepageContent.title.split(/[-|]/);
-      companyName = parts[0]?.trim() || (() => {
-        try { const h = new URL(targetUrl).hostname.replace("www.", ""); return h.charAt(0).toUpperCase() + h.slice(1); } catch { return ""; }
-      })();
+      companyName =
+        parts[0]?.trim() ||
+        (() => {
+          try {
+            const h = new URL(targetUrl).hostname.replace("www.", "");
+            return h.charAt(0).toUpperCase() + h.slice(1);
+          } catch {
+            return "";
+          }
+        })();
     }
     const emailRegex = /([a-zA-Z0-9._-]+@[a-zA-Z0-9._-]+\.[a-zA-Z0-9._-]+)/gi;
-    const combinedText = (homepageContent.footer + " " + privacyPageContent).slice(0, 8000);
-    const uniqueEmails = [...new Set((combinedText.match(emailRegex) || []).map(e => e.toLowerCase()))];
-    const contactEmail = uniqueEmails.find(e => /privacy|legal|compliance|dpo/i.test(e)) ||
-      uniqueEmails.find(e => /info|contact|support|hello/i.test(e)) || uniqueEmails[0] || "";
+    const combinedText = (
+      homepageContent.footer +
+      " " +
+      privacyPageContent
+    ).slice(0, 8000);
+    const uniqueEmails = [
+      ...new Set(
+        (combinedText.match(emailRegex) || []).map((e) => e.toLowerCase()),
+      ),
+    ];
+    const contactEmail =
+      uniqueEmails.find((e) => /privacy|legal|compliance|dpo/i.test(e)) ||
+      uniqueEmails.find((e) => /info|contact|support|hello/i.test(e)) ||
+      uniqueEmails[0] ||
+      "";
 
     const scrapedContext = [
       `Homepage (${targetUrl}):\n${homepageContent.bodyText}`,
       `Footer:\n${homepageContent.footer}`,
       privacyPageContent ? `Privacy page:\n${privacyPageContent}` : "",
-    ].filter(Boolean).join("\n\n---\n\n").slice(0, 12000);
+    ]
+      .filter(Boolean)
+      .join("\n\n---\n\n")
+      .slice(0, 12000);
 
     // Single DeepSeek call for all 10 policy types
     const combinedSchemas = Object.entries(POLICY_SCHEMAS)
@@ -1397,7 +1609,11 @@ Return a JSON object with these 10 top-level keys, each prefilled for the corres
 Website content:
 ${scrapedContext}`;
 
-    const aiResult = await callDeepSeek(DEEPSEEK_SYSTEM_PROMPT, userPrompt, 45000);
+    const aiResult = await callDeepSeek(
+      DEEPSEEK_SYSTEM_PROMPT,
+      userPrompt,
+      45000,
+    );
 
     // Build final analyses: merge AI result with high-confidence regex extractions
     const baseOverrides = {
@@ -1428,16 +1644,19 @@ ${scrapedContext}`;
     // Save results to DB if userId provided
     if (userId && isValidUUID(userId)) {
       try {
-        await supabaseFetch(
-          `${SUPABASE_URL}/rest/v1/policy_scan_results`,
-          {
-            method: "POST",
-            headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
-            body: JSON.stringify({ user_id: userId, url: targetUrl, analyses }),
+        await supabaseFetch(`${SUPABASE_URL}/rest/v1/policy_scan_results`, {
+          method: "POST",
+          headers: {
+            ...serviceHeaders(),
+            Prefer: "resolution=merge-duplicates",
           },
-        );
+          body: JSON.stringify({ user_id: userId, url: targetUrl, analyses }),
+        });
       } catch (saveErr) {
-        console.warn("[analyze-all-policies] failed to save results:", saveErr.message);
+        console.warn(
+          "[analyze-all-policies] failed to save results:",
+          saveErr.message,
+        );
       }
     }
 
@@ -1968,13 +2187,21 @@ try {
   if (STRIPE_SECRET_KEY) {
     stripe = require("stripe")(STRIPE_SECRET_KEY);
   } else {
-    console.warn("[stripe] STRIPE_SECRET_KEY not set — Stripe features disabled");
+    console.warn(
+      "[stripe] STRIPE_SECRET_KEY not set — Stripe features disabled",
+    );
   }
 } catch (e) {
   console.warn("[stripe] Failed to initialise Stripe:", e.message);
 }
 
-const VALID_SCAN_TYPES = ["gdpr_pecr", "fca_vendor", "iso27001", "accessibility_legal", "ccpa"];
+const VALID_SCAN_TYPES = [
+  "gdpr_pecr",
+  "fca_vendor",
+  "iso27001",
+  "accessibility_legal",
+  "ccpa",
+];
 
 const DIAGNOSIS_SYSTEM_PROMPT = `You are a senior compliance and legal expert. Analyse the provided website content and return a JSON compliance audit report. Be specific, practical and accurate. Only include checks for the requested compliance frameworks.`;
 
@@ -1983,10 +2210,14 @@ function buildDiagnosisPrompt(url, scanTypes, websiteContent) {
     gdpr_pecr: "GDPR / PECR (UK/EU data protection and cookie law)",
     fca_vendor: "FCA / vendor due-diligence (UK financial services)",
     iso27001: "ISO 27001 evidence (information security management)",
-    accessibility_legal: "Accessibility and legal page review (WCAG, Equality Act)",
+    accessibility_legal:
+      "Accessibility and legal page review (WCAG, Equality Act)",
     ccpa: "CCPA (California Consumer Privacy Act)",
   };
-  const selected = scanTypes.map((t) => labels[t]).filter(Boolean).join(", ");
+  const selected = scanTypes
+    .map((t) => labels[t])
+    .filter(Boolean)
+    .join(", ");
   return `Website: ${url}
 Compliance checks requested: ${selected}
 
@@ -2021,11 +2252,23 @@ async function sendDiagnosisEmail(to, report, websiteUrl) {
   const passCount = report.checks.filter((c) => c.status === "pass").length;
   const failCount = report.checks.filter((c) => c.status === "fail").length;
   const warnCount = report.checks.filter((c) => c.status === "warning").length;
-  const riskColour = report.riskLevel === "high" ? "#dc2626" : report.riskLevel === "medium" ? "#d97706" : "#16a34a";
+  const riskColour =
+    report.riskLevel === "high"
+      ? "#dc2626"
+      : report.riskLevel === "medium"
+        ? "#d97706"
+        : "#16a34a";
 
   const checksHtml = report.checks
     .map((c) => {
-      const icon = c.status === "pass" ? "✅" : c.status === "fail" ? "❌" : c.status === "warning" ? "⚠️" : "—";
+      const icon =
+        c.status === "pass"
+          ? "✅"
+          : c.status === "fail"
+            ? "❌"
+            : c.status === "warning"
+              ? "⚠️"
+              : "—";
       return `<tr style="border-bottom:1px solid #e5e7eb">
         <td style="padding:8px 12px">${icon}</td>
         <td style="padding:8px 12px;font-weight:500">${c.title}</td>
@@ -2064,7 +2307,10 @@ async function sendDiagnosisEmail(to, report, websiteUrl) {
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       from: "reports@uterms.io",
       to,
@@ -2083,33 +2329,51 @@ async function runDiagnosis(userId, url, scanTypes, notificationEmail) {
   const browser = await getSharedBrowser();
   const page = await browser.newPage();
   try {
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    await page.setUserAgent(
+      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    );
     await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
     const content = await page.evaluate(() => {
-      return (document.body?.innerText || "").slice(0, 12000);
+      return (document.body?.innerText || "").slice(0, 6000);
     });
 
     const userPrompt = buildDiagnosisPrompt(targetUrl, scanTypes, content);
-    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY is not configured on the server");
-    const result = await callDeepSeek(DIAGNOSIS_SYSTEM_PROMPT, userPrompt, 45000);
-    if (!result || !result.checks) throw new Error("AI analysis failed — check DEEPSEEK_API_KEY and DeepSeek account balance");
+    if (!DEEPSEEK_API_KEY)
+      throw new Error("DEEPSEEK_API_KEY is not configured on the server");
+    const result = await callDeepSeek(
+      DIAGNOSIS_SYSTEM_PROMPT,
+      userPrompt,
+      90000,
+    );
+    if (!result || !result.checks)
+      throw new Error(
+        "AI analysis failed — check DEEPSEEK_API_KEY and DeepSeek account balance",
+      );
 
     // Clamp score
     result.score = Math.max(0, Math.min(100, Number(result.score) || 0));
 
     // Save report
-    const saveRes = await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_reports`, {
-      method: "POST",
-      headers: { ...serviceHeaders(), Prefer: "return=representation" },
-      body: JSON.stringify({ user_id: userId, website_url: targetUrl, scan_types: scanTypes, report: result }),
-    });
+    const saveRes = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_reports`,
+      {
+        method: "POST",
+        headers: { ...serviceHeaders(), Prefer: "return=representation" },
+        body: JSON.stringify({
+          user_id: userId,
+          website_url: targetUrl,
+          scan_types: scanTypes,
+          report: result,
+        }),
+      },
+    );
     const saved = await saveRes.json();
     const savedReport = Array.isArray(saved) ? saved[0] : saved;
 
     // Send email
     if (notificationEmail) {
-      await sendDiagnosisEmail(notificationEmail, result, targetUrl).catch((e) =>
-        console.error("[diagnosis] Email failed:", e.message)
+      await sendDiagnosisEmail(notificationEmail, result, targetUrl).catch(
+        (e) => console.error("[diagnosis] Email failed:", e.message),
       );
     }
 
@@ -2120,13 +2384,16 @@ async function runDiagnosis(userId, url, scanTypes, notificationEmail) {
 }
 
 // ─── POST /api/diagnosis/scan ─────────────────────────────────────────────────
-app.post("/api/diagnosis/scan", validateApiKey, diagnosisLimiter, async (req, res) => {
+app.post("/api/diagnosis/scan", validateApiKey, async (req, res) => {
   const { userId, url, scanTypes, notificationEmail } = req.body;
-  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!userId || !isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   if (!url) return res.status(400).json({ error: "URL is required" });
-  if (!Array.isArray(scanTypes) || scanTypes.length === 0) return res.status(400).json({ error: "Select at least one scan type" });
+  if (!Array.isArray(scanTypes) || scanTypes.length === 0)
+    return res.status(400).json({ error: "Select at least one scan type" });
   const invalidTypes = scanTypes.filter((t) => !VALID_SCAN_TYPES.includes(t));
-  if (invalidTypes.length > 0) return res.status(400).json({ error: "Invalid scan type(s)" });
+  if (invalidTypes.length > 0)
+    return res.status(400).json({ error: "Invalid scan type(s)" });
 
   const urlError = validatePublicUrl(normalizeUrl(url));
   if (urlError) return res.status(400).json({ error: urlError });
@@ -2134,31 +2401,41 @@ app.post("/api/diagnosis/scan", validateApiKey, diagnosisLimiter, async (req, re
   // Check active subscription
   const subRes = await supabaseFetch(
     `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status&limit=1`,
-    { headers: serviceHeaders() }
+    { headers: serviceHeaders() },
   );
   const subData = await subRes.json();
   const isActive = Array.isArray(subData) && subData[0]?.status === "active";
-  if (!isActive) return res.status(403).json({ error: "Active subscription required" });
+  if (!isActive)
+    return res.status(403).json({ error: "Active subscription required" });
 
   try {
-    const result = await runDiagnosis(userId, url, scanTypes, notificationEmail);
+    const result = await runDiagnosis(
+      userId,
+      url,
+      scanTypes,
+      notificationEmail,
+    );
     res.json(result);
   } catch (err) {
     console.error("[diagnosis/scan] Error:", err.message, err.stack);
-    res.status(500).json({ error: err.message || "Diagnosis failed. Please try again." });
+    res
+      .status(500)
+      .json({ error: err.message || "Diagnosis failed. Please try again." });
   }
 });
 
 // ─── GET /api/diagnosis/reports/:userId ──────────────────────────────────────
 app.get("/api/diagnosis/reports/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   try {
     const r = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/diagnosis_reports?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc&limit=20&select=*`,
-      { headers: serviceHeaders() }
+      { headers: serviceHeaders() },
     );
-    if (!r.ok) return res.status(r.status).json({ error: "Failed to fetch reports" });
+    if (!r.ok)
+      return res.status(r.status).json({ error: "Failed to fetch reports" });
     res.json(await r.json());
   } catch {
     res.status(500).json({ error: "Failed to fetch reports" });
@@ -2168,13 +2445,15 @@ app.get("/api/diagnosis/reports/:userId", validateApiKey, async (req, res) => {
 // ─── GET /api/diagnosis/schedule/:userId ──────────────────────────────────────
 app.get("/api/diagnosis/schedule/:userId", validateApiKey, async (req, res) => {
   const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   try {
     const r = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/diagnosis_schedules?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
-      { headers: serviceHeaders() }
+      { headers: serviceHeaders() },
     );
-    if (!r.ok) return res.status(r.status).json({ error: "Failed to fetch schedule" });
+    if (!r.ok)
+      return res.status(r.status).json({ error: "Failed to fetch schedule" });
     const data = await r.json();
     res.json(data?.[0] ?? null);
   } catch {
@@ -2184,31 +2463,45 @@ app.get("/api/diagnosis/schedule/:userId", validateApiKey, async (req, res) => {
 
 // ─── POST /api/diagnosis/schedule ─────────────────────────────────────────────
 app.post("/api/diagnosis/schedule", validateApiKey, async (req, res) => {
-  const { userId, url, scanTypes, intervalMonths, notificationEmail, enabled } = req.body;
-  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  const { userId, url, scanTypes, intervalMonths, notificationEmail, enabled } =
+    req.body;
+  if (!userId || !isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   if (!url) return res.status(400).json({ error: "URL is required" });
-  if (![1, 3, 6, 12].includes(Number(intervalMonths))) return res.status(400).json({ error: "intervalMonths must be 1, 3, 6, or 12" });
+  if (![1, 3, 6, 12].includes(Number(intervalMonths)))
+    return res
+      .status(400)
+      .json({ error: "intervalMonths must be 1, 3, 6, or 12" });
 
   const now = new Date();
   const nextRunAt = new Date(now);
   nextRunAt.setMonth(nextRunAt.getMonth() + Number(intervalMonths));
 
   try {
-    const r = await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_schedules`, {
-      method: "POST",
-      headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates,return=representation" },
-      body: JSON.stringify({
-        user_id: userId,
-        website_url: normalizeUrl(url),
-        scan_types: Array.isArray(scanTypes) ? scanTypes.filter((t) => VALID_SCAN_TYPES.includes(t)) : ["gdpr_pecr"],
-        interval_months: Number(intervalMonths),
-        notification_email: notificationEmail || null,
-        enabled: enabled !== false,
-        next_run_at: nextRunAt.toISOString(),
-        updated_at: now.toISOString(),
-      }),
-    });
-    if (!r.ok) return res.status(r.status).json({ error: "Failed to save schedule" });
+    const r = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_schedules`,
+      {
+        method: "POST",
+        headers: {
+          ...serviceHeaders(),
+          Prefer: "resolution=merge-duplicates,return=representation",
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          website_url: normalizeUrl(url),
+          scan_types: Array.isArray(scanTypes)
+            ? scanTypes.filter((t) => VALID_SCAN_TYPES.includes(t))
+            : ["gdpr_pecr"],
+          interval_months: Number(intervalMonths),
+          notification_email: notificationEmail || null,
+          enabled: enabled !== false,
+          next_run_at: nextRunAt.toISOString(),
+          updated_at: now.toISOString(),
+        }),
+      },
+    );
+    if (!r.ok)
+      return res.status(r.status).json({ error: "Failed to save schedule" });
     const data = await r.json();
     res.json(Array.isArray(data) ? data[0] : data);
   } catch {
@@ -2217,20 +2510,28 @@ app.post("/api/diagnosis/schedule", validateApiKey, async (req, res) => {
 });
 
 // ─── DELETE /api/diagnosis/schedule/:userId ───────────────────────────────────
-app.delete("/api/diagnosis/schedule/:userId", validateApiKey, async (req, res) => {
-  const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
-  try {
-    const r = await supabaseFetch(
-      `${SUPABASE_URL}/rest/v1/diagnosis_schedules?user_id=eq.${encodeURIComponent(userId)}`,
-      { method: "DELETE", headers: serviceHeaders() }
-    );
-    if (!r.ok) return res.status(r.status).json({ error: "Failed to delete schedule" });
-    res.json({ success: true });
-  } catch {
-    res.status(500).json({ error: "Failed to delete schedule" });
-  }
-});
+app.delete(
+  "/api/diagnosis/schedule/:userId",
+  validateApiKey,
+  async (req, res) => {
+    const { userId } = req.params;
+    if (!isValidUUID(userId))
+      return res.status(400).json({ error: "Invalid user ID" });
+    try {
+      const r = await supabaseFetch(
+        `${SUPABASE_URL}/rest/v1/diagnosis_schedules?user_id=eq.${encodeURIComponent(userId)}`,
+        { method: "DELETE", headers: serviceHeaders() },
+      );
+      if (!r.ok)
+        return res
+          .status(r.status)
+          .json({ error: "Failed to delete schedule" });
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ error: "Failed to delete schedule" });
+    }
+  },
+);
 
 // ─── Diagnosis cron (runs daily at 03:00) ────────────────────────────────────
 cron.schedule("0 3 * * *", async () => {
@@ -2239,7 +2540,7 @@ cron.schedule("0 3 * * *", async () => {
   try {
     const r = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/diagnosis_schedules?enabled=eq.true&next_run_at=lte.${encodeURIComponent(now)}&select=*`,
-      { headers: serviceHeaders() }
+      { headers: serviceHeaders() },
     );
     if (!r.ok) return;
     const schedules = await r.json();
@@ -2247,13 +2548,18 @@ cron.schedule("0 3 * * *", async () => {
       // Verify subscription is still active
       const subR = await supabaseFetch(
         `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(sched.user_id)}&select=status&limit=1`,
-        { headers: serviceHeaders() }
+        { headers: serviceHeaders() },
       );
       const subData = await subR.json();
       if (!Array.isArray(subData) || subData[0]?.status !== "active") continue;
 
       try {
-        await runDiagnosis(sched.user_id, sched.website_url, sched.scan_types, sched.notification_email);
+        await runDiagnosis(
+          sched.user_id,
+          sched.website_url,
+          sched.scan_types,
+          sched.notification_email,
+        );
         const nextRun = new Date();
         nextRun.setMonth(nextRun.getMonth() + sched.interval_months);
         await supabaseFetch(
@@ -2261,12 +2567,19 @@ cron.schedule("0 3 * * *", async () => {
           {
             method: "PATCH",
             headers: serviceHeaders(),
-            body: JSON.stringify({ last_run_at: now, next_run_at: nextRun.toISOString(), updated_at: now }),
-          }
+            body: JSON.stringify({
+              last_run_at: now,
+              next_run_at: nextRun.toISOString(),
+              updated_at: now,
+            }),
+          },
         );
         console.log(`[cron:diagnosis] Done for user ${sched.user_id}`);
       } catch (err) {
-        console.error(`[cron:diagnosis] Failed for user ${sched.user_id}:`, err.message);
+        console.error(
+          `[cron:diagnosis] Failed for user ${sched.user_id}:`,
+          err.message,
+        );
       }
     }
   } catch (err) {
@@ -2276,27 +2589,50 @@ cron.schedule("0 3 * * *", async () => {
 
 // ─── Stripe ───────────────────────────────────────────────────────────────────
 app.post("/api/stripe/webhook", async (req, res) => {
-  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: "Stripe not configured" });
+  if (!stripe || !STRIPE_WEBHOOK_SECRET)
+    return res.status(503).json({ error: "Stripe not configured" });
   const sig = req.headers["stripe-signature"];
   let event;
   try {
-    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig,
+      STRIPE_WEBHOOK_SECRET,
+    );
   } catch (err) {
-    return res.status(400).json({ error: `Webhook signature error: ${err.message}` });
+    return res
+      .status(400)
+      .json({ error: `Webhook signature error: ${err.message}` });
   }
 
   const obj = event.data.object;
 
   try {
     // Subscription lifecycle events
-    if (["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"].includes(event.type)) {
+    if (
+      [
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+      ].includes(event.type)
+    ) {
       const customer = await stripe.customers.retrieve(obj.customer);
       const userId = customer.metadata?.user_id;
       if (userId && isValidUUID(userId)) {
-        const status = obj.status === "active" ? "active" : obj.status === "past_due" ? "past_due" : obj.status === "canceled" ? "canceled" : "inactive";
+        const status =
+          obj.status === "active"
+            ? "active"
+            : obj.status === "past_due"
+              ? "past_due"
+              : obj.status === "canceled"
+                ? "canceled"
+                : "inactive";
         await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_subscriptions`, {
           method: "POST",
-          headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
+          headers: {
+            ...serviceHeaders(),
+            Prefer: "resolution=merge-duplicates",
+          },
           body: JSON.stringify({
             user_id: userId,
             stripe_customer_id: String(obj.customer),
@@ -2305,7 +2641,9 @@ app.post("/api/stripe/webhook", async (req, res) => {
             updated_at: new Date().toISOString(),
           }),
         });
-        console.log(`[stripe webhook] ${event.type} → user ${userId} status=${status}`);
+        console.log(
+          `[stripe webhook] ${event.type} → user ${userId} status=${status}`,
+        );
       }
     }
 
@@ -2316,7 +2654,10 @@ app.post("/api/stripe/webhook", async (req, res) => {
       if (userId && isValidUUID(userId)) {
         await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_subscriptions`, {
           method: "POST",
-          headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
+          headers: {
+            ...serviceHeaders(),
+            Prefer: "resolution=merge-duplicates",
+          },
           body: JSON.stringify({
             user_id: userId,
             stripe_customer_id: String(obj.customer),
@@ -2325,7 +2666,9 @@ app.post("/api/stripe/webhook", async (req, res) => {
             updated_at: new Date().toISOString(),
           }),
         });
-        console.log(`[stripe webhook] invoice.payment_succeeded → user ${userId} status=active`);
+        console.log(
+          `[stripe webhook] invoice.payment_succeeded → user ${userId} status=active`,
+        );
       }
     }
   } catch (err) {
@@ -2336,35 +2679,45 @@ app.post("/api/stripe/webhook", async (req, res) => {
 });
 
 // ─── GET /api/stripe/subscription/:userId ────────────────────────────────────
-app.get("/api/stripe/subscription/:userId", validateApiKey, async (req, res) => {
-  const { userId } = req.params;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
-  try {
-    const r = await supabaseFetch(
-      `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status,stripe_subscription_id&limit=1`,
-      { headers: serviceHeaders() }
-    );
-    const data = await r.json();
-    if (Array.isArray(data) && data[0]) {
-      return res.json({ status: data[0].status, subscriptionId: data[0].stripe_subscription_id });
+app.get(
+  "/api/stripe/subscription/:userId",
+  validateApiKey,
+  async (req, res) => {
+    const { userId } = req.params;
+    if (!isValidUUID(userId))
+      return res.status(400).json({ error: "Invalid user ID" });
+    try {
+      const r = await supabaseFetch(
+        `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status,stripe_subscription_id&limit=1`,
+        { headers: serviceHeaders() },
+      );
+      const data = await r.json();
+      if (Array.isArray(data) && data[0]) {
+        return res.json({
+          status: data[0].status,
+          subscriptionId: data[0].stripe_subscription_id,
+        });
+      }
+      res.json({ status: "inactive" });
+    } catch {
+      res.status(500).json({ error: "Failed to fetch subscription" });
     }
-    res.json({ status: "inactive" });
-  } catch {
-    res.status(500).json({ error: "Failed to fetch subscription" });
-  }
-});
+  },
+);
 
 // ─── POST /api/stripe/create-checkout ────────────────────────────────────────
 app.post("/api/stripe/create-checkout", validateApiKey, async (req, res) => {
-  if (!stripe || !STRIPE_PRICE_ID) return res.status(503).json({ error: "Stripe not configured" });
+  if (!stripe || !STRIPE_PRICE_ID)
+    return res.status(503).json({ error: "Stripe not configured" });
   const { userId, email } = req.body;
-  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!userId || !isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   try {
     // Reuse existing Stripe customer if we have one, otherwise create with user_id metadata
     let customerId;
     const existingR = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`,
-      { headers: serviceHeaders() }
+      { headers: serviceHeaders() },
     );
     const existingData = await existingR.json();
     if (existingData?.[0]?.stripe_customer_id) {
@@ -2389,7 +2742,9 @@ app.post("/api/stripe/create-checkout", validateApiKey, async (req, res) => {
     res.json({ url: session.url });
   } catch (err) {
     console.error("[stripe/create-checkout]", err.message);
-    res.status(500).json({ error: err.message || "Failed to create checkout session" });
+    res
+      .status(500)
+      .json({ error: err.message || "Failed to create checkout session" });
   }
 });
 
@@ -2397,15 +2752,17 @@ app.post("/api/stripe/create-checkout", validateApiKey, async (req, res) => {
 app.post("/api/stripe/portal", validateApiKey, async (req, res) => {
   if (!stripe) return res.status(503).json({ error: "Stripe not configured" });
   const { userId } = req.body;
-  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!userId || !isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid user ID" });
   try {
     const subR = await supabaseFetch(
       `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`,
-      { headers: serviceHeaders() }
+      { headers: serviceHeaders() },
     );
     const subData = await subR.json();
     const customerId = subData?.[0]?.stripe_customer_id;
-    if (!customerId) return res.status(404).json({ error: "No subscription found" });
+    if (!customerId)
+      return res.status(404).json({ error: "No subscription found" });
     const session = await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: `${APP_URL}/website-diagnosis`,

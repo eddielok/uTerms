@@ -355,11 +355,6 @@ export const WebsiteDiagnosis: React.FC = () => {
     }
   };
 
-  const toggleType = (id: string) => {
-    setSelectedTypes((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
-    );
-  };
 
   const isSubscribed = subscription?.status === "active";
 
@@ -478,22 +473,23 @@ export const WebsiteDiagnosis: React.FC = () => {
 
             <div className="diag-field">
               <label className="diag-label">Compliance Checks</label>
-              <div className="diag-checklist">
+              <select
+                className="diag-input"
+                value={selectedTypes[0] ?? ''}
+                onChange={(e) => setSelectedTypes([e.target.value])}
+                disabled={isScanning}
+              >
                 {SCAN_TYPES.map((type) => (
-                  <label key={type.id} className="diag-check-item">
-                    <input
-                      type="checkbox"
-                      checked={selectedTypes.includes(type.id)}
-                      onChange={() => toggleType(type.id)}
-                      disabled={isScanning}
-                    />
-                    <div>
-                      <span className="diag-check-label">{type.label}</span>
-                      <span className="diag-check-desc">{type.desc}</span>
-                    </div>
-                  </label>
+                  <option key={type.id} value={type.id}>
+                    {type.label}
+                  </option>
                 ))}
-              </div>
+              </select>
+              {selectedTypes[0] && (
+                <p className="diag-check-hint">
+                  {SCAN_TYPES.find((t) => t.id === selectedTypes[0])?.desc}
+                </p>
+              )}
             </div>
 
             <div className="diag-field">

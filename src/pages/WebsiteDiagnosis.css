@@ -250,6 +250,13 @@
   line-height: 1.45;
 }
 
+.diag-check-hint {
+  font-size: 0.775rem;
+  color: #6b7280;
+  margin: 0.4rem 0 0;
+  line-height: 1.45;
+}
+
 .diag-schedule-row {
   display: flex;
   flex-direction: column;
