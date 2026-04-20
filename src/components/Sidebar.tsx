@@ -285,6 +285,16 @@ export const Sidebar: React.FC = () => {
         </div>
 
         <NavLink
+          to="/website-diagnosis"
+          className={({ isActive }) =>
+            `sidebar-link ${isActive ? "active" : ""}`
+          }
+        >
+          <ShieldCheck size={20} />
+          <span>Website Diagnosis</span>
+        </NavLink>
+
+        <NavLink
           to="/api-documentation"
           className={({ isActive }) =>
             `sidebar-link ${isActive ? "active" : ""}`

@@ -82,6 +82,7 @@ const AccessibilityPreview = React.lazy(() => import("./pages/AccessibilityPrevi
 // ── Misc authenticated ────────────────────────────────────────────────────────
 const Settings = React.lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
 const APIDocumentation = React.lazy(() => import("./pages/APIDocumentation").then(m => ({ default: m.APIDocumentation })));
+const WebsiteDiagnosis = React.lazy(() => import("./pages/WebsiteDiagnosis").then(m => ({ default: m.WebsiteDiagnosis })));
 
 // ── Policy Scan ───────────────────────────────────────────────────────────────
 const PolicyScan = React.lazy(() => import("./pages/PolicyScan").then(m => ({ default: m.PolicyScan })));
@@ -162,6 +163,7 @@ function App() {
               <Route path="accessibility-statement/:id/edit" element={<AccessibilityWizard />} />
               <Route path="accessibility-statement/:id/preview" element={<AccessibilityPreview />} />
               <Route path="policy-scan" element={<PolicyScan />} />
+              <Route path="website-diagnosis" element={<WebsiteDiagnosis />} />
               <Route path="settings" element={<Settings />} />
               <Route path="api-documentation" element={<APIDocumentation />} />
             </Route>

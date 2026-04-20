@@ -316,6 +316,8 @@ app.use("/api/scan", scanLimiter);
 app.use("/api/analyze-policy", scanLimiter);
 app.use("/api/analyze-all-policies", policyScanLimiter);
 
+// Stripe webhook needs raw body before the JSON parser
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 app.use(express.json());
 // ─── Cookie category templates ────────────────────────────────────────────────
 const CATEGORY_TEMPLATES = [
@@ -939,10 +941,14 @@ async function callDeepSeek(systemPrompt, userPrompt, timeoutMs = 30000) {
       signal: controller.signal,
     });
     const data = await resp.json();
+    if (!resp.ok) {
+      console.error("[DeepSeek] API error:", data?.error?.message || JSON.stringify(data));
+      return null;
+    }
     const raw = data?.choices?.[0]?.message?.content;
     return raw ? JSON.parse(raw) : null;
   } catch (err) {
-    dbg("[DeepSeek] error:", err.message);
+    console.error("[DeepSeek] error:", err.message);
     return null;
   } finally {
     clearTimeout(timer);
@@ -1914,6 +1920,492 @@ app.post("/api/delete-account", deleteAccountLimiter, async (req, res) => {
   } catch (err) {
     console.error("[delete-account] Error:", err.message);
     res.status(500).json({ error: "Account deletion failed." });
+  }
+});
+
+// ─── Website Diagnosis ────────────────────────────────────────────────────────
+// Required env vars: RESEND_API_KEY, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET,
+//                    STRIPE_PRICE_ID, APP_URL
+//
+// Required Supabase tables (run in SQL editor):
+//   CREATE TABLE diagnosis_subscriptions (
+//     user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+//     stripe_customer_id text, stripe_subscription_id text,
+//     status text DEFAULT 'inactive',
+//     created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+//   );
+//   CREATE TABLE diagnosis_schedules (
+//     user_id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+//     website_url text NOT NULL, scan_types text[] NOT NULL DEFAULT '{}',
+//     interval_months integer NOT NULL DEFAULT 1, notification_email text,
+//     enabled boolean NOT NULL DEFAULT true,
+//     next_run_at timestamptz, last_run_at timestamptz,
+//     created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now()
+//   );
+//   CREATE TABLE diagnosis_reports (
+//     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+//     user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+//     website_url text NOT NULL, scan_types text[] NOT NULL,
+//     report jsonb NOT NULL, created_at timestamptz DEFAULT now()
+//   );
+
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
+const STRIPE_PRICE_ID = process.env.STRIPE_PRICE_ID;
+const APP_URL = process.env.APP_URL || "https://uterms.io";
+
+let stripe = null;
+try {
+  if (STRIPE_SECRET_KEY) {
+    stripe = require("stripe")(STRIPE_SECRET_KEY);
+  } else {
+    console.warn("[stripe] STRIPE_SECRET_KEY not set — Stripe features disabled");
+  }
+} catch (e) {
+  console.warn("[stripe] Failed to initialise Stripe:", e.message);
+}
+
+const VALID_SCAN_TYPES = ["gdpr_pecr", "fca_vendor", "iso27001", "accessibility_legal", "ccpa"];
+
+const DIAGNOSIS_SYSTEM_PROMPT = `You are a senior compliance and legal expert. Analyse the provided website content and return a JSON compliance audit report. Be specific, practical and accurate. Only include checks for the requested compliance frameworks.`;
+
+function buildDiagnosisPrompt(url, scanTypes, websiteContent) {
+  const labels = {
+    gdpr_pecr: "GDPR / PECR (UK/EU data protection and cookie law)",
+    fca_vendor: "FCA / vendor due-diligence (UK financial services)",
+    iso27001: "ISO 27001 evidence (information security management)",
+    accessibility_legal: "Accessibility and legal page review (WCAG, Equality Act)",
+    ccpa: "CCPA (California Consumer Privacy Act)",
+  };
+  const selected = scanTypes.map((t) => labels[t]).filter(Boolean).join(", ");
+  return `Website: ${url}
+Compliance checks requested: ${selected}
+
+Website content:
+${websiteContent}
+
+Return a JSON object with this exact schema:
+{
+  "score": <number 0-100, overall compliance score>,
+  "summary": "<2-3 sentence executive summary>",
+  "riskLevel": "high" | "medium" | "low",
+  "checks": [
+    {
+      "id": "<unique string>",
+      "category": "<one of: ${scanTypes.join(", ")}>",
+      "title": "<check name>",
+      "status": "pass" | "fail" | "warning" | "na",
+      "detail": "<what was found on this website>",
+      "action": "<what to fix, or null if pass>"
+    }
+  ]
+}
+
+Include 5-10 checks per requested compliance type. Be precise and website-specific.`;
+}
+
+async function sendDiagnosisEmail(to, report, websiteUrl) {
+  if (!RESEND_API_KEY) {
+    console.warn("[resend] RESEND_API_KEY not set — skipping email");
+    return;
+  }
+  const passCount = report.checks.filter((c) => c.status === "pass").length;
+  const failCount = report.checks.filter((c) => c.status === "fail").length;
+  const warnCount = report.checks.filter((c) => c.status === "warning").length;
+  const riskColour = report.riskLevel === "high" ? "#dc2626" : report.riskLevel === "medium" ? "#d97706" : "#16a34a";
+
+  const checksHtml = report.checks
+    .map((c) => {
+      const icon = c.status === "pass" ? "✅" : c.status === "fail" ? "❌" : c.status === "warning" ? "⚠️" : "—";
+      return `<tr style="border-bottom:1px solid #e5e7eb">
+        <td style="padding:8px 12px">${icon}</td>
+        <td style="padding:8px 12px;font-weight:500">${c.title}</td>
+        <td style="padding:8px 12px;color:#6b7280;font-size:13px">${c.detail}</td>
+        <td style="padding:8px 12px;color:#92400e;font-size:13px">${c.action || "—"}</td>
+      </tr>`;
+    })
+    .join("");
+
+  const html = `<!DOCTYPE html><html><body style="font-family:sans-serif;max-width:700px;margin:0 auto;padding:24px;color:#111827">
+  <h1 style="font-size:20px;margin-bottom:4px">Website Diagnosis Report</h1>
+  <p style="color:#6b7280;margin-top:0">${websiteUrl}</p>
+  <div style="background:#f9fafb;border-radius:8px;padding:16px;margin-bottom:20px;display:flex;gap:24px;align-items:center">
+    <div style="font-size:48px;font-weight:800;color:${riskColour}">${report.score}<span style="font-size:18px;color:#6b7280">/100</span></div>
+    <div>
+      <div style="font-size:13px;font-weight:600;text-transform:uppercase;color:${riskColour}">${report.riskLevel} risk</div>
+      <div style="font-size:14px;color:#374151;margin-top:4px">${report.summary}</div>
+    </div>
+  </div>
+  <div style="display:flex;gap:12px;margin-bottom:20px">
+    <span style="background:#dcfce7;color:#16a34a;padding:4px 12px;border-radius:12px;font-size:13px">✅ ${passCount} passed</span>
+    <span style="background:#fef3c7;color:#d97706;padding:4px 12px;border-radius:12px;font-size:13px">⚠️ ${warnCount} warnings</span>
+    <span style="background:#fee2e2;color:#dc2626;padding:4px 12px;border-radius:12px;font-size:13px">❌ ${failCount} failed</span>
+  </div>
+  <table style="width:100%;border-collapse:collapse;font-size:14px">
+    <thead><tr style="background:#f3f4f6">
+      <th style="padding:8px 12px;text-align:left"></th>
+      <th style="padding:8px 12px;text-align:left">Check</th>
+      <th style="padding:8px 12px;text-align:left">Finding</th>
+      <th style="padding:8px 12px;text-align:left">Action</th>
+    </tr></thead>
+    <tbody>${checksHtml}</tbody>
+  </table>
+  <p style="font-size:12px;color:#9ca3af;margin-top:24px">Generated by uTerms — <a href="${APP_URL}">uterms.io</a></p>
+</body></html>`;
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: "reports@uterms.io",
+      to,
+      subject: `Website Diagnosis Report — ${websiteUrl} (Score: ${report.score}/100)`,
+      html,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || "Failed to send email");
+  }
+}
+
+async function runDiagnosis(userId, url, scanTypes, notificationEmail) {
+  const targetUrl = normalizeUrl(url);
+  const browser = await getSharedBrowser();
+  const page = await browser.newPage();
+  try {
+    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+    await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 30000 });
+    const content = await page.evaluate(() => {
+      return (document.body?.innerText || "").slice(0, 12000);
+    });
+
+    const userPrompt = buildDiagnosisPrompt(targetUrl, scanTypes, content);
+    if (!DEEPSEEK_API_KEY) throw new Error("DEEPSEEK_API_KEY is not configured on the server");
+    const result = await callDeepSeek(DIAGNOSIS_SYSTEM_PROMPT, userPrompt, 45000);
+    if (!result || !result.checks) throw new Error("AI analysis failed — check DEEPSEEK_API_KEY and DeepSeek account balance");
+
+    // Clamp score
+    result.score = Math.max(0, Math.min(100, Number(result.score) || 0));
+
+    // Save report
+    const saveRes = await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_reports`, {
+      method: "POST",
+      headers: { ...serviceHeaders(), Prefer: "return=representation" },
+      body: JSON.stringify({ user_id: userId, website_url: targetUrl, scan_types: scanTypes, report: result }),
+    });
+    const saved = await saveRes.json();
+    const savedReport = Array.isArray(saved) ? saved[0] : saved;
+
+    // Send email
+    if (notificationEmail) {
+      await sendDiagnosisEmail(notificationEmail, result, targetUrl).catch((e) =>
+        console.error("[diagnosis] Email failed:", e.message)
+      );
+    }
+
+    return { report: result, savedReport };
+  } finally {
+    await page.close();
+  }
+}
+
+// ─── POST /api/diagnosis/scan ─────────────────────────────────────────────────
+app.post("/api/diagnosis/scan", validateApiKey, scanLimiter, async (req, res) => {
+  const { userId, url, scanTypes, notificationEmail } = req.body;
+  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!url) return res.status(400).json({ error: "URL is required" });
+  if (!Array.isArray(scanTypes) || scanTypes.length === 0) return res.status(400).json({ error: "Select at least one scan type" });
+  const invalidTypes = scanTypes.filter((t) => !VALID_SCAN_TYPES.includes(t));
+  if (invalidTypes.length > 0) return res.status(400).json({ error: "Invalid scan type(s)" });
+
+  const urlError = validatePublicUrl(normalizeUrl(url));
+  if (urlError) return res.status(400).json({ error: urlError });
+
+  // Check active subscription
+  const subRes = await supabaseFetch(
+    `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status&limit=1`,
+    { headers: serviceHeaders() }
+  );
+  const subData = await subRes.json();
+  const isActive = Array.isArray(subData) && subData[0]?.status === "active";
+  if (!isActive) return res.status(403).json({ error: "Active subscription required" });
+
+  try {
+    const result = await runDiagnosis(userId, url, scanTypes, notificationEmail);
+    res.json(result);
+  } catch (err) {
+    console.error("[diagnosis/scan] Error:", err.message, err.stack);
+    res.status(500).json({ error: err.message || "Diagnosis failed. Please try again." });
+  }
+});
+
+// ─── GET /api/diagnosis/reports/:userId ──────────────────────────────────────
+app.get("/api/diagnosis/reports/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const r = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_reports?user_id=eq.${encodeURIComponent(userId)}&order=created_at.desc&limit=20&select=*`,
+      { headers: serviceHeaders() }
+    );
+    if (!r.ok) return res.status(r.status).json({ error: "Failed to fetch reports" });
+    res.json(await r.json());
+  } catch {
+    res.status(500).json({ error: "Failed to fetch reports" });
+  }
+});
+
+// ─── GET /api/diagnosis/schedule/:userId ──────────────────────────────────────
+app.get("/api/diagnosis/schedule/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const r = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_schedules?user_id=eq.${encodeURIComponent(userId)}&select=*&limit=1`,
+      { headers: serviceHeaders() }
+    );
+    if (!r.ok) return res.status(r.status).json({ error: "Failed to fetch schedule" });
+    const data = await r.json();
+    res.json(data?.[0] ?? null);
+  } catch {
+    res.status(500).json({ error: "Failed to fetch schedule" });
+  }
+});
+
+// ─── POST /api/diagnosis/schedule ─────────────────────────────────────────────
+app.post("/api/diagnosis/schedule", validateApiKey, async (req, res) => {
+  const { userId, url, scanTypes, intervalMonths, notificationEmail, enabled } = req.body;
+  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  if (!url) return res.status(400).json({ error: "URL is required" });
+  if (![1, 3, 6, 12].includes(Number(intervalMonths))) return res.status(400).json({ error: "intervalMonths must be 1, 3, 6, or 12" });
+
+  const now = new Date();
+  const nextRunAt = new Date(now);
+  nextRunAt.setMonth(nextRunAt.getMonth() + Number(intervalMonths));
+
+  try {
+    const r = await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_schedules`, {
+      method: "POST",
+      headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates,return=representation" },
+      body: JSON.stringify({
+        user_id: userId,
+        website_url: normalizeUrl(url),
+        scan_types: Array.isArray(scanTypes) ? scanTypes.filter((t) => VALID_SCAN_TYPES.includes(t)) : ["gdpr_pecr"],
+        interval_months: Number(intervalMonths),
+        notification_email: notificationEmail || null,
+        enabled: enabled !== false,
+        next_run_at: nextRunAt.toISOString(),
+        updated_at: now.toISOString(),
+      }),
+    });
+    if (!r.ok) return res.status(r.status).json({ error: "Failed to save schedule" });
+    const data = await r.json();
+    res.json(Array.isArray(data) ? data[0] : data);
+  } catch {
+    res.status(500).json({ error: "Failed to save schedule" });
+  }
+});
+
+// ─── DELETE /api/diagnosis/schedule/:userId ───────────────────────────────────
+app.delete("/api/diagnosis/schedule/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const r = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_schedules?user_id=eq.${encodeURIComponent(userId)}`,
+      { method: "DELETE", headers: serviceHeaders() }
+    );
+    if (!r.ok) return res.status(r.status).json({ error: "Failed to delete schedule" });
+    res.json({ success: true });
+  } catch {
+    res.status(500).json({ error: "Failed to delete schedule" });
+  }
+});
+
+// ─── Diagnosis cron (runs daily at 03:00) ────────────────────────────────────
+cron.schedule("0 3 * * *", async () => {
+  console.log("[cron:diagnosis] Checking for due diagnosis scans...");
+  const now = new Date().toISOString();
+  try {
+    const r = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_schedules?enabled=eq.true&next_run_at=lte.${encodeURIComponent(now)}&select=*`,
+      { headers: serviceHeaders() }
+    );
+    if (!r.ok) return;
+    const schedules = await r.json();
+    for (const sched of schedules) {
+      // Verify subscription is still active
+      const subR = await supabaseFetch(
+        `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(sched.user_id)}&select=status&limit=1`,
+        { headers: serviceHeaders() }
+      );
+      const subData = await subR.json();
+      if (!Array.isArray(subData) || subData[0]?.status !== "active") continue;
+
+      try {
+        await runDiagnosis(sched.user_id, sched.website_url, sched.scan_types, sched.notification_email);
+        const nextRun = new Date();
+        nextRun.setMonth(nextRun.getMonth() + sched.interval_months);
+        await supabaseFetch(
+          `${SUPABASE_URL}/rest/v1/diagnosis_schedules?user_id=eq.${encodeURIComponent(sched.user_id)}`,
+          {
+            method: "PATCH",
+            headers: serviceHeaders(),
+            body: JSON.stringify({ last_run_at: now, next_run_at: nextRun.toISOString(), updated_at: now }),
+          }
+        );
+        console.log(`[cron:diagnosis] Done for user ${sched.user_id}`);
+      } catch (err) {
+        console.error(`[cron:diagnosis] Failed for user ${sched.user_id}:`, err.message);
+      }
+    }
+  } catch (err) {
+    console.error("[cron:diagnosis] Unexpected error:", err.message);
+  }
+});
+
+// ─── Stripe ───────────────────────────────────────────────────────────────────
+app.post("/api/stripe/webhook", async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).json({ error: "Stripe not configured" });
+  const sig = req.headers["stripe-signature"];
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    return res.status(400).json({ error: `Webhook signature error: ${err.message}` });
+  }
+
+  const obj = event.data.object;
+
+  try {
+    // Subscription lifecycle events
+    if (["customer.subscription.created", "customer.subscription.updated", "customer.subscription.deleted"].includes(event.type)) {
+      const customer = await stripe.customers.retrieve(obj.customer);
+      const userId = customer.metadata?.user_id;
+      if (userId && isValidUUID(userId)) {
+        const status = obj.status === "active" ? "active" : obj.status === "past_due" ? "past_due" : obj.status === "canceled" ? "canceled" : "inactive";
+        await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_subscriptions`, {
+          method: "POST",
+          headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
+          body: JSON.stringify({
+            user_id: userId,
+            stripe_customer_id: String(obj.customer),
+            stripe_subscription_id: obj.subscription || obj.id,
+            status,
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        console.log(`[stripe webhook] ${event.type} → user ${userId} status=${status}`);
+      }
+    }
+
+    // Invoice paid — mark subscription active (fires reliably on first payment)
+    if (event.type === "invoice.payment_succeeded" && obj.subscription) {
+      const customer = await stripe.customers.retrieve(obj.customer);
+      const userId = customer.metadata?.user_id;
+      if (userId && isValidUUID(userId)) {
+        await supabaseFetch(`${SUPABASE_URL}/rest/v1/diagnosis_subscriptions`, {
+          method: "POST",
+          headers: { ...serviceHeaders(), Prefer: "resolution=merge-duplicates" },
+          body: JSON.stringify({
+            user_id: userId,
+            stripe_customer_id: String(obj.customer),
+            stripe_subscription_id: obj.subscription,
+            status: "active",
+            updated_at: new Date().toISOString(),
+          }),
+        });
+        console.log(`[stripe webhook] invoice.payment_succeeded → user ${userId} status=active`);
+      }
+    }
+  } catch (err) {
+    console.error("[stripe webhook] DB update failed:", err.message);
+  }
+
+  res.json({ received: true });
+});
+
+// ─── GET /api/stripe/subscription/:userId ────────────────────────────────────
+app.get("/api/stripe/subscription/:userId", validateApiKey, async (req, res) => {
+  const { userId } = req.params;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const r = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status,stripe_subscription_id&limit=1`,
+      { headers: serviceHeaders() }
+    );
+    const data = await r.json();
+    if (Array.isArray(data) && data[0]) {
+      return res.json({ status: data[0].status, subscriptionId: data[0].stripe_subscription_id });
+    }
+    res.json({ status: "inactive" });
+  } catch {
+    res.status(500).json({ error: "Failed to fetch subscription" });
+  }
+});
+
+// ─── POST /api/stripe/create-checkout ────────────────────────────────────────
+app.post("/api/stripe/create-checkout", validateApiKey, async (req, res) => {
+  if (!stripe || !STRIPE_PRICE_ID) return res.status(503).json({ error: "Stripe not configured" });
+  const { userId, email } = req.body;
+  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    // Reuse existing Stripe customer if we have one, otherwise create with user_id metadata
+    let customerId;
+    const existingR = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`,
+      { headers: serviceHeaders() }
+    );
+    const existingData = await existingR.json();
+    if (existingData?.[0]?.stripe_customer_id) {
+      customerId = existingData[0].stripe_customer_id;
+    } else {
+      const customer = await stripe.customers.create({
+        email: email || undefined,
+        metadata: { user_id: userId },
+      });
+      customerId = customer.id;
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      line_items: [{ price: STRIPE_PRICE_ID, quantity: 1 }],
+      metadata: { user_id: userId },
+      subscription_data: { metadata: { user_id: userId } },
+      success_url: `${APP_URL}/website-diagnosis?subscription=success`,
+      cancel_url: `${APP_URL}/website-diagnosis?subscription=cancel`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("[stripe/create-checkout]", err.message);
+    res.status(500).json({ error: err.message || "Failed to create checkout session" });
+  }
+});
+
+// ─── POST /api/stripe/portal ──────────────────────────────────────────────────
+app.post("/api/stripe/portal", validateApiKey, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: "Stripe not configured" });
+  const { userId } = req.body;
+  if (!userId || !isValidUUID(userId)) return res.status(400).json({ error: "Invalid user ID" });
+  try {
+    const subR = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=stripe_customer_id&limit=1`,
+      { headers: serviceHeaders() }
+    );
+    const subData = await subR.json();
+    const customerId = subData?.[0]?.stripe_customer_id;
+    if (!customerId) return res.status(404).json({ error: "No subscription found" });
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${APP_URL}/website-diagnosis`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error("[stripe/portal]", err.message);
+    res.status(500).json({ error: "Failed to open portal" });
   }
 });
 
