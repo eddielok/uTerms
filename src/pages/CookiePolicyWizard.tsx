@@ -1008,7 +1008,106 @@ export const CookiePolicyWizard: React.FC = () => {
                     <span className="toggle-slider" />
                   </label>
                 </div>
+                <div className="wizard-toggle-field">
+                  <div>
+                    <strong>PIPL (China)</strong>
+                    <p
+                      style={{
+                        fontSize: "0.8125rem",
+                        color: "#6b7280",
+                        margin: 0,
+                      }}
+                    >
+                      Applies if you have visitors from mainland China. Adds a
+                      bilingual (Chinese/English) PIPL disclosure section.
+                    </p>
+                  </div>
+                  <label className="toggle-switch">
+                    <input
+                      type="checkbox"
+                      checked={answers.piplApplies}
+                      onChange={(e) => set("piplApplies", e.target.checked)}
+                    />
+                    <span className="toggle-slider" />
+                  </label>
+                </div>
               </div>
+
+              {answers.piplApplies && (
+                <div
+                  style={{
+                    borderTop: "1px solid #e5e7eb",
+                    paddingTop: "1.25rem",
+                    marginTop: "0.5rem",
+                  }}
+                >
+                  <p
+                    style={{
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      color: "#111827",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    PIPL — Data Controller Details
+                  </p>
+                  <p
+                    style={{
+                      fontSize: "0.8125rem",
+                      color: "#6b7280",
+                      marginBottom: "1rem",
+                    }}
+                  >
+                    PIPL requires you to disclose the data controller's identity,
+                    contact, and retention period in your policy.
+                  </p>
+                  <div className="wizard-field">
+                    <label>Data Controller Name <span className="required">*</span></label>
+                    <input
+                      type="text"
+                      placeholder="Your company or operating entity name"
+                      value={answers.piplCompanyName}
+                      onChange={(e) => set("piplCompanyName", e.target.value)}
+                    />
+                  </div>
+                  <div className="wizard-field">
+                    <label>Privacy Contact Email <span className="required">*</span></label>
+                    <input
+                      type="email"
+                      placeholder="privacy@yourcompany.com"
+                      value={answers.piplContactEmail}
+                      onChange={(e) => set("piplContactEmail", e.target.value)}
+                    />
+                  </div>
+                  <div className="wizard-field">
+                    <label>Data Retention Period (days)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      placeholder="180"
+                      value={answers.piplRetentionDays || ""}
+                      onChange={(e) => set("piplRetentionDays", parseInt(e.target.value) || 180)}
+                      style={{ maxWidth: "120px" }}
+                    />
+                  </div>
+                  <div className="wizard-toggle-field" style={{ marginTop: "0.75rem" }}>
+                    <div>
+                      <strong>Data transferred outside China</strong>
+                      <p style={{ fontSize: "0.8125rem", color: "#6b7280", margin: 0 }}>
+                        Adds a cross-border transfer notice as required by PIPL Article 38.
+                      </p>
+                    </div>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={answers.piplCrossBorder}
+                        onChange={(e) => set("piplCrossBorder", e.target.checked)}
+                      />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {/* CCPA sell/share questions — only shown when CCPA is enabled */}
               {answers.ccpaApplies && (

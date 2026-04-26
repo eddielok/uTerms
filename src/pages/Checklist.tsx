@@ -281,7 +281,7 @@ export const Checklist: React.FC = () => {
                 </div>
 
                 <p style={{ margin: "1rem 0 0.25rem 0", fontSize: "0.85rem", color: "#6b7280" }}>
-                  <strong style={{ color: "#374151" }}>Multi-language</strong> — the banner automatically detects each visitor's browser language. To force a specific language, add <code>lang=</code> to the script URL:
+                  <strong style={{ color: "#374151" }}>Multi-language</strong> — the banner automatically detects each visitor's language by their IP region (e.g. Taiwan → Traditional Chinese, Japan → Japanese), falling back to browser language, then English. To force a specific language, add <code>lang=</code> to the script URL. For Chinese visitors, enable <strong style={{ color: "#374151" }}>PIPL Mode</strong> in <a href="/consent-management/banner-settings" style={{ color: 'inherit', textDecoration: 'underline' }}>Banner Settings</a> to display the required data controller disclosure.
                 </p>
                 <div className="checklist-code-snippet">
                   <div className="code-snippet-header">

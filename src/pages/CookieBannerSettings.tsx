@@ -1,18 +1,28 @@
-import { Check, ExternalLink, Eye, Grid, Menu } from 'lucide-react';
-import React, { useRef } from 'react';
+import { Check, Code, Copy, ExternalLink, Eye, Grid, Menu } from 'lucide-react';
+import React, { useRef, useState } from 'react';
 import { useCookieConfig } from '../context/CookieContext';
 import { API_URL } from '../lib/config';
 import './CookieBannerSettings.css';
+import './PolicyPreview.css';
 
 export const CookieBannerSettings: React.FC = () => {
   const { bannerConfig, setBannerConfig, setIsPreviewVisible, userId } = useCookieConfig();
-  const { theme, styleMode, position, size, ccpaMode } = bannerConfig;
+  const { theme, styleMode, position, size, ccpaMode, piplMode, piplCompanyName, piplContactEmail, piplRetentionDays, piplCrossBorder } = bannerConfig;
 
-  const updateConfig = (key: keyof typeof bannerConfig, value: string | boolean) => {
+  const updateConfig = (key: keyof typeof bannerConfig, value: string | boolean | number) => {
     setBannerConfig(prev => ({ ...prev, [key]: value, isConfigured: true }));
   };
 
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const [embedCopied, setEmbedCopied] = useState(false);
+
+  const embedScript = `<script src="${API_URL}/uterms-embed.js?id=${userId || 'YOUR_USER_ID'}"></script>`;
+
+  const handleCopyEmbed = () => {
+    navigator.clipboard.writeText(embedScript);
+    setEmbedCopied(true);
+    setTimeout(() => setEmbedCopied(false), 2000);
+  };
 
   const themes = [
     { id: 'blue', color: '#3b82f6' },
@@ -146,6 +156,67 @@ export const CookieBannerSettings: React.FC = () => {
                 Enable CCPA Mode — adds a "Do Not Sell My Personal Information" link for California visitors
               </span>
             </label>
+
+            <div style={{ borderTop: '1px dashed #e5e7eb', margin: '1rem 0' }}></div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!piplMode}
+                onChange={(e) => updateConfig('piplMode', e.target.checked)}
+                style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
+              />
+              <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                Enable PIPL Mode — displays China Personal Information Protection Law disclosures for Chinese visitors
+              </span>
+            </label>
+
+            {piplMode && (
+              <div className="pipl-fields">
+                <div className="pipl-field">
+                  <label className="pipl-label">Data Controller Name <span className="pipl-required">*</span></label>
+                  <input
+                    className="pipl-input"
+                    type="text"
+                    placeholder="Your company name"
+                    value={piplCompanyName || ''}
+                    onChange={(e) => updateConfig('piplCompanyName', e.target.value)}
+                  />
+                </div>
+                <div className="pipl-field">
+                  <label className="pipl-label">Contact Email <span className="pipl-required">*</span></label>
+                  <input
+                    className="pipl-input"
+                    type="email"
+                    placeholder="privacy@yourcompany.com"
+                    value={piplContactEmail || ''}
+                    onChange={(e) => updateConfig('piplContactEmail', e.target.value)}
+                  />
+                </div>
+                <div className="pipl-field">
+                  <label className="pipl-label">Data Retention Period (days)</label>
+                  <input
+                    className="pipl-input pipl-input-short"
+                    type="number"
+                    min={1}
+                    placeholder="180"
+                    value={piplRetentionDays ?? ''}
+                    onChange={(e) => updateConfig('piplRetentionDays', parseInt(e.target.value) || 180)}
+                  />
+                </div>
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={!!piplCrossBorder}
+                    onChange={(e) => updateConfig('piplCrossBorder', e.target.checked)}
+                    style={{ width: '1rem', height: '1rem', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
+                  />
+                  <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                    Data is transferred outside China — adds a cross-border transfer notice
+                  </span>
+                </label>
+              </div>
+            )}
           </div>
 
         </div>
@@ -193,6 +264,22 @@ export const CookieBannerSettings: React.FC = () => {
           >
             <ExternalLink size={18} /> LIVE PREVIEW
           </a>
+        </div>
+      </div>
+      <div className="embed-section" style={{ marginTop: '3rem' }}>
+        <div className="embed-section-header">
+          <Code size={18} />
+          <h2>Embed Cookie Banner</h2>
+        </div>
+        <p className="embed-description">
+          Paste the snippet below into any page (before <code>&lt;/body&gt;</code>) to display your cookie consent banner. Your banner settings and cookie list will be loaded automatically.
+        </p>
+        <div className="embed-code-block">
+          <pre>{embedScript}</pre>
+          <button className="embed-copy-btn" onClick={handleCopyEmbed}>
+            {embedCopied ? <Check size={14} /> : <Copy size={14} />}
+            {embedCopied ? 'Copied!' : 'Copy'}
+          </button>
         </div>
       </div>
     </div>

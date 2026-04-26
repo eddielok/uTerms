@@ -505,6 +505,60 @@ export const PrivacyPolicyWizard: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: "1.25rem", marginTop: "0.5rem" }}>
+                <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "#111827", marginBottom: "0.25rem" }}>
+                  Regional Compliance
+                </p>
+                <div className="wizard-toggles">
+                  <div className="wizard-toggle-field">
+                    <div>
+                      <strong>PIPL (China)</strong>
+                      <p className="wizard-field-hint">
+                        Adds a bilingual (Chinese/English) PIPL disclosure section for visitors from mainland China.
+                      </p>
+                    </div>
+                    <label className="toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={answers.piplApplies}
+                        onChange={(e) => set("piplApplies", e.target.checked)}
+                      />
+                      <span className="toggle-slider" />
+                    </label>
+                  </div>
+                </div>
+
+                {answers.piplApplies && (
+                  <div style={{ marginTop: "0.75rem", display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <div className="wizard-field">
+                      <label>Data Retention Period (days)</label>
+                      <input
+                        type="number"
+                        min={1}
+                        placeholder="180"
+                        value={answers.piplRetentionDays || ""}
+                        onChange={(e) => set("piplRetentionDays", parseInt(e.target.value) || 180)}
+                        style={{ maxWidth: "120px" }}
+                      />
+                    </div>
+                    <div className="wizard-toggle-field">
+                      <div>
+                        <strong>Data transferred outside China</strong>
+                        <p className="wizard-field-hint">Adds a cross-border transfer notice as required by PIPL Article 38.</p>
+                      </div>
+                      <label className="toggle-switch">
+                        <input
+                          type="checkbox"
+                          checked={answers.piplCrossBorder}
+                          onChange={(e) => set("piplCrossBorder", e.target.checked)}
+                        />
+                        <span className="toggle-slider" />
+                      </label>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

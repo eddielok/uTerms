@@ -39,6 +39,11 @@ export interface CookiePolicyAnswers {
   gdprApplies: boolean;
   ccpaApplies: boolean;
   eprivacyApplies: boolean;
+  piplApplies: boolean;
+  piplCompanyName: string;
+  piplContactEmail: string;
+  piplRetentionDays: number;
+  piplCrossBorder: boolean;
   sellsData: boolean;
   sharesData: boolean;
 
@@ -68,6 +73,11 @@ export const DEFAULT_COOKIE_ANSWERS: CookiePolicyAnswers = {
   gdprApplies: false,
   ccpaApplies: false,
   eprivacyApplies: false,
+  piplApplies: false,
+  piplCompanyName: "",
+  piplContactEmail: "",
+  piplRetentionDays: 180,
+  piplCrossBorder: false,
   sellsData: false,
   sharesData: false,
   contactEmail: "",
@@ -283,7 +293,37 @@ export function generateCookiePolicy(a: CookiePolicyAnswers): string {
     </section>`;
   }
 
-  const sectionOffset = (a.gdprApplies ? 1 : 0) + (a.ccpaApplies ? 1 : 0);
+  let piplSection = "";
+  if (a.piplApplies) {
+    const piplNum = 5 + (a.gdprApplies ? 1 : 0) + (a.ccpaApplies ? 1 : 0);
+    const piplCompany = escapeHtml(a.piplCompanyName) || escapeHtml(a.websiteName) || "the website operator";
+    const piplEmail = escapeHtml(a.piplContactEmail) || escapeHtml(contactEmail);
+    const retention = a.piplRetentionDays || 180;
+    piplSection = `
+    <section>
+      <h2>${piplNum}. 中国《个人信息保护法》（PIPL）声明 / China PIPL Notice</h2>
+      <p>本节适用于中国大陆的访客，并依据《中华人民共和国个人信息保护法》（PIPL，2021年11月1日施行）作出补充说明。</p>
+      <p><em>This section applies to visitors in mainland China and supplements this Cookie Policy in accordance with China's Personal Information Protection Law (PIPL, effective 1 November 2021).</em></p>
+
+      <p><strong>个人信息处理者 / Data Controller：</strong> ${piplCompany}${piplEmail ? `（联系方式 / Contact: <a href="mailto:${piplEmail}">${piplEmail}</a>）` : ""}</p>
+
+      <p><strong>处理目的 / Purposes of Processing：</strong> 我们通过 Cookie 收集的个人信息仅用于以下目的：网站正常运营、用户体验优化、流量分析及（如适用）个性化广告投放。我们不会将您的个人信息用于上述目的以外的其他用途。</p>
+      <p><em>Personal information collected via cookies is processed solely for: website operation, user experience improvement, traffic analytics, and (where applicable) personalised advertising. It will not be used for any purpose beyond those stated.</em></p>
+
+      <p><strong>保留期限 / Retention Period：</strong> Cookie 相关个人信息的保留期限不超过 <strong>${retention} 天</strong>，期满后将予以删除或匿名化处理。</p>
+      <p><em>Cookie-related personal information is retained for no longer than <strong>${retention} days</strong>, after which it is deleted or anonymised.</em></p>
+
+      ${a.piplCrossBorder ? `
+      <p><strong>个人信息出境 / Cross-Border Transfer：</strong> 您的部分个人信息可能被传输至中国境外的服务器或第三方服务商处理。我们已依法采取必要措施，以确保境外接收方提供与本法相当的保护水平，包括签署标准合同条款（SCCs）或通过其他合规机制。</p>
+      <p><em>Some of your personal information may be transferred to servers or third-party service providers outside China. We have taken necessary measures to ensure that overseas recipients provide a level of protection equivalent to PIPL, including execution of Standard Contractual Clauses (SCCs) or other compliant mechanisms.</em></p>
+      ` : ""}
+
+      <p><strong>您的权利 / Your Rights：</strong> 依据 PIPL，您享有以下权利：查阅、复制、更正、补充、删除您的个人信息；撤回同意；以及就个人信息处理提出异议。如需行使上述权利，请通过以下方式联系我们：${piplEmail ? `<a href="mailto:${piplEmail}">${piplEmail}</a>` : "页面底部所列联系方式 / the contact details at the bottom of this page"}。</p>
+      <p><em>Under PIPL you have the right to: access, copy, correct, supplement, and delete your personal information; withdraw consent; and object to processing. To exercise these rights, contact us at ${piplEmail ? `<a href="mailto:${piplEmail}">${piplEmail}</a>` : "the contact details listed at the bottom of this page"}.</em></p>
+    </section>`;
+  }
+
+  const sectionOffset = (a.gdprApplies ? 1 : 0) + (a.ccpaApplies ? 1 : 0) + (a.piplApplies ? 1 : 0);
 
   return `
 <h1>Cookie Policy</h1>
@@ -390,6 +430,7 @@ ${
 
 ${gdprSection}
 ${ccpaSection}
+${piplSection}
 
 <section>
   <h2>${4 + sectionOffset + 1}. How We Obtain Your Consent</h2>

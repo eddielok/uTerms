@@ -80,6 +80,11 @@ export interface WizardAnswers {
   privacyEmail: string;
   effectiveDate: string;
   notificationMethod: string; // 'email' | 'website' | 'both'
+
+  // PIPL (China)
+  piplApplies: boolean;
+  piplRetentionDays: number;
+  piplCrossBorder: boolean;
 }
 
 export const DEFAULT_ANSWERS: WizardAnswers = {
@@ -119,6 +124,9 @@ export const DEFAULT_ANSWERS: WizardAnswers = {
   privacyEmail: "",
   effectiveDate: "",
   notificationMethod: "website",
+  piplApplies: false,
+  piplRetentionDays: 180,
+  piplCrossBorder: false,
 };
 
 
@@ -531,13 +539,37 @@ export function generatePrivacyPolicy(answers: WizardAnswers): string {
     <p>We retain your personal information only for as long as necessary to fulfill the purposes described in this policy, or as required by applicable law. When data is no longer needed, we securely delete or anonymize it.</p>
   </section>
 
+  ${answers.piplApplies ? `
   <section>
-    <h2>10. Changes to This Policy</h2>
+    <h2>10. 中国《个人信息保护法》（PIPL）声明 / China PIPL Notice</h2>
+    <p>本节适用于中国大陆的访客，并依据《中华人民共和国个人信息保护法》（PIPL，2021年11月1日施行）作出补充说明。</p>
+    <p><em>This section applies to visitors in mainland China and supplements this Privacy Policy in accordance with China's Personal Information Protection Law (PIPL, effective 1 November 2021).</em></p>
+
+    <p><strong>个人信息处理者 / Data Controller：</strong> ${company}${email ? `（联系方式 / Contact: <a href="mailto:${email}">${email}</a>）` : ""}</p>
+
+    <p><strong>处理目的与法律依据 / Purposes and Legal Basis：</strong> 我们依据您的同意（PIPL 第13条第1款）处理您的个人信息，用于提供和改进我们的服务、分析网站使用情况，以及（如适用）发送营销通讯。您可随时撤回同意，而不影响撤回前已基于同意所进行处理的合法性。</p>
+    <p><em>We process your personal information based on your consent (PIPL Art. 13(1)) for the purposes of providing and improving our services, analysing website usage, and (where applicable) sending marketing communications. You may withdraw consent at any time without affecting the lawfulness of prior processing.</em></p>
+
+    <p><strong>保留期限 / Retention Period：</strong> 我们保留个人信息的期限不超过 <strong>${answers.piplRetentionDays || 180} 天</strong>（或达成处理目的所必要的最短期限），届时将予以删除或匿名化处理。</p>
+    <p><em>We retain personal information for no longer than <strong>${answers.piplRetentionDays || 180} days</strong> (or the minimum period necessary to fulfil the processing purpose), after which it is deleted or anonymised.</em></p>
+
+    ${answers.piplCrossBorder ? `
+    <p><strong>个人信息出境 / Cross-Border Transfer：</strong> 您的部分个人信息可能被传输至中国境外的服务器或第三方服务商处理。我们已依法采取必要措施，确保境外接收方提供与 PIPL 相当的保护水平，包括签署标准合同条款（SCCs）或通过其他合规机制。</p>
+    <p><em>Some of your personal information may be transferred to servers or third-party service providers outside China. We have taken necessary measures to ensure that overseas recipients provide a level of protection equivalent to PIPL, including execution of Standard Contractual Clauses (SCCs) or other compliant mechanisms.</em></p>
+    ` : ""}
+
+    <p><strong>您在 PIPL 下的权利 / Your Rights under PIPL：</strong> 您有权查阅、复制、更正、补充、删除您的个人信息；撤回同意；限制或拒绝个人信息处理；以及就自动化决策提出异议。如需行使上述权利，请联系 <a href="mailto:${email}">${email}</a>，我们将在法定期限内予以回应。</p>
+    <p><em>You have the right to access, copy, correct, supplement, and delete your personal information; withdraw consent; restrict or object to processing; and raise objections regarding automated decision-making. To exercise these rights contact <a href="mailto:${email}">${email}</a>; we will respond within the statutory timeframe.</em></p>
+  </section>
+  ` : ""}
+
+  <section>
+    <h2>${answers.piplApplies ? "11" : "10"}. Changes to This Policy</h2>
     <p>${notifText} The &ldquo;Effective Date&rdquo; at the top of this page reflects when this policy was last revised. We encourage you to review this policy periodically.</p>
   </section>
 
   <section>
-    <h2>11. Contact Us</h2>
+    <h2>${answers.piplApplies ? "12" : "11"}. Contact Us</h2>
     <p>If you have any questions, concerns, or requests regarding this Privacy Policy, please contact us:</p>
     <ul>
       ${email ? li(`<strong>Email:</strong> <a href="mailto:${email}">${email}</a>`) : ""}

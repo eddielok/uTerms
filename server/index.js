@@ -15,6 +15,7 @@ const rateLimit = require("express-rate-limit");
 const puppeteer = require("puppeteer");
 const cron = require("node-cron");
 const sanitizeHtml = require("sanitize-html");
+const geoip = require("geoip-lite");
 
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const {
@@ -305,6 +306,7 @@ const consentLimiter = rateLimit({
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
+app.set("trust proxy", 1); // trust first proxy for accurate req.ip behind load balancers/CDN
 
 app.use(
   helmet({
@@ -556,6 +558,36 @@ app.post("/api/scan", async (req, res) => {
   }
 });
 
+// Maps ISO 3166-1 alpha-2 country code → one of the supported TRANSLATIONS keys
+const COUNTRY_LANG_MAP = {
+  // Chinese Traditional
+  TW: "zh-TW", HK: "zh-TW", MO: "zh-TW",
+  // Chinese Simplified
+  CN: "zh-CN",
+  // French
+  FR: "fr", BE: "fr", LU: "fr", MC: "fr",
+  // German
+  DE: "de", AT: "de", LI: "de",
+  // Spanish
+  ES: "es", MX: "es", AR: "es", CO: "es", CL: "es", PE: "es", VE: "es",
+  EC: "es", GT: "es", CU: "es", BO: "es", DO: "es", HN: "es", PY: "es",
+  SV: "es", NI: "es", CR: "es", PA: "es", UY: "es", GQ: "es",
+  // Portuguese (Brazil)
+  BR: "pt-BR",
+  // Japanese
+  JP: "ja",
+  // Malay
+  MY: "ms",
+};
+
+function detectCountryLang(ip) {
+  if (!ip) return null;
+  const cleanIp = ip.split(",")[0].trim(); // handle X-Forwarded-For list
+  const geo = geoip.lookup(cleanIp);
+  if (!geo || !geo.country) return null;
+  return COUNTRY_LANG_MAP[geo.country] || null;
+}
+
 // ─── GET /api/banner/:id ──────────────────────────────────────────────────────
 app.get("/api/banner/:id", async (req, res) => {
   const { id } = req.params;
@@ -576,8 +608,9 @@ app.get("/api/banner/:id", async (req, res) => {
         .json({ error: "Failed to fetch from DB" });
     const data = await response.json();
     if (data && data.length > 0) {
-      res.set("Cache-Control", "public, max-age=60"); // 60s — banner config changes are near-instant
-      res.json(data[0]);
+      const detectedLang = detectCountryLang(req.ip);
+      res.set("Cache-Control", "private, max-age=60");
+      res.json({ ...data[0], detected_lang: detectedLang });
     } else {
       res.status(404).json({ error: "Settings not found for user" });
     }

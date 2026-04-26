@@ -26,6 +26,12 @@
   // ── Translations ─────────────────────────────────────────────────────────────
   const TRANSLATIONS = {
     en: {
+      piplTitle: 'Personal Data Notice (PIPL)',
+      piplController: 'Data Controller',
+      piplContact: 'Contact',
+      piplRetention: 'Retention',
+      piplRetentionUnit: 'days',
+      piplCrossBorder: 'Data may be transferred outside China for processing.',
       title: 'We value your privacy',
       description: 'We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.',
       customize: 'Customize Preferences',
@@ -48,6 +54,12 @@
       },
     },
     'zh-CN': {
+      piplTitle: '个人信息处理告知',
+      piplController: '数据控制者',
+      piplContact: '联系方式',
+      piplRetention: '保留期限',
+      piplRetentionUnit: '天',
+      piplCrossBorder: '您的数据可能被传输至中国境外的服务器处理。',
       title: '我们重视您的隐私',
       description: '我们使用 Cookie 提升您的浏览体验、提供个性化内容或广告，并分析我们的网站流量。点击"全部接受"即表示您同意我们使用 Cookie。',
       customize: '自定义偏好设置',
@@ -69,6 +81,12 @@
       },
     },
     'zh-TW': {
+      piplTitle: '個人資訊處理告知',
+      piplController: '數據控制者',
+      piplContact: '聯絡方式',
+      piplRetention: '保留期限',
+      piplRetentionUnit: '天',
+      piplCrossBorder: '您的資料可能被傳輸至中國境外的伺服器處理。',
       title: '我們重視您的隱私',
       description: '我們使用 Cookie 提升您的瀏覽體驗、提供個人化內容或廣告，並分析我們的網站流量。點擊「全部接受」即表示您同意我們使用 Cookie。',
       customize: '自訂偏好設定',
@@ -90,6 +108,12 @@
       },
     },
     fr: {
+      piplTitle: 'Avis de traitement des données (PIPL)',
+      piplController: 'Responsable du traitement',
+      piplContact: 'Contact',
+      piplRetention: 'Conservation',
+      piplRetentionUnit: 'jours',
+      piplCrossBorder: 'Vos données peuvent être transférées hors de Chine pour traitement.',
       title: 'Nous respectons votre vie privée',
       description: 'Nous utilisons des cookies pour améliorer votre expérience de navigation, diffuser des publicités ou du contenu personnalisé et analyser notre trafic. En cliquant sur « Tout accepter », vous consentez à notre utilisation des cookies.',
       customize: 'Personnaliser les préférences',
@@ -111,6 +135,12 @@
       },
     },
     de: {
+      piplTitle: 'Datenschutzhinweis (PIPL)',
+      piplController: 'Verantwortlicher',
+      piplContact: 'Kontakt',
+      piplRetention: 'Speicherdauer',
+      piplRetentionUnit: 'Tage',
+      piplCrossBorder: 'Ihre Daten können zur Verarbeitung außerhalb Chinas übertragen werden.',
       title: 'Wir respektieren Ihre Privatsphäre',
       description: 'Wir verwenden Cookies, um Ihre Browsing-Erfahrung zu verbessern, personalisierte Werbung oder Inhalte anzuzeigen und unseren Datenverkehr zu analysieren. Durch Klicken auf „Alle akzeptieren" stimmen Sie der Verwendung von Cookies zu.',
       customize: 'Einstellungen anpassen',
@@ -132,6 +162,12 @@
       },
     },
     es: {
+      piplTitle: 'Aviso de tratamiento de datos (PIPL)',
+      piplController: 'Responsable del tratamiento',
+      piplContact: 'Contacto',
+      piplRetention: 'Retención',
+      piplRetentionUnit: 'días',
+      piplCrossBorder: 'Sus datos pueden ser transferidos fuera de China para su procesamiento.',
       title: 'Valoramos su privacidad',
       description: 'Utilizamos cookies para mejorar su experiencia de navegación, mostrar anuncios o contenido personalizado y analizar nuestro tráfico. Al hacer clic en "Aceptar todo", usted consiente el uso de cookies.',
       customize: 'Personalizar preferencias',
@@ -153,6 +189,12 @@
       },
     },
     'pt-BR': {
+      piplTitle: 'Aviso de tratamento de dados (PIPL)',
+      piplController: 'Controlador de dados',
+      piplContact: 'Contato',
+      piplRetention: 'Retenção',
+      piplRetentionUnit: 'dias',
+      piplCrossBorder: 'Seus dados podem ser transferidos para fora da China para processamento.',
       title: 'Valorizamos sua privacidade',
       description: 'Usamos cookies para melhorar sua experiência de navegação, exibir anúncios ou conteúdo personalizado e analisar nosso tráfego. Ao clicar em "Aceitar tudo", você consente com o uso de cookies.',
       customize: 'Personalizar preferências',
@@ -174,6 +216,12 @@
       },
     },
     ja: {
+      piplTitle: '個人情報処理に関する通知（PIPL）',
+      piplController: 'データ管理者',
+      piplContact: '連絡先',
+      piplRetention: '保持期間',
+      piplRetentionUnit: '日',
+      piplCrossBorder: 'お客様のデータは中国国外のサーバーに転送されて処理される場合があります。',
       title: 'プライバシーを大切にしています',
       description: '当サイトでは、閲覧体験の向上、パーソナライズされた広告・コンテンツの配信、アクセス解析のためにCookieを使用しています。「すべて同意する」をクリックすると、Cookieの使用に同意したことになります。',
       customize: '設定をカスタマイズ',
@@ -195,6 +243,12 @@
       },
     },
     ms: {
+      piplTitle: 'Notis Pemprosesan Data Peribadi (PIPL)',
+      piplController: 'Pengawal Data',
+      piplContact: 'Hubungi',
+      piplRetention: 'Pengekalan',
+      piplRetentionUnit: 'hari',
+      piplCrossBorder: 'Data anda mungkin dipindahkan ke luar China untuk diproses.',
       title: 'Kami menghargai privasi anda',
       description: 'Kami menggunakan kuki untuk meningkatkan pengalaman melayari anda, menyajikan iklan atau kandungan yang diperibadikan, dan menganalisis trafik kami. Dengan mengklik "Terima Semua", anda bersetuju dengan penggunaan kuki kami.',
       customize: 'Sesuaikan Keutamaan',
@@ -217,15 +271,16 @@
     },
   };
 
-  function detectLanguage(paramLang) {
+  function detectLanguage(paramLang, ipLang) {
+    // 1. Explicit lang= param on script src overrides everything
     if (paramLang && TRANSLATIONS[paramLang]) return paramLang;
+    // 2. Server-side IP geo detection (returned by /api/banner)
+    if (ipLang && TRANSLATIONS[ipLang]) return ipLang;
+    // 3. Browser language as final fallback
     const nav = (navigator.language || 'en').toLowerCase();
     if (TRANSLATIONS[nav]) return nav;
-    // Chinese variants: zh-TW, zh-HK, zh-MO → Traditional; everything else → Simplified
     if (nav.startsWith('zh')) return (nav === 'zh-tw' || nav === 'zh-hk' || nav === 'zh-mo') ? 'zh-TW' : 'zh-CN';
-    // Portuguese variants → pt-BR
     if (nav.startsWith('pt')) return 'pt-BR';
-    // Try base language (e.g. 'fr-CA' → 'fr')
     const base = nav.split('-')[0];
     if (TRANSLATIONS[base]) return base;
     return 'en';
@@ -415,8 +470,8 @@
     // IP geolocation or explicit configuration instead.
     const ccpaMode = !!(bannerConfig.ccpaMode);
 
-    // Resolve active language
-    const t = TRANSLATIONS[detectLanguage(langParam)];
+    // Resolve active language — explicit param > IP geo > browser locale > English
+    const t = TRANSLATIONS[detectLanguage(langParam, rawConfig && rawConfig.detected_lang)];
 
     // Apply translated category names/descriptions
     if (t.categories) {
@@ -771,6 +826,30 @@
         transition: opacity 0.2s;
       }
       #uterms-manage-btn:hover { opacity: 0.9; }
+      .uterms-pipl-notice {
+        margin-top: 0.5rem;
+        padding: 0.75rem;
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        color: #0c4a6e;
+        line-height: 1.5;
+      }
+      .uterms-pipl-notice strong { font-weight: 600; }
+      .uterms-pipl-badge {
+        display: inline-block;
+        font-size: 0.625rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        background: #0369a1;
+        color: white;
+        padding: 1px 5px;
+        border-radius: 3px;
+        margin-right: 6px;
+        vertical-align: middle;
+      }
+      .uterms-pipl-row { margin-top: 0.25rem; }
       #uterms-dns-bar {
         position: fixed;
         bottom: 0;
@@ -803,6 +882,20 @@
     `;
     document.head.appendChild(style);
 
+    // Build PIPL notice HTML when piplMode is enabled and required fields are set
+    let piplNoticeHtml = '';
+    if (bannerConfig.piplMode && bannerConfig.piplCompanyName) {
+      const retention = bannerConfig.piplRetentionDays || 180;
+      piplNoticeHtml = `
+        <div class="uterms-pipl-notice">
+          <span class="uterms-pipl-badge">PIPL</span><strong>${t.piplTitle || 'Personal Data Notice'}</strong>
+          <div class="uterms-pipl-row">${t.piplController || 'Data Controller'}: <strong>${bannerConfig.piplCompanyName}</strong>${bannerConfig.piplContactEmail ? ` &nbsp;·&nbsp; ${t.piplContact || 'Contact'}: <strong>${bannerConfig.piplContactEmail}</strong>` : ''}</div>
+          <div class="uterms-pipl-row">${t.piplRetention || 'Retention'}: <strong>${retention} ${t.piplRetentionUnit || 'days'}</strong></div>
+          ${bannerConfig.piplCrossBorder ? `<div class="uterms-pipl-row">${t.piplCrossBorder || 'Data may be transferred outside China.'}</div>` : ''}
+        </div>
+      `;
+    }
+
     // Create Banner
     const banner = document.createElement("div");
     banner.id = "uterms-banner";
@@ -811,6 +904,7 @@
       <div class="uterms-banner-content">
         <h3>${t.title}</h3>
         <p>${t.description}${bannerConfig.privacyPolicyUrl ? ` <a href="${bannerConfig.privacyPolicyUrl}" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">${t.learnMore || 'Learn more'}</a>` : ''}</p>
+        ${piplNoticeHtml}
       </div>
       <div class="uterms-banner-actions">
         <button id="uterms-btn-customize" class="uterms-btn-text">${t.customize}</button>

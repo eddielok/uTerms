@@ -40,6 +40,11 @@ export interface BannerConfig {
   size: "standard" | "compact";
   isConfigured?: boolean;
   ccpaMode?: boolean;
+  piplMode?: boolean;
+  piplCompanyName?: string;
+  piplContactEmail?: string;
+  piplRetentionDays?: number;
+  piplCrossBorder?: boolean;
 }
 
 interface CookieContextType {

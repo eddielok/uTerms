@@ -103,6 +103,7 @@ export const CookieBanner: React.FC = () => {
   const styleMode = isPreview ? bannerConfig.styleMode : 'banner';
   const position = isPreview ? bannerConfig.position : 'bottom';
   const size = isPreview ? bannerConfig.size : 'standard';
+  const showPipl = isPreview && bannerConfig.piplMode && bannerConfig.piplCompanyName;
 
   return (
     <div
@@ -131,6 +132,39 @@ export const CookieBanner: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {showPipl && (
+          <div style={{
+            margin: '0.25rem 0',
+            padding: '0.625rem 0.75rem',
+            background: '#f0f9ff',
+            border: '1px solid #bae6fd',
+            borderRadius: '6px',
+            fontSize: '0.75rem',
+            color: '#0c4a6e',
+            lineHeight: 1.5,
+          }}>
+            <span style={{
+              display: 'inline-block',
+              fontSize: '0.6rem',
+              fontWeight: 700,
+              letterSpacing: '0.05em',
+              background: '#0369a1',
+              color: 'white',
+              padding: '1px 5px',
+              borderRadius: '3px',
+              marginRight: '6px',
+              verticalAlign: 'middle',
+            }}>PIPL</span>
+            <strong>个人信息处理告知</strong>
+            <div style={{ marginTop: '0.25rem' }}>
+              数据控制者: <strong>{bannerConfig.piplCompanyName}</strong>
+              {bannerConfig.piplContactEmail && <> &nbsp;·&nbsp; 联系方式: <strong>{bannerConfig.piplContactEmail}</strong></>}
+            </div>
+            <div>保留期限: <strong>{bannerConfig.piplRetentionDays || 180} 天</strong></div>
+            {bannerConfig.piplCrossBorder && <div>您的数据可能被传输至中国境外的服务器处理。</div>}
+          </div>
+        )}
 
         {isDetailsOpen && (
           <div className="cookie-preferences">
