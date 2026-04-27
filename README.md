@@ -1,16 +1,19 @@
 # uTerms
 
-A consent management and compliance platform. Scan websites for cookies, configure a cookie consent banner, embed it on any site, and log visitor consent decisions — all from one dashboard.
+A consent management and compliance platform. Scan websites for cookies, configure a cookie consent banner, embed it on any site, log visitor consent decisions, and monitor for real-time PII leakage — all from one dashboard.
 
 ## Features
 
 - **Cookie Scanner** — Puppeteer-powered scan that detects and categorises cookies (Essential, Functional, Analytics, Marketing, Social)
-- **Consent Banner** — Configurable banner (theme, position, style) embeddable on any website via a single script tag
+- **Consent Banner** — Configurable banner (theme, position, style) embeddable on any website via a single script tag; supports 9 languages with automatic IP-based language detection
 - **Policy Generator** — AI-assisted generation for 10 policy types: Privacy Policy, Cookie Policy, Terms of Service, EULA, Return Policy, Disclaimer, Shipping Policy, Acceptable Use Policy, Impressum, Accessibility Statement
 - **Consent Logs** — Per-visitor consent decisions stored with anonymised IP, user agent, and page URL
 - **GCM v2** — Google Consent Mode v2 compliance scanning
-- **Account Settings** — Change email/password, export data (GDPR Art. 20), delete account (GDPR Art. 17)
+- **PII Leak Monitor** — Real-time client-side detection of personally identifiable information (email, phone, SSN, credit card) sent in outgoing network requests; alerts grouped by domain in the dashboard
+- **AI Cookie Classifier** — One-click AI classification of unclassified cookies using DeepSeek V3
 - **CCPA** — "Do Not Sell or Share My Personal Information" page at `/do-not-sell`
+- **PIPL** — China Personal Information Protection Law compliance mode with bilingual disclosures in generated policies and the consent banner
+- **Account Settings** — Change email/password, export data (GDPR Art. 20), delete account (GDPR Art. 17)
 
 ## Tech Stack
 
@@ -22,6 +25,7 @@ A consent management and compliance platform. Scan websites for cookies, configu
 | Hosting | Cloudflare Workers (frontend), VM (backend) |
 | Error Monitoring | Sentry |
 | Headless Browser | Puppeteer |
+| AI | DeepSeek V3 |
 
 ## Project Structure
 
@@ -41,6 +45,8 @@ uTerms/
 │   └── migrations/           # SQL migration files
 ├── public/                   # Static assets + embed scripts
 │   ├── uterms-embed.js       # Embeddable consent banner script
+│   ├── uterms-pii-monitor.js # PII leak monitor script
+│   ├── test-pii-monitor.html # Live test page for PII monitor
 │   ├── sitemap.xml
 │   └── robots.txt
 └── vite.config.ts            # Vite config + resourceBlockerPlugin
@@ -114,8 +120,11 @@ node server/test-scan.js           # Manual cookie scan test
 | `POST` | `/api/consent` | — | Log a visitor consent decision |
 | `GET` | `/api/consent/:userId` | API key | Fetch consent logs |
 | `DELETE` | `/api/consent/:userId` | API key | Delete consent logs |
-| `POST` | `/api/gcm-scan` | API key | GCM v2 compliance scan |
-| `POST` | `/api/analyze-policy` | API key | AI policy analysis |
+| `POST` | `/api/gcm-scan` | — | GCM v2 compliance scan |
+| `POST` | `/api/analyze-policy` | — | AI policy pre-fill for a single policy type |
+| `POST` | `/api/analyze-all-policies` | — | AI policy pre-fill for all 10 policy types |
+| `GET` | `/api/policy-scan/:userId` | — | Retrieve saved policy scan results |
+| `POST` | `/api/pii-report` | — | Ingest PII leak reports from the monitor script |
 | `GET` | `/api/scan-schedule/:userId` | API key | Get scan schedule |
 | `POST` | `/api/scan-schedule` | API key | Create/update scan schedule |
 | `DELETE` | `/api/scan-schedule/:userId` | API key | Delete scan schedule |
@@ -129,6 +138,7 @@ Key Supabase tables:
 
 **`user_cookie_settings`** — scanned cookie data and banner config per user  
 **`visitor_consent`** — individual visitor consent decisions  
+**`pii_alerts`** — PII leak events reported by the monitor script, grouped by domain  
 **`api_keys`** — user API keys for programmatic access  
 **`scan_schedules`** — scheduled cookie scan configuration  
 
@@ -136,23 +146,57 @@ Policy tables (one per type): `privacy_policies`, `cookie_policies`, `terms_of_s
 
 Each policy table has: `id uuid`, `user_id uuid`, `title text`, `status text`, `generated text`, `updated_at timestamptz`
 
+### `pii_alerts` schema
+
+```sql
+create table pii_alerts (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null,
+  domain      text not null,
+  pii_types   text[] not null,   -- e.g. ['email', 'phone']
+  third_party boolean not null default false,
+  method      text not null,
+  page_url    text,
+  url         text,
+  created_at  timestamptz not null default now()
+);
+```
+
 ## Embedding the Banner
 
-Add to any website's `<head>`:
+Add to any website before `</body>`:
 
 ```html
-<script src="https://uterms.io/uterms-embed.js?userId=YOUR_USER_ID" async></script>
+<script src="https://api.uterms.io/uterms-embed.js?id=YOUR_USER_ID"></script>
 ```
 
 Or use the resource blocker (blocks third-party scripts until consent):
 
 ```html
-<script src="https://uterms.io/resource-blocker/YOUR_USER_ID" async></script>
+<script src="https://api.uterms.io/resource-blocker/YOUR_USER_ID"></script>
 ```
+
+## PII Leak Monitor
+
+Add to any website before `</body>` to detect PII sent in outgoing requests:
+
+```html
+<script src="https://api.uterms.io/uterms-pii-monitor.js?id=YOUR_USER_ID"></script>
+```
+
+The script intercepts `fetch`, `XMLHttpRequest`, and form submissions. When PII is detected (email, phone, SSN, or Luhn-valid credit card), it batches the report and sends it via `navigator.sendBeacon`. Alerts appear in the dashboard at `/consent-management/pii-alerts`.
+
+**Test page** (no real reports sent):
+```
+https://api.uterms.io/test-pii-monitor.html?id=YOUR_USER_ID&api=https://api.uterms.io
+```
+
+Append `&live=1` to send real reports for end-to-end testing.
 
 ## Compliance
 
 - **GDPR Art. 17** — Account deletion via Settings → deletes all user data via Supabase cascade
 - **GDPR Art. 20** — Data export via Settings → downloads all policies and consent logs as JSON
 - **CCPA** — "Do Not Sell" page at `/do-not-sell`
+- **PIPL** — Enable PIPL Mode in Banner Settings to add bilingual (Chinese/English) disclosures to the consent banner and generated policies
 - **Visitor IPs** — Anonymised before storage (`x.x` suffix for IPv4, SHA-256 hash for IPv6)

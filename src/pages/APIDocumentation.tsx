@@ -1357,6 +1357,114 @@ function ScanScheduleSection({
   );
 }
 
+// ─── PII Monitor section ─────────────────────────────────────────────────────
+function PiiMonitorSection({ userId }: { userId: string }) {
+  const uid = userId || "YOUR_USER_ID";
+
+  const embedSnippet = `<!-- Add before </body> on every page -->\n<script src="${BASE_URL}/uterms-pii-monitor.js?id=${uid}"></script>`;
+
+  const reportSnippet = `curl -X POST "${BASE_URL}/api/pii-report" \\\n  -H "Content-Type: application/json" \\\n  -d '{\n    "userId": "${uid}",\n    "reports": [\n      {\n        "domain": "analytics.example.com",\n        "piiTypes": ["email"],\n        "thirdParty": true,\n        "method": "GET",\n        "url": "https://your-site.com/checkout",\n        "exampleUrl": "https://analytics.example.com/track?email=...",\n        "timestamp": "2025-01-01T00:00:00.000Z"\n      }\n    ]\n  }'`;
+
+  return (
+    <div className="api-doc-section" id="pii-monitor">
+      <h2 className="api-doc-section-title">PII Leak Monitor</h2>
+      <p>
+        Detects personally identifiable information (email, phone, SSN, credit card) sent in
+        outgoing network requests on your website. The monitor script intercepts{" "}
+        <code>fetch</code>, <code>XMLHttpRequest</code>, and form submissions client-side,
+        then reports leaks to this endpoint.
+      </p>
+
+      {/* Embed */}
+      <div className="api-endpoint-block" style={{ marginBottom: "1.25rem" }}>
+        <div className="api-endpoint-header">
+          <span className="method-badge method-badge-public">EMBED</span>
+          <span className="endpoint-url">
+            uterms-pii-monitor.js<span className="param">?id=:userId</span>
+          </span>
+          <span className="endpoint-desc">Client-side PII detection script</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Add one script tag before <code>&lt;/body&gt;</code>. The script intercepts all
+            outgoing requests, checks for PII patterns, deduplicates by domain per session,
+            and batches reports with a 5-second debounce via <code>navigator.sendBeacon</code>.
+          </p>
+          <p className="api-sub-label">Embed snippet</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{embedSnippet}</pre>
+            <CopyBtn text={embedSnippet} />
+          </div>
+          <p className="api-sub-label" style={{ marginTop: "1rem" }}>Supported PII types</p>
+          <table className="schema-table">
+            <thead><tr><th>Type</th><th>Pattern</th></tr></thead>
+            <tbody>
+              <tr><td><code>email</code></td><td>Standard email address format</td></tr>
+              <tr><td><code>phone</code></td><td>US/international phone numbers</td></tr>
+              <tr><td><code>ssn</code></td><td>Social Security Number (XXX-XX-XXXX)</td></tr>
+              <tr><td><code>credit_card</code></td><td>15–16 digit numbers passing Luhn check</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label" style={{ marginTop: "1rem" }}>URL parameters</p>
+          <table className="schema-table">
+            <thead><tr><th>Parameter</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>id</code></td><td>Yes</td><td>Your user ID</td></tr>
+              <tr><td><code>api</code></td><td>No</td><td>Override API base URL (only <code>api.uterms.io</code> accepted in production)</td></tr>
+              <tr><td><code>test</code></td><td>No</td><td>Set to <code>1</code> to suppress reporting — detections logged to console only</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* POST /api/pii-report */}
+      <div className="api-endpoint-block">
+        <div className="api-endpoint-header">
+          <span className="method-badge" style={{ background: "#dbeafe", color: "#1e40af" }}>POST</span>
+          <span className="endpoint-url">/api/pii-report</span>
+          <span className="endpoint-desc">public — ingest PII leak reports from the monitor script</span>
+        </div>
+        <div className="api-endpoint-body">
+          <p style={{ color: "#374151", marginBottom: "1rem" }}>
+            Called automatically by the monitor script. You can also call it directly to
+            ingest PII alerts from a custom implementation.
+          </p>
+          <p className="api-sub-label">Request body</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>userId</td><td>string (UUID)</td><td>Yes</td><td>The site owner's user ID</td></tr>
+              <tr><td>reports</td><td>array</td><td>Yes</td><td>Up to 20 report objects (see below)</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">Report object fields</p>
+          <table className="schema-table">
+            <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td>domain</td><td>string</td><td>Hostname that received the PII</td></tr>
+              <tr><td>piiTypes</td><td>string[]</td><td>Detected types: <code>email</code>, <code>phone</code>, <code>ssn</code>, <code>credit_card</code></td></tr>
+              <tr><td>thirdParty</td><td>boolean</td><td><code>true</code> if domain differs from the page's hostname</td></tr>
+              <tr><td>method</td><td>string</td><td>HTTP method: <code>GET</code>, <code>POST</code>, etc.</td></tr>
+              <tr><td>url</td><td>string</td><td>Page URL where the leak occurred</td></tr>
+              <tr><td>exampleUrl</td><td>string</td><td>First 200 characters of the request URL containing PII</td></tr>
+              <tr><td>timestamp</td><td>ISO 8601</td><td>Client-side detection time</td></tr>
+            </tbody>
+          </table>
+          <p className="api-sub-label">cURL</p>
+          <div className="code-block-wrapper">
+            <pre className="code-block">{reportSnippet}</pre>
+            <CopyBtn text={reportSnippet} />
+          </div>
+          <div className="rate-callout" style={{ marginTop: "1rem" }}>
+            <Clock size={16} className="rate-callout-icon" />
+            <p>Limited to <strong>20 requests per minute</strong> per IP (shared with <code>POST /api/consent</code>).</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Account section ──────────────────────────────────────────────────────────
 function AccountSection() {
   const curlSnippet = `curl -X POST "${BASE_URL}/api/delete-account" \\\n  -H "Authorization: Bearer YOUR_JWT_TOKEN"`;
@@ -1498,6 +1606,12 @@ export const APIDocumentation: React.FC = () => {
           onClick={() => scrollTo("scan-schedule")}
         >
           Scan Schedule
+        </button>
+        <button
+          className={`api-doc-nav-item ${activeSection === "pii-monitor" ? "active" : ""}`}
+          onClick={() => scrollTo("pii-monitor")}
+        >
+          PII Leak Monitor
         </button>
         <button
           className={`api-doc-nav-item ${activeSection === "account" ? "active" : ""}`}
@@ -1712,6 +1826,13 @@ export const APIDocumentation: React.FC = () => {
               </tr>
               <tr>
                 <td>
+                  <code>POST /api/pii-report</code>
+                </td>
+                <td>20 requests</td>
+                <td>1 minute</td>
+              </tr>
+              <tr>
+                <td>
                   <code>POST /api/delete-account</code>
                 </td>
                 <td>3 requests</td>
@@ -1794,6 +1915,9 @@ export const APIDocumentation: React.FC = () => {
 
         {/* Scan Schedule */}
         <ScanScheduleSection userId={userId || ""} apiKey={apiKey} />
+
+        {/* PII Monitor */}
+        <PiiMonitorSection userId={userId || ""} />
 
         {/* Account */}
         <AccountSection />
