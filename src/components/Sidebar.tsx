@@ -45,6 +45,7 @@ export const Sidebar: React.FC = () => {
       setIsConsentOpen(true);
     }
     if (
+      location.pathname.startsWith("/policy-scan") ||
       location.pathname.startsWith("/policy-management") ||
       location.pathname.startsWith("/cookie-policy") ||
       location.pathname.startsWith("/terms-of-service") ||
@@ -183,7 +184,7 @@ export const Sidebar: React.FC = () => {
 
         <div className="sidebar-group">
           <button
-            className={`sidebar-link ${location.pathname.startsWith("/policy-management") || location.pathname.startsWith("/cookie-policy") || location.pathname.startsWith("/terms-of-service") || location.pathname.startsWith("/eula") || location.pathname.startsWith("/return-policy") || location.pathname.startsWith("/disclaimer") || location.pathname.startsWith("/shipping-policy") || location.pathname.startsWith("/acceptable-use-policy") || location.pathname.startsWith("/impressum") || location.pathname.startsWith("/accessibility-statement") ? "active-group" : ""}`}
+            className={`sidebar-link ${location.pathname.startsWith("/policy-scan") || location.pathname.startsWith("/policy-management") || location.pathname.startsWith("/cookie-policy") || location.pathname.startsWith("/terms-of-service") || location.pathname.startsWith("/eula") || location.pathname.startsWith("/return-policy") || location.pathname.startsWith("/disclaimer") || location.pathname.startsWith("/shipping-policy") || location.pathname.startsWith("/acceptable-use-policy") || location.pathname.startsWith("/impressum") || location.pathname.startsWith("/accessibility-statement") ? "active-group" : ""}`}
             onClick={() => setIsPolicyOpen(!isPolicyOpen)}
           >
             <ScrollText size={20} />
