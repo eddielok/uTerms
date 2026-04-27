@@ -1,4 +1,21 @@
 import React, { Suspense } from "react";
+
+// Wraps React.lazy so a failed chunk load (stale deployment) triggers a hard
+// reload instead of showing the error boundary.
+function lazy<T extends React.ComponentType<any>>(
+  factory: () => Promise<{ default: T }>
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    factory().catch((err: unknown) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('Failed to fetch') || msg.includes('dynamically imported')) {
+        window.location.reload();
+        return new Promise<never>(() => {});
+      }
+      return Promise.reject(err);
+    })
+  );
+}
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { CookieBanner } from "./components/CookieBanner";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -11,85 +28,85 @@ import { SidebarLayout } from "./components/SidebarLayout";
 import { NotFound } from "./pages/NotFound";
 
 // ── Public pages ──────────────────────────────────────────────────────────────
-const Home = React.lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
-const About = React.lazy(() => import("./pages/About").then(m => ({ default: m.About })));
-const Features = React.lazy(() => import("./pages/Features").then(m => ({ default: m.Features })));
-const Policies = React.lazy(() => import("./pages/Policies").then(m => ({ default: m.Policies })));
-const Login = React.lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
-const Register = React.lazy(() => import("./pages/Register").then(m => ({ default: m.Register })));
-const DoNotSell = React.lazy(() => import("./pages/DoNotSell").then(m => ({ default: m.DoNotSell })));
-const UTermsPrivacyPolicy = React.lazy(() => import("./pages/UTermsPrivacyPolicy").then(m => ({ default: m.UTermsPrivacyPolicy })));
-const UTermsTermsOfService = React.lazy(() => import("./pages/UTermsTermsOfService").then(m => ({ default: m.UTermsTermsOfService })));
+const Home = lazy(() => import("./pages/Home").then(m => ({ default: m.Home })));
+const About = lazy(() => import("./pages/About").then(m => ({ default: m.About })));
+const Features = lazy(() => import("./pages/Features").then(m => ({ default: m.Features })));
+const Policies = lazy(() => import("./pages/Policies").then(m => ({ default: m.Policies })));
+const Login = lazy(() => import("./pages/Login").then(m => ({ default: m.Login })));
+const Register = lazy(() => import("./pages/Register").then(m => ({ default: m.Register })));
+const DoNotSell = lazy(() => import("./pages/DoNotSell").then(m => ({ default: m.DoNotSell })));
+const UTermsPrivacyPolicy = lazy(() => import("./pages/UTermsPrivacyPolicy").then(m => ({ default: m.UTermsPrivacyPolicy })));
+const UTermsTermsOfService = lazy(() => import("./pages/UTermsTermsOfService").then(m => ({ default: m.UTermsTermsOfService })));
 
 // ── Dashboard & consent ───────────────────────────────────────────────────────
-const Dashboard = React.lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
-const ConsentManagement = React.lazy(() => import("./pages/ConsentManagement").then(m => ({ default: m.ConsentManagement })));
-const Checklist = React.lazy(() => import("./pages/Checklist").then(m => ({ default: m.Checklist })));
-const WebsiteCookie = React.lazy(() => import("./pages/WebsiteCookie").then(m => ({ default: m.WebsiteCookie })));
-const CookieBannerSettings = React.lazy(() => import("./pages/CookieBannerSettings").then(m => ({ default: m.CookieBannerSettings })));
-const CookieLog = React.lazy(() => import("./pages/CookieLog").then(m => ({ default: m.CookieLog })));
-const PiiAlerts = React.lazy(() => import("./pages/PiiAlerts").then(m => ({ default: m.PiiAlerts })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then(m => ({ default: m.Dashboard })));
+const ConsentManagement = lazy(() => import("./pages/ConsentManagement").then(m => ({ default: m.ConsentManagement })));
+const Checklist = lazy(() => import("./pages/Checklist").then(m => ({ default: m.Checklist })));
+const WebsiteCookie = lazy(() => import("./pages/WebsiteCookie").then(m => ({ default: m.WebsiteCookie })));
+const CookieBannerSettings = lazy(() => import("./pages/CookieBannerSettings").then(m => ({ default: m.CookieBannerSettings })));
+const CookieLog = lazy(() => import("./pages/CookieLog").then(m => ({ default: m.CookieLog })));
+const PiiAlerts = lazy(() => import("./pages/PiiAlerts").then(m => ({ default: m.PiiAlerts })));
 
 // ── Privacy Policy ────────────────────────────────────────────────────────────
-const PolicyManagement = React.lazy(() => import("./pages/PolicyManagement").then(m => ({ default: m.PolicyManagement })));
-const PrivacyPolicyWizard = React.lazy(() => import("./pages/PrivacyPolicyWizard").then(m => ({ default: m.PrivacyPolicyWizard })));
-const PolicyPreview = React.lazy(() => import("./pages/PolicyPreview").then(m => ({ default: m.PolicyPreview })));
+const PolicyManagement = lazy(() => import("./pages/PolicyManagement").then(m => ({ default: m.PolicyManagement })));
+const PrivacyPolicyWizard = lazy(() => import("./pages/PrivacyPolicyWizard").then(m => ({ default: m.PrivacyPolicyWizard })));
+const PolicyPreview = lazy(() => import("./pages/PolicyPreview").then(m => ({ default: m.PolicyPreview })));
 
 // ── Cookie Policy ─────────────────────────────────────────────────────────────
-const CookiePolicyManagement = React.lazy(() => import("./pages/CookiePolicyManagement").then(m => ({ default: m.CookiePolicyManagement })));
-const CookiePolicyWizard = React.lazy(() => import("./pages/CookiePolicyWizard").then(m => ({ default: m.CookiePolicyWizard })));
-const CookiePolicyPreview = React.lazy(() => import("./pages/CookiePolicyPreview").then(m => ({ default: m.CookiePolicyPreview })));
+const CookiePolicyManagement = lazy(() => import("./pages/CookiePolicyManagement").then(m => ({ default: m.CookiePolicyManagement })));
+const CookiePolicyWizard = lazy(() => import("./pages/CookiePolicyWizard").then(m => ({ default: m.CookiePolicyWizard })));
+const CookiePolicyPreview = lazy(() => import("./pages/CookiePolicyPreview").then(m => ({ default: m.CookiePolicyPreview })));
 
 // ── Terms of Service ──────────────────────────────────────────────────────────
-const TermsManagement = React.lazy(() => import("./pages/TermsManagement").then(m => ({ default: m.TermsManagement })));
-const TermsWizard = React.lazy(() => import("./pages/TermsWizard").then(m => ({ default: m.TermsWizard })));
-const TermsPreview = React.lazy(() => import("./pages/TermsPreview").then(m => ({ default: m.TermsPreview })));
+const TermsManagement = lazy(() => import("./pages/TermsManagement").then(m => ({ default: m.TermsManagement })));
+const TermsWizard = lazy(() => import("./pages/TermsWizard").then(m => ({ default: m.TermsWizard })));
+const TermsPreview = lazy(() => import("./pages/TermsPreview").then(m => ({ default: m.TermsPreview })));
 
 // ── EULA ──────────────────────────────────────────────────────────────────────
-const EULAManagement = React.lazy(() => import("./pages/EULAManagement").then(m => ({ default: m.EULAManagement })));
-const EULAWizard = React.lazy(() => import("./pages/EULAWizard").then(m => ({ default: m.EULAWizard })));
-const EULAPreview = React.lazy(() => import("./pages/EULAPreview").then(m => ({ default: m.EULAPreview })));
+const EULAManagement = lazy(() => import("./pages/EULAManagement").then(m => ({ default: m.EULAManagement })));
+const EULAWizard = lazy(() => import("./pages/EULAWizard").then(m => ({ default: m.EULAWizard })));
+const EULAPreview = lazy(() => import("./pages/EULAPreview").then(m => ({ default: m.EULAPreview })));
 
 // ── Return Policy ─────────────────────────────────────────────────────────────
-const ReturnPolicyManagement = React.lazy(() => import("./pages/ReturnPolicyManagement").then(m => ({ default: m.ReturnPolicyManagement })));
-const ReturnPolicyWizard = React.lazy(() => import("./pages/ReturnPolicyWizard").then(m => ({ default: m.ReturnPolicyWizard })));
-const ReturnPolicyPreview = React.lazy(() => import("./pages/ReturnPolicyPreview").then(m => ({ default: m.ReturnPolicyPreview })));
+const ReturnPolicyManagement = lazy(() => import("./pages/ReturnPolicyManagement").then(m => ({ default: m.ReturnPolicyManagement })));
+const ReturnPolicyWizard = lazy(() => import("./pages/ReturnPolicyWizard").then(m => ({ default: m.ReturnPolicyWizard })));
+const ReturnPolicyPreview = lazy(() => import("./pages/ReturnPolicyPreview").then(m => ({ default: m.ReturnPolicyPreview })));
 
 // ── Disclaimer ────────────────────────────────────────────────────────────────
-const DisclaimerManagement = React.lazy(() => import("./pages/DisclaimerManagement").then(m => ({ default: m.DisclaimerManagement })));
-const DisclaimerWizard = React.lazy(() => import("./pages/DisclaimerWizard").then(m => ({ default: m.DisclaimerWizard })));
-const DisclaimerPreview = React.lazy(() => import("./pages/DisclaimerPreview").then(m => ({ default: m.DisclaimerPreview })));
+const DisclaimerManagement = lazy(() => import("./pages/DisclaimerManagement").then(m => ({ default: m.DisclaimerManagement })));
+const DisclaimerWizard = lazy(() => import("./pages/DisclaimerWizard").then(m => ({ default: m.DisclaimerWizard })));
+const DisclaimerPreview = lazy(() => import("./pages/DisclaimerPreview").then(m => ({ default: m.DisclaimerPreview })));
 
 // ── Shipping Policy ───────────────────────────────────────────────────────────
-const ShippingPolicyManagement = React.lazy(() => import("./pages/ShippingPolicyManagement").then(m => ({ default: m.ShippingPolicyManagement })));
-const ShippingPolicyWizard = React.lazy(() => import("./pages/ShippingPolicyWizard").then(m => ({ default: m.ShippingPolicyWizard })));
-const ShippingPolicyPreview = React.lazy(() => import("./pages/ShippingPolicyPreview").then(m => ({ default: m.ShippingPolicyPreview })));
+const ShippingPolicyManagement = lazy(() => import("./pages/ShippingPolicyManagement").then(m => ({ default: m.ShippingPolicyManagement })));
+const ShippingPolicyWizard = lazy(() => import("./pages/ShippingPolicyWizard").then(m => ({ default: m.ShippingPolicyWizard })));
+const ShippingPolicyPreview = lazy(() => import("./pages/ShippingPolicyPreview").then(m => ({ default: m.ShippingPolicyPreview })));
 
 // ── Acceptable Use Policy ─────────────────────────────────────────────────────
-const AUPManagement = React.lazy(() => import("./pages/AUPManagement").then(m => ({ default: m.AUPManagement })));
-const AUPWizard = React.lazy(() => import("./pages/AUPWizard").then(m => ({ default: m.AUPWizard })));
-const AUPPreview = React.lazy(() => import("./pages/AUPPreview").then(m => ({ default: m.AUPPreview })));
+const AUPManagement = lazy(() => import("./pages/AUPManagement").then(m => ({ default: m.AUPManagement })));
+const AUPWizard = lazy(() => import("./pages/AUPWizard").then(m => ({ default: m.AUPWizard })));
+const AUPPreview = lazy(() => import("./pages/AUPPreview").then(m => ({ default: m.AUPPreview })));
 
 // ── Impressum ─────────────────────────────────────────────────────────────────
-const ImpressumManagement = React.lazy(() => import("./pages/ImpressumManagement").then(m => ({ default: m.ImpressumManagement })));
-const ImpressumWizard = React.lazy(() => import("./pages/ImpressumWizard").then(m => ({ default: m.ImpressumWizard })));
-const ImpressumPreview = React.lazy(() => import("./pages/ImpressumPreview").then(m => ({ default: m.ImpressumPreview })));
+const ImpressumManagement = lazy(() => import("./pages/ImpressumManagement").then(m => ({ default: m.ImpressumManagement })));
+const ImpressumWizard = lazy(() => import("./pages/ImpressumWizard").then(m => ({ default: m.ImpressumWizard })));
+const ImpressumPreview = lazy(() => import("./pages/ImpressumPreview").then(m => ({ default: m.ImpressumPreview })));
 
 // ── Accessibility Statement ───────────────────────────────────────────────────
-const AccessibilityManagement = React.lazy(() => import("./pages/AccessibilityManagement").then(m => ({ default: m.AccessibilityManagement })));
-const AccessibilityWizard = React.lazy(() => import("./pages/AccessibilityWizard").then(m => ({ default: m.AccessibilityWizard })));
-const AccessibilityPreview = React.lazy(() => import("./pages/AccessibilityPreview").then(m => ({ default: m.AccessibilityPreview })));
+const AccessibilityManagement = lazy(() => import("./pages/AccessibilityManagement").then(m => ({ default: m.AccessibilityManagement })));
+const AccessibilityWizard = lazy(() => import("./pages/AccessibilityWizard").then(m => ({ default: m.AccessibilityWizard })));
+const AccessibilityPreview = lazy(() => import("./pages/AccessibilityPreview").then(m => ({ default: m.AccessibilityPreview })));
 
 // ── Misc authenticated ────────────────────────────────────────────────────────
-const Settings = React.lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
-const APIDocumentation = React.lazy(() => import("./pages/APIDocumentation").then(m => ({ default: m.APIDocumentation })));
-const WebsiteDiagnosis = React.lazy(() => import("./pages/WebsiteDiagnosis").then(m => ({ default: m.WebsiteDiagnosis })));
+const Settings = lazy(() => import("./pages/Settings").then(m => ({ default: m.Settings })));
+const APIDocumentation = lazy(() => import("./pages/APIDocumentation").then(m => ({ default: m.APIDocumentation })));
+const WebsiteDiagnosis = lazy(() => import("./pages/WebsiteDiagnosis").then(m => ({ default: m.WebsiteDiagnosis })));
 
 // ── Policy Scan ───────────────────────────────────────────────────────────────
-const PolicyScan = React.lazy(() => import("./pages/PolicyScan").then(m => ({ default: m.PolicyScan })));
+const PolicyScan = lazy(() => import("./pages/PolicyScan").then(m => ({ default: m.PolicyScan })));
 
 // ── Auth callback ─────────────────────────────────────────────────────────────
-const AuthCallback = React.lazy(() => import("./pages/AuthCallback").then(m => ({ default: m.AuthCallback })));
+const AuthCallback = lazy(() => import("./pages/AuthCallback").then(m => ({ default: m.AuthCallback })));
 
 function App() {
   return (
