@@ -25,12 +25,21 @@ export interface CookieCategory {
   providers: CookieProvider[];
 }
 
+export interface PiiLeak {
+  domain: string;
+  exampleUrl: string;
+  piiTypes: string[];
+  thirdParty: boolean;
+  method: string;
+}
+
 export interface ScannedData {
   url: string;
   date: string;
   pages: number;
   cookiesCount: number;
   categories: CookieCategory[];
+  piiLeaks?: PiiLeak[];
 }
 
 export interface BannerConfig {

@@ -1,4 +1,4 @@
-import { CalendarClock, Check } from "lucide-react";
+import { AlertTriangle, CalendarClock, Check, ShieldAlert, Wand2 } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { API_URL } from "../lib/config";
 import { Input } from "../components/Input";
@@ -56,6 +56,8 @@ export const WebsiteCookie: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"idle" | "success" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [isClassifying, setIsClassifying] = useState(false);
+  const [classifyError, setClassifyError] = useState<string | null>(null);
   const { scannedData, setScannedData, userId } = useCookieConfig();
 
   // ── Scheduler state ──
@@ -129,6 +131,71 @@ export const WebsiteCookie: React.FC = () => {
     if (!iso) return "—";
     const d = new Date(iso);
     return isNaN(d.getTime()) ? "—" : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const handleClassify = async () => {
+    if (!scannedData) return;
+    const unclassifiedCat = scannedData.categories.find(c => c.id === 'unclassified');
+    if (!unclassifiedCat) return;
+
+    const cookies = unclassifiedCat.providers.flatMap(p =>
+      p.cookies.map(cookie => ({ name: cookie.name, domain: cookie.domain, description: cookie.description }))
+    );
+    if (cookies.length === 0) return;
+
+    setIsClassifying(true);
+    setClassifyError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/classify-cookies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cookies }),
+      });
+      if (!res.ok) throw new Error('Classification failed');
+      const { classifications } = await res.json();
+
+      // Build a lookup: cookie name → new category
+      const categoryMap: Record<string, string> = {};
+      for (const c of classifications) {
+        if (c.name && c.category) categoryMap[c.name] = c.category.toLowerCase();
+      }
+
+      // Rebuild categories: move classified cookies out of unclassified
+      const updated = scannedData.categories.map(cat => {
+        if (cat.id !== 'unclassified') {
+          // Inject newly classified cookies into the right category
+          const newProviders = [...cat.providers];
+          for (const provider of unclassifiedCat.providers) {
+            const movedCookies = provider.cookies.filter(
+              ck => categoryMap[ck.name] === cat.id
+            );
+            if (movedCookies.length > 0) {
+              const existing = newProviders.find(p => p.name === provider.name);
+              if (existing) {
+                existing.cookies = [...existing.cookies, ...movedCookies];
+              } else {
+                newProviders.push({ name: provider.name, cookies: movedCookies });
+              }
+            }
+          }
+          return { ...cat, providers: newProviders };
+        }
+        // Remove successfully classified cookies from unclassified
+        const remainingProviders = cat.providers.map(p => ({
+          ...p,
+          cookies: p.cookies.filter(
+            ck => !categoryMap[ck.name] || categoryMap[ck.name] === 'unclassified'
+          ),
+        })).filter(p => p.cookies.length > 0);
+        return { ...cat, providers: remainingProviders };
+      });
+
+      setScannedData({ ...scannedData, categories: updated });
+    } catch (err) {
+      setClassifyError('AI classification failed. Please try again.');
+    } finally {
+      setIsClassifying(false);
+    }
   };
 
   const handleScan = async () => {
@@ -382,6 +449,42 @@ export const WebsiteCookie: React.FC = () => {
         </div>
       )}
 
+      {/* PII Leakage Panel */}
+      {scannedData && scannedData.piiLeaks && scannedData.piiLeaks.length > 0 && (
+        <div style={{ margin: '1.5rem 0', border: '1px solid #fca5a5', borderRadius: '8px', background: '#fff5f5', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.875rem 1.25rem', background: '#fee2e2', borderBottom: '1px solid #fca5a5' }}>
+            <ShieldAlert size={16} color="#dc2626" />
+            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#dc2626' }}>
+              PII Leakage Detected — {scannedData.piiLeaks.length} domain{scannedData.piiLeaks.length > 1 ? 's' : ''} receiving personal data
+            </span>
+          </div>
+          <div style={{ padding: '0.75rem 1.25rem', display: 'flex', flexDirection: 'column', gap: '0.625rem' }}>
+            {scannedData.piiLeaks.map((leak) => (
+              <div key={leak.domain} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', fontSize: '0.8125rem', color: '#374151' }}>
+                <AlertTriangle size={14} color={leak.thirdParty ? '#dc2626' : '#d97706'} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div>
+                  <span style={{ fontWeight: 600 }}>{leak.domain}</span>
+                  <span style={{ marginLeft: '0.5rem', color: leak.thirdParty ? '#dc2626' : '#d97706', fontSize: '0.75rem', fontWeight: 500 }}>
+                    {leak.thirdParty ? '3rd party' : '1st party'}
+                  </span>
+                  <span style={{ margin: '0 0.4rem', color: '#9ca3af' }}>·</span>
+                  <span>{leak.method}</span>
+                  <span style={{ margin: '0 0.4rem', color: '#9ca3af' }}>·</span>
+                  {leak.piiTypes.map(t => (
+                    <span key={t} style={{ display: 'inline-block', background: '#fee2e2', color: '#991b1b', borderRadius: '4px', padding: '1px 6px', fontSize: '0.6875rem', fontWeight: 600, marginRight: '4px' }}>
+                      {t.replace('_', ' ').toUpperCase()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+              PII detected in outgoing request URLs or POST bodies at page load. Review whether consent is collected before these requests fire.
+            </p>
+          </div>
+        </div>
+      )}
+
       {scannedData && activeCategory && (
         <>
           {/* Tabs */}
@@ -425,12 +528,24 @@ export const WebsiteCookie: React.FC = () => {
             >
               {activeCategory.description}
             </p>
-            <button
-              className="btn-outline-theme uppercase font-medium text-sm"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              Add a Cookie
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+              {activeTabId === 'unclassified' && activeCategory.providers.some(p => p.cookies.length > 0) && (
+                <>
+                  <button
+                    className="btn-outline-theme uppercase font-medium text-sm"
+                    style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.375rem' }}
+                    onClick={handleClassify}
+                    disabled={isClassifying}
+                  >
+                    <Wand2 size={14} />
+                    {isClassifying ? 'Classifying…' : 'Classify with AI'}
+                  </button>
+                  {classifyError && (
+                    <span style={{ fontSize: '0.75rem', color: '#ef4444' }}>{classifyError}</span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Grouped Cookies */}

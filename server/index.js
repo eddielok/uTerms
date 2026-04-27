@@ -349,6 +349,7 @@ app.use("/api/aup", generalLimiter);
 app.use("/api/impressum", generalLimiter);
 app.use("/api/accessibility", generalLimiter);
 app.use("/api/scan", scanLimiter);
+app.use("/api/classify-cookies", scanLimiter);
 app.use("/api/analyze-policy", scanLimiter);
 app.use("/api/analyze-all-policies", policyScanLimiter);
 
@@ -401,6 +402,49 @@ const CATEGORY_TEMPLATES = [
   },
 ];
 
+// ─── PII detection helpers ────────────────────────────────────────────────────
+const PII_PATTERNS = [
+  { type: 'email',       regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
+  { type: 'phone',       regex: /(?:\+?\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g },
+  { type: 'ssn',         regex: /\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/g },
+  { type: 'credit_card', regex: /\b(?:\d[ -]?){15,16}\b/g },
+  { type: 'ip_address',  regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g },
+  { type: 'passport',    regex: /\b[A-Z]{1,2}\d{6,9}\b/g },
+];
+
+// Luhn check to reduce credit card false positives
+function luhn(num) {
+  const digits = num.replace(/\D/g, '');
+  let sum = 0;
+  let alt = false;
+  for (let i = digits.length - 1; i >= 0; i--) {
+    let n = parseInt(digits[i], 10);
+    if (alt) { n *= 2; if (n > 9) n -= 9; }
+    sum += n;
+    alt = !alt;
+  }
+  return sum % 10 === 0;
+}
+
+function detectPiiInText(text) {
+  if (!text) return [];
+  const found = new Set();
+  for (const { type, regex } of PII_PATTERNS) {
+    const matches = text.match(regex);
+    if (!matches) continue;
+    if (type === 'credit_card') {
+      if (matches.some(m => luhn(m))) found.add(type);
+    } else if (type === 'ip_address') {
+      // Ignore common non-PII IPs like 127.0.0.1, 0.0.0.0, 255.255.255.255
+      const realIps = matches.filter(ip => !['127.0.0.1','0.0.0.0','255.255.255.255','192.168.','10.0.'].some(x => ip.startsWith(x)));
+      if (realIps.length) found.add(type);
+    } else {
+      found.add(type);
+    }
+  }
+  return [...found];
+}
+
 // ─── Shared scan function ─────────────────────────────────────────────────────
 async function performScan(url) {
   const targetUrl = normalizeUrl(url);
@@ -409,10 +453,27 @@ async function performScan(url) {
   const browser = await getSharedBrowser();
   const page = await newScanPage(browser); // resource-blocked page
 
+  // Collect outgoing network requests for PII analysis
+  const capturedRequests = [];
+
   try {
     await page.setUserAgent(
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     );
+
+    // Enable CDP Network before navigation to capture all requests
+    const cdpClient = await page.createCDPSession();
+    await cdpClient.send('Network.enable');
+    cdpClient.on('Network.requestWillBeSent', (params) => {
+      const reqUrl = params.request.url;
+      if (!reqUrl.startsWith('http')) return; // skip data: / blob:
+      capturedRequests.push({
+        url: reqUrl,
+        method: params.request.method,
+        postData: params.request.postData || '',
+        headers: params.request.headers || {},
+      });
+    });
 
     try {
       await page.goto(targetUrl, { waitUntil: "networkidle2", timeout: 20000 });
@@ -536,11 +597,68 @@ async function performScan(url) {
       });
     }
 
-    return { url: targetUrl, cookiesCount: cookies.length, categories };
+    // ── PII leakage analysis ──────────────────────────────────────────────────
+    const targetHost = new URL(targetUrl).hostname.replace(/^www\./, '');
+    const piiLeaksMap = new Map(); // domain → { domain, url, piiTypes, thirdParty, method }
+
+    for (const req of capturedRequests) {
+      let reqHost;
+      try { reqHost = new URL(req.url).hostname.replace(/^www\./, ''); } catch { continue; }
+
+      const isThirdParty = !reqHost.endsWith(targetHost) && !targetHost.endsWith(reqHost);
+
+      // Check URL (query params) + POST body
+      const textToCheck = req.url + ' ' + req.postData;
+      const piiTypes = detectPiiInText(textToCheck);
+      if (piiTypes.length === 0) continue;
+
+      const key = reqHost;
+      if (piiLeaksMap.has(key)) {
+        const existing = piiLeaksMap.get(key);
+        for (const t of piiTypes) existing.piiTypes.add(t);
+      } else {
+        piiLeaksMap.set(key, {
+          domain: reqHost,
+          exampleUrl: req.url.slice(0, 200),
+          piiTypes: new Set(piiTypes),
+          thirdParty: isThirdParty,
+          method: req.method,
+        });
+      }
+    }
+
+    const piiLeaks = [...piiLeaksMap.values()].map(l => ({
+      ...l,
+      piiTypes: [...l.piiTypes],
+    }));
+
+    return { url: targetUrl, cookiesCount: cookies.length, categories, piiLeaks };
   } finally {
     await page.close(); // close page only — keep shared browser warm
   }
 }
+
+// ─── POST /api/classify-cookies ──────────────────────────────────────────────
+app.post("/api/classify-cookies", generalLimiter, async (req, res) => {
+  const { cookies } = req.body;
+  if (!Array.isArray(cookies) || cookies.length === 0)
+    return res.status(400).json({ error: "cookies array is required" });
+
+  const list = cookies
+    .slice(0, 50) // cap at 50 to keep prompt size manageable
+    .map((c) => `name: ${c.name || ""} | domain: ${c.domain || ""} | description: ${c.description || ""}`)
+    .join("\n");
+
+  const systemPrompt = `You are a cookie classification expert. Classify each cookie into exactly one category: essential, functional, analytics, marketing, or social. Use "unclassified" only if you genuinely cannot determine the category. Consider the cookie name pattern, domain, and description. Return ONLY valid JSON in the format: { "classifications": [ { "name": "...", "category": "..." } ] }`;
+
+  const userPrompt = `Classify these cookies and return { "classifications": [ { "name": "...", "category": "..." } ] }\n\nCookies:\n${list}`;
+
+  const result = await callDeepSeek(systemPrompt, userPrompt, 20000);
+  if (!result) return res.status(500).json({ error: "AI classification unavailable" });
+
+  const classifications = Array.isArray(result) ? result : (result.classifications || result.cookies || []);
+  res.json({ classifications });
+});
 
 // ─── POST /api/scan ───────────────────────────────────────────────────────────
 app.post("/api/scan", async (req, res) => {
