@@ -7,7 +7,7 @@ import './PolicyPreview.css';
 
 export const CookieBannerSettings: React.FC = () => {
   const { bannerConfig, setBannerConfig, setIsPreviewVisible, userId } = useCookieConfig();
-  const { theme, styleMode, position, size, ccpaMode, piplMode, piplCompanyName, piplContactEmail, piplRetentionDays, piplCrossBorder } = bannerConfig;
+  const { theme, styleMode, position, size, piplCompanyName, piplContactEmail, piplRetentionDays, piplCrossBorder } = bannerConfig;
 
   const updateConfig = (key: keyof typeof bannerConfig, value: string | boolean | number) => {
     setBannerConfig(prev => ({ ...prev, [key]: value, isConfigured: true }));
@@ -144,79 +144,55 @@ export const CookieBannerSettings: React.FC = () => {
           <div style={{ borderTop: '1px dashed #e5e7eb', margin: '0.5rem 0' }}></div>
 
           <div className="control-group">
-            <div className="control-group-title">Compliance Mode</div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={!!ccpaMode}
-                onChange={(e) => updateConfig('ccpaMode', e.target.checked)}
-                style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '0.875rem', color: '#374151' }}>
-                Enable CCPA Mode — adds a "Do Not Sell My Personal Information" link for California visitors
-              </span>
-            </label>
-
-            <div style={{ borderTop: '1px dashed #e5e7eb', margin: '1rem 0' }}></div>
-
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={!!piplMode}
-                onChange={(e) => updateConfig('piplMode', e.target.checked)}
-                style={{ width: '1rem', height: '1rem', cursor: 'pointer' }}
-              />
-              <span style={{ fontSize: '0.875rem', color: '#374151' }}>
-                Enable PIPL Mode — displays China Personal Information Protection Law disclosures for Chinese visitors
-              </span>
-            </label>
-
-            {piplMode && (
-              <div className="pipl-fields">
-                <div className="pipl-field">
-                  <label className="pipl-label">Data Controller Name <span className="pipl-required">*</span></label>
-                  <input
-                    className="pipl-input"
-                    type="text"
-                    placeholder="Your company name"
-                    value={piplCompanyName || ''}
-                    onChange={(e) => updateConfig('piplCompanyName', e.target.value)}
-                  />
-                </div>
-                <div className="pipl-field">
-                  <label className="pipl-label">Contact Email <span className="pipl-required">*</span></label>
-                  <input
-                    className="pipl-input"
-                    type="email"
-                    placeholder="privacy@yourcompany.com"
-                    value={piplContactEmail || ''}
-                    onChange={(e) => updateConfig('piplContactEmail', e.target.value)}
-                  />
-                </div>
-                <div className="pipl-field">
-                  <label className="pipl-label">Data Retention Period (days)</label>
-                  <input
-                    className="pipl-input pipl-input-short"
-                    type="number"
-                    min={1}
-                    placeholder="180"
-                    value={piplRetentionDays ?? ''}
-                    onChange={(e) => updateConfig('piplRetentionDays', parseInt(e.target.value) || 180)}
-                  />
-                </div>
-                <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', marginTop: '0.5rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={!!piplCrossBorder}
-                    onChange={(e) => updateConfig('piplCrossBorder', e.target.checked)}
-                    style={{ width: '1rem', height: '1rem', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
-                  />
-                  <span style={{ fontSize: '0.875rem', color: '#374151' }}>
-                    Data is transferred outside China — adds a cross-border transfer notice
-                  </span>
-                </label>
+            <div className="control-group-title">China (PIPL) Notice</div>
+            <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: '1rem', lineHeight: 1.5 }}>
+              Shown automatically to visitors from China. Fill in your details below to enable the notice.
+              CCPA is also applied automatically for California visitors — no configuration needed.
+            </p>
+            <div className="pipl-fields" style={{ marginTop: 0 }}>
+              <div className="pipl-field">
+                <label className="pipl-label">Data Controller Name <span className="pipl-required">*</span></label>
+                <input
+                  className="pipl-input"
+                  type="text"
+                  placeholder="Your company name"
+                  value={piplCompanyName || ''}
+                  onChange={(e) => updateConfig('piplCompanyName', e.target.value)}
+                />
               </div>
-            )}
+              <div className="pipl-field">
+                <label className="pipl-label">Contact Email <span className="pipl-required">*</span></label>
+                <input
+                  className="pipl-input"
+                  type="email"
+                  placeholder="privacy@yourcompany.com"
+                  value={piplContactEmail || ''}
+                  onChange={(e) => updateConfig('piplContactEmail', e.target.value)}
+                />
+              </div>
+              <div className="pipl-field">
+                <label className="pipl-label">Data Retention Period (days)</label>
+                <input
+                  className="pipl-input pipl-input-short"
+                  type="number"
+                  min={1}
+                  placeholder="180"
+                  value={piplRetentionDays ?? ''}
+                  onChange={(e) => updateConfig('piplRetentionDays', parseInt(e.target.value) || 180)}
+                />
+              </div>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', marginTop: '0.5rem' }}>
+                <input
+                  type="checkbox"
+                  checked={!!piplCrossBorder}
+                  onChange={(e) => updateConfig('piplCrossBorder', e.target.checked)}
+                  style={{ width: '1rem', height: '1rem', cursor: 'pointer', marginTop: '2px', flexShrink: 0 }}
+                />
+                <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+                  Data is transferred outside China — adds a cross-border transfer notice
+                </span>
+              </label>
+            </div>
           </div>
 
         </div>

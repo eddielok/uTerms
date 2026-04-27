@@ -465,10 +465,11 @@
       }
     }
 
-    // CCPA mode — enabled only when explicitly configured by the site owner.
-    // Timezone-based auto-detection is unreliable and privacy-invasive; use server-side
-    // IP geolocation or explicit configuration instead.
-    const ccpaMode = !!(bannerConfig.ccpaMode);
+    // Jurisdiction auto-detection — server resolves visitor IP to ccpa/pipl/gdpr/null.
+    // Site-owner config always wins; auto-detection is the fallback.
+    const detectedJurisdiction = rawConfig && rawConfig.detected_jurisdiction;
+    const ccpaMode = !!(bannerConfig.ccpaMode) || detectedJurisdiction === 'ccpa';
+    const piplMode = !!(bannerConfig.piplMode) || detectedJurisdiction === 'pipl';
 
     // Resolve active language — explicit param > IP geo > browser locale > English
     const t = TRANSLATIONS[detectLanguage(langParam, rawConfig && rawConfig.detected_lang)];
@@ -884,7 +885,7 @@
 
     // Build PIPL notice HTML when piplMode is enabled and required fields are set
     let piplNoticeHtml = '';
-    if (bannerConfig.piplMode && bannerConfig.piplCompanyName) {
+    if (piplMode && bannerConfig.piplCompanyName) {
       const retention = bannerConfig.piplRetentionDays || 180;
       piplNoticeHtml = `
         <div class="uterms-pipl-notice">

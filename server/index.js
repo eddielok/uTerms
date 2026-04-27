@@ -707,6 +707,17 @@ function detectCountryLang(ip) {
   return COUNTRY_LANG_MAP[geo.country] || null;
 }
 
+function detectJurisdiction(ip) {
+  if (!ip) return null;
+  const cleanIp = ip.split(",")[0].trim();
+  const geo = geoip.lookup(cleanIp);
+  if (!geo) return null;
+  if (geo.country === "US" && geo.region === "CA") return "ccpa";
+  if (geo.country === "CN") return "pipl";
+  if (geo.eu === "1") return "gdpr";
+  return null;
+}
+
 // ─── GET /api/banner/:id ──────────────────────────────────────────────────────
 app.get("/api/banner/:id", async (req, res) => {
   const { id } = req.params;
@@ -728,8 +739,9 @@ app.get("/api/banner/:id", async (req, res) => {
     const data = await response.json();
     if (data && data.length > 0) {
       const detectedLang = detectCountryLang(req.ip);
+      const detectedJurisdiction = detectJurisdiction(req.ip);
       res.set("Cache-Control", "private, max-age=60");
-      res.json({ ...data[0], detected_lang: detectedLang });
+      res.json({ ...data[0], detected_lang: detectedLang, detected_jurisdiction: detectedJurisdiction });
     } else {
       res.status(404).json({ error: "Settings not found for user" });
     }
