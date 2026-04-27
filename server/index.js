@@ -788,7 +788,7 @@ app.post("/api/pii-report", consentLimiter, async (req, res) => {
     third_party: !!r.thirdParty,
     method: String(r.method || "GET").slice(0, 10),
     page_url: String(r.url || "").slice(0, 2000),
-    example_url: String(r.exampleUrl || "").slice(0, 200),
+    url: String(r.exampleUrl || "").slice(0, 200),
     created_at: new Date().toISOString(),
   })).filter(r => r.pii_types.length > 0);
 

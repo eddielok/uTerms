@@ -234,7 +234,7 @@ export const PiiAlerts: React.FC = () => {
                 <th>PII Detected</th>
                 <th>Party</th>
                 <th>Occurrences</th>
-                <th>Example Page</th>
+                <th>Page</th>
                 <th>Last Seen</th>
               </tr>
             </thead>
