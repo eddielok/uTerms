@@ -121,7 +121,7 @@ export const Sidebar: React.FC = () => {
           >
             <ShieldCheck size={20} />
             <span style={{ flex: 1, textAlign: "left" }}>
-              Consent Management
+              Cookie Management
             </span>
             {isConsentOpen ? (
               <ChevronUp size={16} />
@@ -164,17 +164,19 @@ export const Sidebar: React.FC = () => {
               >
                 Cookie Log
               </NavLink>
-              <NavLink
-                to="/consent-management/pii-alerts"
-                className={({ isActive }) =>
-                  `sidebar-sub-link ${isActive ? "active" : ""}`
-                }
-              >
-                PII Alerts
-              </NavLink>
             </div>
           )}
         </div>
+
+        <NavLink
+          to="/consent-management/pii-alerts"
+          className={({ isActive }) =>
+            `sidebar-link ${isActive ? "active" : ""}`
+          }
+        >
+          <ShieldCheck size={20} />
+          <span>PII Data Management</span>
+        </NavLink>
 
         <div className="sidebar-group">
           <button
