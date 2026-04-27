@@ -1,9 +1,12 @@
 import {
+  Activity,
   ChevronDown,
   ChevronUp,
   FileText,
+  Fingerprint,
   LayoutDashboard,
   LogOut,
+  ScrollText,
   Settings,
   ShieldCheck,
 } from "lucide-react";
@@ -174,7 +177,7 @@ export const Sidebar: React.FC = () => {
             `sidebar-link ${isActive ? "active" : ""}`
           }
         >
-          <ShieldCheck size={20} />
+          <Fingerprint size={20} />
           <span>PII Data Management</span>
         </NavLink>
 
@@ -183,7 +186,7 @@ export const Sidebar: React.FC = () => {
             className={`sidebar-link ${location.pathname.startsWith("/policy-management") || location.pathname.startsWith("/cookie-policy") || location.pathname.startsWith("/terms-of-service") || location.pathname.startsWith("/eula") || location.pathname.startsWith("/return-policy") || location.pathname.startsWith("/disclaimer") || location.pathname.startsWith("/shipping-policy") || location.pathname.startsWith("/acceptable-use-policy") || location.pathname.startsWith("/impressum") || location.pathname.startsWith("/accessibility-statement") ? "active-group" : ""}`}
             onClick={() => setIsPolicyOpen(!isPolicyOpen)}
           >
-            <FileText size={20} />
+            <ScrollText size={20} />
             <span style={{ flex: 1, textAlign: "left" }}>
               Policy Management
             </span>
@@ -300,7 +303,7 @@ export const Sidebar: React.FC = () => {
             `sidebar-link ${isActive ? "active" : ""}`
           }
         >
-          <ShieldCheck size={20} />
+          <Activity size={20} />
           <span>Website Diagnosis</span>
         </NavLink>
 
