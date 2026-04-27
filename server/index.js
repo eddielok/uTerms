@@ -982,6 +982,7 @@ const TEST_HTML_FILES = [
   "test-aup.html",
   "test-impressum.html",
   "test-accessibility.html",
+  "test-pii-monitor.html",
 ];
 
 TEST_HTML_FILES.forEach((file) => {

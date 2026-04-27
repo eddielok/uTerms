@@ -1,4 +1,4 @@
-import { AlertTriangle, Download, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Download, FlaskConical, RefreshCw, ShieldAlert, ShieldCheck } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import { useCookieConfig } from '../context/CookieContext';
 import { API_URL } from '../lib/config';
@@ -144,7 +144,17 @@ export const PiiAlerts: React.FC = () => {
 
       {/* Embed snippet */}
       <div className="pii-snippet-card">
-        <div className="pii-snippet-title">Monitor Script — add before <code>&lt;/body&gt;</code></div>
+        <div className="pii-snippet-header">
+          <div className="pii-snippet-title">Monitor Script — add before <code>&lt;/body&gt;</code></div>
+          <a
+            className="pii-test-link"
+            href={`${API_URL}/test-pii-monitor.html?id=${userId || ''}&api=${API_URL}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <FlaskConical size={13} /> Live Test Page
+          </a>
+        </div>
         <div className="pii-snippet-code">
           <pre>{monitorScript}</pre>
           <button

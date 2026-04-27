@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PII Monitor — Live Test</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; background: #f8fafc; color: #0f172a; margin: 0; }
+    h1 { font-size: 1.35rem; font-weight: 700; margin: 0 0 0.25rem; }
+    .subtitle { color: #64748b; font-size: 0.875rem; margin: 0 0 2rem; }
+
+    .card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.25rem; }
+    .card h2 { font-size: 0.875rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 1rem; }
+
+    .scenario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0.75rem; }
+    .scenario-btn {
+      display: flex; flex-direction: column; gap: 0.25rem;
+      background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;
+      padding: 0.875rem 1rem; text-align: left; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .scenario-btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+    .scenario-btn:active { background: #e2e8f0; }
+    .scenario-btn .label { font-size: 0.875rem; font-weight: 600; color: #0f172a; }
+    .scenario-btn .desc { font-size: 0.75rem; color: #64748b; }
+    .scenario-btn.high { border-left: 3px solid #ef4444; }
+    .scenario-btn.med  { border-left: 3px solid #f59e0b; }
+    .scenario-btn.low  { border-left: 3px solid #3b82f6; }
+
+    .log-area { background: #0f172a; border-radius: 8px; padding: 1rem; min-height: 140px; font-family: 'JetBrains Mono', Consolas, monospace; font-size: 0.8125rem; }
+    .log-line { padding: 0.2rem 0; border-bottom: 1px solid #1e293b; line-height: 1.5; }
+    .log-line:last-child { border-bottom: none; }
+    .log-time { color: #475569; margin-right: 0.5rem; }
+    .log-ok  { color: #34d399; }
+    .log-warn { color: #fbbf24; }
+    .log-info { color: #94a3b8; }
+
+    .notice { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 0.875rem 1rem; font-size: 0.8125rem; color: #92400e; margin-bottom: 1.25rem; }
+    .notice strong { font-weight: 600; }
+
+    .clear-btn { background: #1e293b; color: #94a3b8; border: none; border-radius: 6px; padding: 0.35rem 0.75rem; font-size: 0.75rem; cursor: pointer; float: right; }
+    .clear-btn:hover { background: #334155; color: #e2e8f0; }
+
+    .params { font-family: monospace; font-size: 0.75rem; background: #f1f5f9; border-radius: 6px; padding: 0.5rem 0.875rem; color: #475569; }
+  </style>
+  <script>
+    (function () {
+      var p = new URLSearchParams(window.location.search);
+      var id = p.get('id') || '';
+      var api = p.get('api') || 'http://localhost:3001';
+      if (!id) return;
+      var s = document.createElement('script');
+      s.src = api + '/uterms-pii-monitor.js?id=' + encodeURIComponent(id) + '&api=' + encodeURIComponent(api);
+      document.head.appendChild(s);
+    })();
+  </script>
+</head>
+<body>
+
+<h1>PII Monitor — Live Test</h1>
+<p class="subtitle">Trigger test scenarios below. Alerts should appear in your dashboard within 30 seconds.</p>
+
+<div class="notice">
+  <strong>How it works:</strong> Each button fires a real network request containing synthetic PII.
+  The monitor script intercepts it, strips the actual data, and reports the <em>type</em> of leak to your dashboard.
+  No real PII leaves this page.
+</div>
+
+<div class="card">
+  <h2>Test Scenarios</h2>
+  <div class="scenario-grid">
+    <button class="scenario-btn high" onclick="triggerEmailGet()">
+      <span class="label">Email in URL (GET)</span>
+      <span class="desc">Sends email address as a query param</span>
+    </button>
+    <button class="scenario-btn high" onclick="triggerPhonePost()">
+      <span class="label">Phone in POST body</span>
+      <span class="desc">Sends phone number in a JSON body</span>
+    </button>
+    <button class="scenario-btn high" onclick="triggerCreditCard()">
+      <span class="label">Credit Card (Luhn-valid)</span>
+      <span class="desc">Sends a valid test card number via fetch</span>
+    </button>
+    <button class="scenario-btn high" onclick="triggerSSN()">
+      <span class="label">SSN in XHR body</span>
+      <span class="desc">Sends SSN pattern via XMLHttpRequest</span>
+    </button>
+    <button class="scenario-btn med" onclick="triggerFormEmail()">
+      <span class="label">Form submit with email</span>
+      <span class="desc">Submits a hidden form containing an email</span>
+    </button>
+    <button class="scenario-btn low" onclick="triggerThirdParty()">
+      <span class="label">3rd-party email leak</span>
+      <span class="desc">Sends email to an external analytics domain</span>
+    </button>
+    <button class="scenario-btn low" onclick="triggerAll()">
+      <span class="label">Run all scenarios</span>
+      <span class="desc">Fire every scenario sequentially</span>
+    </button>
+  </div>
+</div>
+
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem">
+    <h2 style="margin:0">Activity Log</h2>
+    <button class="clear-btn" onclick="clearLog()">Clear</button>
+  </div>
+  <div class="log-area" id="log"></div>
+</div>
+
+<div class="card">
+  <h2>Active Parameters</h2>
+  <div class="params" id="params"></div>
+</div>
+
+<!-- Hidden form for form-submit test -->
+<form id="test-form" action="/api/test-form-target" method="POST" style="display:none">
+  <input type="hidden" name="email" value="test.user@example.com">
+  <input type="hidden" name="name" value="Test User">
+</form>
+
+<script>
+  var p = new URLSearchParams(window.location.search);
+  var userId = p.get('id') || '(not set — add ?id=YOUR_USER_ID to the URL)';
+  var api = p.get('api') || 'http://localhost:3001';
+
+  document.getElementById('params').textContent =
+    'id: ' + userId + '   |   api: ' + api;
+
+  function ts() {
+    return new Date().toLocaleTimeString();
+  }
+
+  function log(msg, type) {
+    var el = document.getElementById('log');
+    var line = document.createElement('div');
+    line.className = 'log-line';
+    line.innerHTML = '<span class="log-time">' + ts() + '</span><span class="log-' + (type || 'info') + '">' + msg + '</span>';
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function clearLog() {
+    document.getElementById('log').innerHTML = '';
+  }
+
+  function triggerEmailGet() {
+    var url = api + '/api/test-pii-target?email=john.doe%40example.com&ref=signup';
+    fetch(url).catch(function(){});
+    log('GET ' + api + '/api/test-pii-target?email=john.doe@example.com  →  email leak', 'ok');
+  }
+
+  function triggerPhonePost() {
+    fetch(api + '/api/test-pii-target', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: '415-555-0100', action: 'subscribe' }),
+    }).catch(function(){});
+    log('POST /api/test-pii-target  body: {"phone":"415-555-0100"}  →  phone leak', 'ok');
+  }
+
+  function triggerCreditCard() {
+    // 4111111111111111 is the standard Luhn-valid Visa test number
+    fetch(api + '/api/test-pii-target', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ card: '4111111111111111', cvv: '123' }),
+    }).catch(function(){});
+    log('POST /api/test-pii-target  body: {"card":"4111111111111111"}  →  credit_card leak', 'warn');
+  }
+
+  function triggerSSN() {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', api + '/api/test-pii-target');
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ ssn: '123-45-6789', form: 'tax' }));
+    log('XHR POST /api/test-pii-target  body: {"ssn":"123-45-6789"}  →  ssn leak', 'warn');
+  }
+
+  function triggerFormEmail() {
+    var form = document.getElementById('test-form');
+    // Dispatch a submit event — the monitor intercepts it; the form itself won't navigate
+    var evt = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(evt);
+    log('FORM submit  action:/api/test-form-target  fields: email=test.user@example.com  →  email leak', 'ok');
+  }
+
+  function triggerThirdParty() {
+    fetch('https://analytics-example.invalid/track?uid=u_001&email=user%40example.com').catch(function(){});
+    log('GET analytics-example.invalid/track?email=user@example.com  →  3rd-party email leak', 'warn');
+  }
+
+  function triggerAll() {
+    log('--- Running all scenarios ---', 'info');
+    triggerEmailGet();
+    setTimeout(triggerPhonePost, 300);
+    setTimeout(triggerCreditCard, 600);
+    setTimeout(triggerSSN, 900);
+    setTimeout(triggerFormEmail, 1200);
+    setTimeout(triggerThirdParty, 1500);
+    setTimeout(function(){ log('--- Done. Check dashboard in ~30 s ---', 'info'); }, 1800);
+  }
+
+  log('Monitor script loaded. Ready to test.', 'info');
+</script>
+</body>
+</html>
