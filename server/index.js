@@ -338,6 +338,7 @@ app.use(
 app.use("/api/banner", bannerLimiter);
 app.use("/api/embed", generalLimiter);
 app.use("/api/consent", consentLimiter);
+app.use("/api/pii-report", consentLimiter);
 app.use("/api/policy", generalLimiter);
 app.use("/api/cookie-policy", generalLimiter);
 app.use("/api/tos", generalLimiter);
@@ -769,6 +770,40 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
   } catch (err) {
     console.error("[Consent GET] Error:", err.message);
     res.status(500).json({ error: "Failed to fetch consent records" });
+  }
+});
+
+// ─── POST /api/pii-report ─────────────────────────────────────────────────────
+const VALID_PII_TYPES = new Set(['email','phone','ssn','credit_card','ip_address','passport']);
+
+app.post("/api/pii-report", consentLimiter, async (req, res) => {
+  const { userId, reports } = req.body;
+  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid userId" });
+  if (!Array.isArray(reports) || reports.length === 0) return res.status(400).json({ error: "reports required" });
+
+  const rows = reports.slice(0, 20).map((r) => ({
+    user_id: userId,
+    domain: String(r.domain || "").slice(0, 253),
+    pii_types: (Array.isArray(r.piiTypes) ? r.piiTypes : []).filter(t => VALID_PII_TYPES.has(t)),
+    third_party: !!r.thirdParty,
+    method: String(r.method || "GET").slice(0, 10),
+    page_url: String(r.url || "").slice(0, 2000),
+    example_url: String(r.exampleUrl || "").slice(0, 200),
+    created_at: new Date().toISOString(),
+  })).filter(r => r.pii_types.length > 0);
+
+  if (rows.length === 0) return res.status(200).json({ ok: true });
+
+  try {
+    await supabaseFetch(`${SUPABASE_URL}/rest/v1/pii_alerts`, {
+      method: "POST",
+      headers: { ...serviceHeaders(), Prefer: "return=minimal" },
+      body: JSON.stringify(rows),
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[pii-report] Error:", err.message);
+    res.status(500).json({ error: "Failed to save report" });
   }
 });
 

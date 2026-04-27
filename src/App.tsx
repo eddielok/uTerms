@@ -28,6 +28,7 @@ const Checklist = React.lazy(() => import("./pages/Checklist").then(m => ({ defa
 const WebsiteCookie = React.lazy(() => import("./pages/WebsiteCookie").then(m => ({ default: m.WebsiteCookie })));
 const CookieBannerSettings = React.lazy(() => import("./pages/CookieBannerSettings").then(m => ({ default: m.CookieBannerSettings })));
 const CookieLog = React.lazy(() => import("./pages/CookieLog").then(m => ({ default: m.CookieLog })));
+const PiiAlerts = React.lazy(() => import("./pages/PiiAlerts").then(m => ({ default: m.PiiAlerts })));
 
 // ── Privacy Policy ────────────────────────────────────────────────────────────
 const PolicyManagement = React.lazy(() => import("./pages/PolicyManagement").then(m => ({ default: m.PolicyManagement })));
@@ -122,6 +123,7 @@ function App() {
               <Route path="consent-management/scanner" element={<WebsiteCookie />} />
               <Route path="consent-management/banner-settings" element={<CookieBannerSettings />} />
               <Route path="consent-management/logs" element={<CookieLog />} />
+              <Route path="consent-management/pii-alerts" element={<PiiAlerts />} />
               <Route path="policy-management" element={<PolicyManagement />} />
               <Route path="policy-management/new" element={<PrivacyPolicyWizard />} />
               <Route path="policy-management/:id/edit" element={<PrivacyPolicyWizard />} />

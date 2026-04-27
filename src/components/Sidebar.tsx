@@ -164,6 +164,14 @@ export const Sidebar: React.FC = () => {
               >
                 Cookie Log
               </NavLink>
+              <NavLink
+                to="/consent-management/pii-alerts"
+                className={({ isActive }) =>
+                  `sidebar-sub-link ${isActive ? "active" : ""}`
+                }
+              >
+                PII Alerts
+              </NavLink>
             </div>
           )}
         </div>
