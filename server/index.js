@@ -997,6 +997,21 @@ TEST_HTML_FILES.forEach((file) => {
 
 // ─── Embed JS file routes ──────────────────────────────────────────────────────
 
+// PII monitor script
+app.get("/uterms-pii-monitor.js", (req, res) => {
+  if (!req.query.id)
+    return res
+      .status(400)
+      .type("text/javascript")
+      .send('console.error("User ID required");');
+  res
+    .type("text/javascript")
+    .set("Cache-Control", "no-store")
+    .set("Cross-Origin-Resource-Policy", "cross-origin")
+    .set("Access-Control-Allow-Origin", "*")
+    .sendFile(path.resolve(__dirname, "../public", "uterms-pii-monitor.js"));
+});
+
 // Cookie banner — large standalone script, served as static file
 app.get("/uterms-embed.js", (req, res) => {
   if (!req.query.id)
