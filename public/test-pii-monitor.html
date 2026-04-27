@@ -48,9 +48,12 @@
       var p = new URLSearchParams(window.location.search);
       var id = p.get('id') || '';
       var api = p.get('api') || 'http://localhost:3001';
+      var live = p.get('live') === '1';
       if (!id) return;
+      var src = api + '/uterms-pii-monitor.js?id=' + encodeURIComponent(id) + '&api=' + encodeURIComponent(api);
+      if (!live) src += '&test=1';
       var s = document.createElement('script');
-      s.src = api + '/uterms-pii-monitor.js?id=' + encodeURIComponent(id) + '&api=' + encodeURIComponent(api);
+      s.src = src;
       document.head.appendChild(s);
     })();
   </script>
@@ -61,9 +64,7 @@
 <p class="subtitle">Trigger test scenarios below. Alerts should appear in your dashboard within 30 seconds.</p>
 
 <div class="notice">
-  <strong>How it works:</strong> Each button fires a real network request containing synthetic PII.
-  The monitor script intercepts it, strips the actual data, and reports the <em>type</em> of leak to your dashboard.
-  No real PII leaves this page.
+  <span id="mode-notice"></span>
 </div>
 
 <div class="card">
@@ -123,9 +124,20 @@
   var p = new URLSearchParams(window.location.search);
   var userId = p.get('id') || '(not set — add ?id=YOUR_USER_ID to the URL)';
   var api = p.get('api') || 'http://localhost:3001';
+  var live = p.get('live') === '1';
 
   document.getElementById('params').textContent =
-    'id: ' + userId + '   |   api: ' + api;
+    'id: ' + userId + '   |   api: ' + api + '   |   mode: ' + (live ? 'LIVE' : 'test');
+
+  var notice = document.getElementById('mode-notice');
+  if (live) {
+    notice.innerHTML = '<strong>⚠ Live mode</strong> — detections will be reported to your dashboard. Add <code>&amp;live=1</code> to the URL to enable.';
+    notice.parentElement.style.background = '#fff1f2';
+    notice.parentElement.style.borderColor = '#fecaca';
+    notice.parentElement.style.color = '#991b1b';
+  } else {
+    notice.innerHTML = '<strong>Test mode is active</strong> — detections are logged to the browser console (DevTools → Console) but <em>not</em> sent to your dashboard. Append <code>&amp;live=1</code> to this URL to report real alerts.';
+  }
 
   function ts() {
     return new Date().toLocaleTimeString();

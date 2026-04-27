@@ -2,12 +2,14 @@
   // ── Config ────────────────────────────────────────────────────────────────────
   let userId = null;
   let apiBase = 'https://api.uterms.io';
+  let testMode = false;
   try {
     const scripts = document.getElementsByTagName('script');
     for (const s of scripts) {
       if (s.src && s.src.includes('uterms-pii-monitor.js')) {
         const u = new URL(s.src);
         userId = u.searchParams.get('id');
+        testMode = u.searchParams.get('test') === '1';
         const api = u.searchParams.get('api');
         if (api) {
           try {
@@ -66,6 +68,11 @@
   function flush() {
     if (pending.length === 0) return;
     const batch = pending.splice(0);
+    if (testMode) {
+      console.debug('[uterms-pii-monitor] test mode — suppressed report:', batch);
+      timer = null;
+      return;
+    }
     try {
       navigator.sendBeacon(
         apiBase + '/api/pii-report',
