@@ -1,13 +1,15 @@
 # uTerms
 
-A consent management and compliance platform. Scan websites for cookies, configure a cookie consent banner, embed it on any site, log visitor consent decisions, and monitor for real-time PII leakage — all from one dashboard.
+A cookie management and compliance platform. Scan websites for cookies, configure a cookie consent banner, embed it on any site, log visitor consent decisions, and monitor for real-time PII leakage — all from one dashboard.
 
 ## Features
 
 - **Cookie Scanner** — Puppeteer-powered scan that detects and categorises cookies (Essential, Functional, Analytics, Marketing, Social)
 - **Consent Banner** — Configurable banner (theme, position, style) embeddable on any website via a single script tag; supports 9 languages with automatic IP-based language detection
 - **Policy Generator** — AI-assisted generation for 10 policy types: Privacy Policy, Cookie Policy, Terms of Service, EULA, Return Policy, Disclaimer, Shipping Policy, Acceptable Use Policy, Impressum, Accessibility Statement
+- **Cookie Management** — Check list, website cookie scanner, consent banner configuration, and cookie logs
 - **Consent Logs** — Per-visitor consent decisions stored with anonymised IP, user agent, and page URL
+- **PII Data Management** — Dashboard for reviewing PII leak alerts detected by the monitor script, grouped by domain with occurrence counts and severity indicators
 - **GCM v2** — Google Consent Mode v2 compliance scanning
 - **PII Leak Monitor** — Real-time client-side detection of personally identifiable information (email, phone, SSN, credit card) sent in outgoing network requests; alerts grouped by domain in the dashboard
 - **AI Cookie Classifier** — One-click AI classification of unclassified cookies using DeepSeek V3
@@ -17,15 +19,15 @@ A consent management and compliance platform. Scan websites for cookies, configu
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Frontend | React 19, TypeScript, Vite, React Router v7 |
-| Backend | Node.js, Express 5 |
-| Database & Auth | Supabase (PostgreSQL) |
-| Hosting | Cloudflare Workers (frontend), VM (backend) |
-| Error Monitoring | Sentry |
-| Headless Browser | Puppeteer |
-| AI | DeepSeek V3 |
+| Layer            | Technology                                  |
+| ---------------- | ------------------------------------------- |
+| Frontend         | React 19, TypeScript, Vite, React Router v7 |
+| Backend          | Node.js, Express 5                          |
+| Database & Auth  | Supabase (PostgreSQL)                       |
+| Hosting          | Cloudflare Workers (frontend), VM (backend) |
+| Error Monitoring | Sentry                                      |
+| Headless Browser | Puppeteer                                   |
+| AI               | DeepSeek V3                                 |
 
 ## Project Structure
 
@@ -78,12 +80,14 @@ IP_SALT=<random-string>
 ### Run Locally
 
 **Frontend** (http://localhost:5173):
+
 ```bash
 npm install
 npm run dev
 ```
 
 **Backend** (http://localhost:3001):
+
 ```bash
 cd server
 npm install
@@ -113,22 +117,22 @@ node server/test-scan.js           # Manual cookie scan test
 
 ## Backend API
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| `POST` | `/api/scan` | — | Puppeteer cookie scan for a URL |
-| `GET` | `/api/banner/:userId` | — | Banner config for embed script |
-| `POST` | `/api/consent` | — | Log a visitor consent decision |
-| `GET` | `/api/consent/:userId` | API key | Fetch consent logs |
-| `DELETE` | `/api/consent/:userId` | API key | Delete consent logs |
-| `POST` | `/api/gcm-scan` | — | GCM v2 compliance scan |
-| `POST` | `/api/analyze-policy` | — | AI policy pre-fill for a single policy type |
-| `POST` | `/api/analyze-all-policies` | — | AI policy pre-fill for all 10 policy types |
-| `GET` | `/api/policy-scan/:userId` | — | Retrieve saved policy scan results |
-| `POST` | `/api/pii-report` | — | Ingest PII leak reports from the monitor script |
-| `GET` | `/api/scan-schedule/:userId` | API key | Get scan schedule |
-| `POST` | `/api/scan-schedule` | API key | Create/update scan schedule |
-| `DELETE` | `/api/scan-schedule/:userId` | API key | Delete scan schedule |
-| `POST` | `/api/delete-account` | Bearer JWT | Permanently delete user account |
+| Method   | Endpoint                     | Auth       | Description                                     |
+| -------- | ---------------------------- | ---------- | ----------------------------------------------- |
+| `POST`   | `/api/scan`                  | —          | Puppeteer cookie scan for a URL                 |
+| `GET`    | `/api/banner/:userId`        | —          | Banner config for embed script                  |
+| `POST`   | `/api/consent`               | —          | Log a visitor consent decision                  |
+| `GET`    | `/api/consent/:userId`       | API key    | Fetch consent logs                              |
+| `DELETE` | `/api/consent/:userId`       | API key    | Delete consent logs                             |
+| `POST`   | `/api/gcm-scan`              | —          | GCM v2 compliance scan                          |
+| `POST`   | `/api/analyze-policy`        | —          | AI policy pre-fill for a single policy type     |
+| `POST`   | `/api/analyze-all-policies`  | —          | AI policy pre-fill for all 10 policy types      |
+| `GET`    | `/api/policy-scan/:userId`   | —          | Retrieve saved policy scan results              |
+| `POST`   | `/api/pii-report`            | —          | Ingest PII leak reports from the monitor script |
+| `GET`    | `/api/scan-schedule/:userId` | API key    | Get scan schedule                               |
+| `POST`   | `/api/scan-schedule`         | API key    | Create/update scan schedule                     |
+| `DELETE` | `/api/scan-schedule/:userId` | API key    | Delete scan schedule                            |
+| `POST`   | `/api/delete-account`        | Bearer JWT | Permanently delete user account                 |
 
 API key authentication uses `X-API-Key: utk_<32 hex chars>` header, verified against the `api_keys` Supabase table.
 
@@ -140,7 +144,7 @@ Key Supabase tables:
 **`visitor_consent`** — individual visitor consent decisions  
 **`pii_alerts`** — PII leak events reported by the monitor script, grouped by domain  
 **`api_keys`** — user API keys for programmatic access  
-**`scan_schedules`** — scheduled cookie scan configuration  
+**`scan_schedules`** — scheduled cookie scan configuration
 
 Policy tables (one per type): `privacy_policies`, `cookie_policies`, `terms_of_service`, `eula`, `return_policy`, `disclaimer`, `shipping_policy`, `acceptable_use_policy`, `impressum`, `accessibility_statement`
 
@@ -187,6 +191,7 @@ Add to any website before `</body>` to detect PII sent in outgoing requests:
 The script intercepts `fetch`, `XMLHttpRequest`, and form submissions. When PII is detected (email, phone, SSN, or Luhn-valid credit card), it batches the report and sends it via `navigator.sendBeacon`. Alerts appear in the dashboard at `/consent-management/pii-alerts`.
 
 **Test page** (no real reports sent):
+
 ```
 https://api.uterms.io/test-pii-monitor.html?id=YOUR_USER_ID&api=https://api.uterms.io
 ```
