@@ -5,7 +5,7 @@ import React, { Suspense } from "react";
 function lazy<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>
 ): React.LazyExoticComponent<T> {
-  return lazy(() =>
+  return React.lazy(() =>
     factory().catch((err: unknown) => {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes('Failed to fetch') || msg.includes('dynamically imported')) {
