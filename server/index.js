@@ -212,7 +212,9 @@ async function getSharedBrowser() {
     _sharedBrowser = null;
   });
   _sharedBrowser.on("targetcrashedwitherror", () => {
-    console.warn("[browser-pool] Browser target crashed — will relaunch on next scan.");
+    console.warn(
+      "[browser-pool] Browser target crashed — will relaunch on next scan.",
+    );
     _sharedBrowser = null;
   });
   console.log("[browser-pool] Warm browser launched.");
@@ -328,12 +330,33 @@ app.use(compression());
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
   : ["https://uterms.io", "https://www.uterms.io", "https://api.uterms.io"];
-app.use(
-  cors({
-    origin: ALLOWED_ORIGINS,
-    credentials: true,
-  }),
-);
+const PUBLIC_CORS_PREFIXES = ["/api/banner", "/api/consent", "/api/pii-report"];
+
+function isPublicCorsRequest(requestPath) {
+  return PUBLIC_CORS_PREFIXES.some((prefix) => requestPath.startsWith(prefix));
+}
+
+const publicCors = cors({
+  origin: "*",
+});
+
+const restrictedCors = cors({
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+  credentials: true,
+});
+
+app.use((req, res, next) => {
+  const corsMiddleware = isPublicCorsRequest(req.path)
+    ? publicCors
+    : restrictedCors;
+  corsMiddleware(req, res, next);
+});
 // Rate limit groups — before body parsing so rejected requests never pay JSON parse cost
 app.use("/api/banner", bannerLimiter);
 app.use("/api/embed", generalLimiter);
@@ -405,22 +428,32 @@ const CATEGORY_TEMPLATES = [
 
 // ─── PII detection helpers ────────────────────────────────────────────────────
 const PII_PATTERNS = [
-  { type: 'email',       regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
-  { type: 'phone',       regex: /(?:\+?\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g },
-  { type: 'ssn',         regex: /\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/g },
-  { type: 'credit_card', regex: /\b(?:\d[ -]?){15,16}\b/g },
-  { type: 'ip_address',  regex: /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g },
-  { type: 'passport',    regex: /\b[A-Z]{1,2}\d{6,9}\b/g },
+  { type: "email", regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g },
+  {
+    type: "phone",
+    regex: /(?:\+?\d{1,3}[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g,
+  },
+  { type: "ssn", regex: /\b\d{3}[-\s]\d{2}[-\s]\d{4}\b/g },
+  { type: "credit_card", regex: /\b(?:\d[ -]?){15,16}\b/g },
+  {
+    type: "ip_address",
+    regex:
+      /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g,
+  },
+  { type: "passport", regex: /\b[A-Z]{1,2}\d{6,9}\b/g },
 ];
 
 // Luhn check to reduce credit card false positives
 function luhn(num) {
-  const digits = num.replace(/\D/g, '');
+  const digits = num.replace(/\D/g, "");
   let sum = 0;
   let alt = false;
   for (let i = digits.length - 1; i >= 0; i--) {
     let n = parseInt(digits[i], 10);
-    if (alt) { n *= 2; if (n > 9) n -= 9; }
+    if (alt) {
+      n *= 2;
+      if (n > 9) n -= 9;
+    }
     sum += n;
     alt = !alt;
   }
@@ -433,11 +466,20 @@ function detectPiiInText(text) {
   for (const { type, regex } of PII_PATTERNS) {
     const matches = text.match(regex);
     if (!matches) continue;
-    if (type === 'credit_card') {
-      if (matches.some(m => luhn(m))) found.add(type);
-    } else if (type === 'ip_address') {
+    if (type === "credit_card") {
+      if (matches.some((m) => luhn(m))) found.add(type);
+    } else if (type === "ip_address") {
       // Ignore common non-PII IPs like 127.0.0.1, 0.0.0.0, 255.255.255.255
-      const realIps = matches.filter(ip => !['127.0.0.1','0.0.0.0','255.255.255.255','192.168.','10.0.'].some(x => ip.startsWith(x)));
+      const realIps = matches.filter(
+        (ip) =>
+          ![
+            "127.0.0.1",
+            "0.0.0.0",
+            "255.255.255.255",
+            "192.168.",
+            "10.0.",
+          ].some((x) => ip.startsWith(x)),
+      );
       if (realIps.length) found.add(type);
     } else {
       found.add(type);
@@ -464,14 +506,14 @@ async function performScan(url) {
 
     // Enable CDP Network before navigation to capture all requests
     const cdpClient = await page.createCDPSession();
-    await cdpClient.send('Network.enable');
-    cdpClient.on('Network.requestWillBeSent', (params) => {
+    await cdpClient.send("Network.enable");
+    cdpClient.on("Network.requestWillBeSent", (params) => {
       const reqUrl = params.request.url;
-      if (!reqUrl.startsWith('http')) return; // skip data: / blob:
+      if (!reqUrl.startsWith("http")) return; // skip data: / blob:
       capturedRequests.push({
         url: reqUrl,
         method: params.request.method,
-        postData: params.request.postData || '',
+        postData: params.request.postData || "",
         headers: params.request.headers || {},
       });
     });
@@ -599,17 +641,22 @@ async function performScan(url) {
     }
 
     // ── PII leakage analysis ──────────────────────────────────────────────────
-    const targetHost = new URL(targetUrl).hostname.replace(/^www\./, '');
+    const targetHost = new URL(targetUrl).hostname.replace(/^www\./, "");
     const piiLeaksMap = new Map(); // domain → { domain, url, piiTypes, thirdParty, method }
 
     for (const req of capturedRequests) {
       let reqHost;
-      try { reqHost = new URL(req.url).hostname.replace(/^www\./, ''); } catch { continue; }
+      try {
+        reqHost = new URL(req.url).hostname.replace(/^www\./, "");
+      } catch {
+        continue;
+      }
 
-      const isThirdParty = !reqHost.endsWith(targetHost) && !targetHost.endsWith(reqHost);
+      const isThirdParty =
+        !reqHost.endsWith(targetHost) && !targetHost.endsWith(reqHost);
 
       // Check URL (query params) + POST body
-      const textToCheck = req.url + ' ' + req.postData;
+      const textToCheck = req.url + " " + req.postData;
       const piiTypes = detectPiiInText(textToCheck);
       if (piiTypes.length === 0) continue;
 
@@ -628,12 +675,17 @@ async function performScan(url) {
       }
     }
 
-    const piiLeaks = [...piiLeaksMap.values()].map(l => ({
+    const piiLeaks = [...piiLeaksMap.values()].map((l) => ({
       ...l,
       piiTypes: [...l.piiTypes],
     }));
 
-    return { url: targetUrl, cookiesCount: cookies.length, categories, piiLeaks };
+    return {
+      url: targetUrl,
+      cookiesCount: cookies.length,
+      categories,
+      piiLeaks,
+    };
   } finally {
     await page.close(); // close page only — keep shared browser warm
   }
@@ -647,7 +699,10 @@ app.post("/api/classify-cookies", generalLimiter, async (req, res) => {
 
   const list = cookies
     .slice(0, 50) // cap at 50 to keep prompt size manageable
-    .map((c) => `name: ${c.name || ""} | domain: ${c.domain || ""} | description: ${c.description || ""}`)
+    .map(
+      (c) =>
+        `name: ${c.name || ""} | domain: ${c.domain || ""} | description: ${c.description || ""}`,
+    )
     .join("\n");
 
   const systemPrompt = `You are a cookie classification expert. Classify each cookie into exactly one category: essential, functional, analytics, marketing, or social. Use "unclassified" only if you genuinely cannot determine the category. Consider the cookie name pattern, domain, and description. Return ONLY valid JSON in the format: { "classifications": [ { "name": "...", "category": "..." } ] }`;
@@ -655,9 +710,12 @@ app.post("/api/classify-cookies", generalLimiter, async (req, res) => {
   const userPrompt = `Classify these cookies and return { "classifications": [ { "name": "...", "category": "..." } ] }\n\nCookies:\n${list}`;
 
   const result = await callDeepSeek(systemPrompt, userPrompt, 20000);
-  if (!result) return res.status(500).json({ error: "AI classification unavailable" });
+  if (!result)
+    return res.status(500).json({ error: "AI classification unavailable" });
 
-  const classifications = Array.isArray(result) ? result : (result.classifications || result.cookies || []);
+  const classifications = Array.isArray(result)
+    ? result
+    : result.classifications || result.cookies || [];
   res.json({ classifications });
 });
 
@@ -680,17 +738,41 @@ app.post("/api/scan", async (req, res) => {
 // Maps ISO 3166-1 alpha-2 country code → one of the supported TRANSLATIONS keys
 const COUNTRY_LANG_MAP = {
   // Chinese Traditional
-  TW: "zh-TW", HK: "zh-TW", MO: "zh-TW",
+  TW: "zh-TW",
+  HK: "zh-TW",
+  MO: "zh-TW",
   // Chinese Simplified
   CN: "zh-CN",
   // French
-  FR: "fr", BE: "fr", LU: "fr", MC: "fr",
+  FR: "fr",
+  BE: "fr",
+  LU: "fr",
+  MC: "fr",
   // German
-  DE: "de", AT: "de", LI: "de",
+  DE: "de",
+  AT: "de",
+  LI: "de",
   // Spanish
-  ES: "es", MX: "es", AR: "es", CO: "es", CL: "es", PE: "es", VE: "es",
-  EC: "es", GT: "es", CU: "es", BO: "es", DO: "es", HN: "es", PY: "es",
-  SV: "es", NI: "es", CR: "es", PA: "es", UY: "es", GQ: "es",
+  ES: "es",
+  MX: "es",
+  AR: "es",
+  CO: "es",
+  CL: "es",
+  PE: "es",
+  VE: "es",
+  EC: "es",
+  GT: "es",
+  CU: "es",
+  BO: "es",
+  DO: "es",
+  HN: "es",
+  PY: "es",
+  SV: "es",
+  NI: "es",
+  CR: "es",
+  PA: "es",
+  UY: "es",
+  GQ: "es",
   // Portuguese (Brazil)
   BR: "pt-BR",
   // Japanese
@@ -741,7 +823,11 @@ app.get("/api/banner/:id", async (req, res) => {
       const detectedLang = detectCountryLang(req.ip);
       const detectedJurisdiction = detectJurisdiction(req.ip);
       res.set("Cache-Control", "private, max-age=60");
-      res.json({ ...data[0], detected_lang: detectedLang, detected_jurisdiction: detectedJurisdiction });
+      res.json({
+        ...data[0],
+        detected_lang: detectedLang,
+        detected_jurisdiction: detectedJurisdiction,
+      });
     } else {
       res.status(404).json({ error: "Settings not found for user" });
     }
@@ -786,23 +872,37 @@ app.get("/api/consent/:userId", validateApiKey, async (req, res) => {
 });
 
 // ─── POST /api/pii-report ─────────────────────────────────────────────────────
-const VALID_PII_TYPES = new Set(['email','phone','ssn','credit_card','ip_address','passport']);
+const VALID_PII_TYPES = new Set([
+  "email",
+  "phone",
+  "ssn",
+  "credit_card",
+  "ip_address",
+  "passport",
+]);
 
 app.post("/api/pii-report", consentLimiter, async (req, res) => {
   const { userId, reports } = req.body;
-  if (!isValidUUID(userId)) return res.status(400).json({ error: "Invalid userId" });
-  if (!Array.isArray(reports) || reports.length === 0) return res.status(400).json({ error: "reports required" });
+  if (!isValidUUID(userId))
+    return res.status(400).json({ error: "Invalid userId" });
+  if (!Array.isArray(reports) || reports.length === 0)
+    return res.status(400).json({ error: "reports required" });
 
-  const rows = reports.slice(0, 20).map((r) => ({
-    user_id: userId,
-    domain: String(r.domain || "").slice(0, 253),
-    pii_types: (Array.isArray(r.piiTypes) ? r.piiTypes : []).filter(t => VALID_PII_TYPES.has(t)),
-    third_party: !!r.thirdParty,
-    method: String(r.method || "GET").slice(0, 10),
-    page_url: String(r.url || "").slice(0, 2000),
-    url: String(r.exampleUrl || "").slice(0, 200),
-    created_at: new Date().toISOString(),
-  })).filter(r => r.pii_types.length > 0);
+  const rows = reports
+    .slice(0, 20)
+    .map((r) => ({
+      user_id: userId,
+      domain: String(r.domain || "").slice(0, 253),
+      pii_types: (Array.isArray(r.piiTypes) ? r.piiTypes : []).filter((t) =>
+        VALID_PII_TYPES.has(t),
+      ),
+      third_party: !!r.thirdParty,
+      method: String(r.method || "GET").slice(0, 10),
+      page_url: String(r.url || "").slice(0, 2000),
+      url: String(r.exampleUrl || "").slice(0, 200),
+      created_at: new Date().toISOString(),
+    }))
+    .filter((r) => r.pii_types.length > 0);
 
   if (rows.length === 0) return res.status(200).json({ ok: true });
 
@@ -2612,45 +2712,50 @@ async function runDiagnosis(userId, url, scanTypes, notificationEmail) {
 }
 
 // ─── POST /api/diagnosis/scan ─────────────────────────────────────────────────
-app.post("/api/diagnosis/scan", validateApiKey, diagnosisLimiter, async (req, res) => {
-  const { userId, url, scanTypes, notificationEmail } = req.body;
-  if (!userId || !isValidUUID(userId))
-    return res.status(400).json({ error: "Invalid user ID" });
-  if (!url) return res.status(400).json({ error: "URL is required" });
-  if (!Array.isArray(scanTypes) || scanTypes.length === 0)
-    return res.status(400).json({ error: "Select at least one scan type" });
-  const invalidTypes = scanTypes.filter((t) => !VALID_SCAN_TYPES.includes(t));
-  if (invalidTypes.length > 0)
-    return res.status(400).json({ error: "Invalid scan type(s)" });
+app.post(
+  "/api/diagnosis/scan",
+  validateApiKey,
+  diagnosisLimiter,
+  async (req, res) => {
+    const { userId, url, scanTypes, notificationEmail } = req.body;
+    if (!userId || !isValidUUID(userId))
+      return res.status(400).json({ error: "Invalid user ID" });
+    if (!url) return res.status(400).json({ error: "URL is required" });
+    if (!Array.isArray(scanTypes) || scanTypes.length === 0)
+      return res.status(400).json({ error: "Select at least one scan type" });
+    const invalidTypes = scanTypes.filter((t) => !VALID_SCAN_TYPES.includes(t));
+    if (invalidTypes.length > 0)
+      return res.status(400).json({ error: "Invalid scan type(s)" });
 
-  const urlError = validatePublicUrl(normalizeUrl(url));
-  if (urlError) return res.status(400).json({ error: urlError });
+    const urlError = validatePublicUrl(normalizeUrl(url));
+    if (urlError) return res.status(400).json({ error: urlError });
 
-  // Check active subscription
-  const subRes = await supabaseFetch(
-    `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status&limit=1`,
-    { headers: serviceHeaders() },
-  );
-  const subData = await subRes.json();
-  const isActive = Array.isArray(subData) && subData[0]?.status === "active";
-  if (!isActive)
-    return res.status(403).json({ error: "Active subscription required" });
-
-  try {
-    const result = await runDiagnosis(
-      userId,
-      url,
-      scanTypes,
-      notificationEmail,
+    // Check active subscription
+    const subRes = await supabaseFetch(
+      `${SUPABASE_URL}/rest/v1/diagnosis_subscriptions?user_id=eq.${encodeURIComponent(userId)}&select=status&limit=1`,
+      { headers: serviceHeaders() },
     );
-    res.json(result);
-  } catch (err) {
-    console.error("[diagnosis/scan] Error:", err.message, err.stack);
-    res
-      .status(500)
-      .json({ error: err.message || "Diagnosis failed. Please try again." });
-  }
-});
+    const subData = await subRes.json();
+    const isActive = Array.isArray(subData) && subData[0]?.status === "active";
+    if (!isActive)
+      return res.status(403).json({ error: "Active subscription required" });
+
+    try {
+      const result = await runDiagnosis(
+        userId,
+        url,
+        scanTypes,
+        notificationEmail,
+      );
+      res.json(result);
+    } catch (err) {
+      console.error("[diagnosis/scan] Error:", err.message, err.stack);
+      res
+        .status(500)
+        .json({ error: err.message || "Diagnosis failed. Please try again." });
+    }
+  },
+);
 
 // ─── GET /api/diagnosis/reports/:userId ──────────────────────────────────────
 app.get("/api/diagnosis/reports/:userId", validateApiKey, async (req, res) => {
