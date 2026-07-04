@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'server/**'
-      - 'public/**'
+      - "server/**"
+      - "public/**"
 
 jobs:
   deploy:
@@ -19,9 +19,9 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
           script: |
-            cd /var/www/uterms
+            cd /home/ubuntu/uterms
             git pull origin main
             cd server
             npm install --production
-            pm2 restart uterms-backend
+            pm2 restart uterms-api
             pm2 save
