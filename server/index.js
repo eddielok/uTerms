@@ -102,7 +102,7 @@ function validatePublicUrl(rawUrl) {
   try {
     parsed = new URL(rawUrl);
   } catch {
-    return "Invalid URL format.";
+    return "Invalid URL format";
   }
   if (!["http:", "https:"].includes(parsed.protocol))
     return "Only http and https URLs are allowed";
